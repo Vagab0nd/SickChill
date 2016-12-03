@@ -1538,7 +1538,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
 
         dailySearchScheduler = scheduler.Scheduler(
             dailysearcher.DailySearcher(),
-            run_delay=datetime.timedelta(minutes=10),
+            run_delay=datetime.timedelta(minutes=4),
             cycleTime=datetime.timedelta(minutes=DAILYSEARCH_FREQUENCY),
             threadName="DAILYSEARCHER"
         )
