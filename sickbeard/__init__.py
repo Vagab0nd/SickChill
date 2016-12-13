@@ -614,7 +614,7 @@ NEWZNAB_DATA = None
 
 def get_backlog_cycle_time():
     cycletime = DAILYSEARCH_FREQUENCY * 2 + 7
-    return max([cycletime, 720])
+    return max([cycletime, 320])
 
 
 def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
@@ -1507,7 +1507,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
             searchBacklog.BacklogSearcher(),
             cycleTime=update_interval,
             threadName="BACKLOG",
-            run_delay=update_interval
+            run_delay=datetime.timedelta(hours=2)
         )
 
         search_intervals = {'15m': 15, '45m': 45, '90m': 90, '4h': 4 * 60, 'daily': 24 * 60}
