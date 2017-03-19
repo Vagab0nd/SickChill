@@ -31,6 +31,8 @@
         <meta name="msapplication-navbutton-color" content="${themeColors[sickbeard.THEME_NAME]}">
         <!-- iOS -->
         <meta name="apple-mobile-web-app-status-bar-style" content="${themeColors[sickbeard.THEME_NAME]}">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="mobile-web-app-capable" content="yes">
 
         <title>SickRage - ${title}</title>
 
@@ -48,11 +50,13 @@
         <meta data-var="anonURL" data-content="${sickbeard.ANON_REDIRECT}">
 
         <meta data-var="sickbeard.ANIME_SPLIT_HOME" data-content="${sickbeard.ANIME_SPLIT_HOME}">
+        <meta data-var="sickbeard.ANIME_SPLIT_HOME_IN_TABS" data-content="${sickbeard.ANIME_SPLIT_HOME_IN_TABS}">
         <meta data-var="sickbeard.COMING_EPS_LAYOUT" data-content="${sickbeard.COMING_EPS_LAYOUT}">
         <meta data-var="sickbeard.COMING_EPS_SORT" data-content="${sickbeard.COMING_EPS_SORT}">
         <meta data-var="sickbeard.DATE_PRESET" data-content="${sickbeard.DATE_PRESET}">
         <meta data-var="sickbeard.FUZZY_DATING" data-content="${sickbeard.FUZZY_DATING}">
         <meta data-var="sickbeard.HISTORY_LAYOUT" data-content="${sickbeard.HISTORY_LAYOUT}">
+        <meta data-var="sickbeard.USE_SUBTITLES" data-content="${sickbeard.USE_SUBTITLES}">
         <meta data-var="sickbeard.HOME_LAYOUT" data-content="${sickbeard.HOME_LAYOUT}">
         <meta data-var="sickbeard.POSTER_SORTBY" data-content="${sickbeard.POSTER_SORTBY}">
         <meta data-var="sickbeard.POSTER_SORTDIR" data-content="${sickbeard.POSTER_SORTDIR}">
@@ -60,6 +64,7 @@
         <meta data-var="sickbeard.SORT_ARTICLE" data-content="${sickbeard.SORT_ARTICLE}">
         <meta data-var="sickbeard.TIME_PRESET" data-content="${sickbeard.TIME_PRESET}">
         <meta data-var="sickbeard.TRIM_ZERO" data-content="${sickbeard.TRIM_ZERO}">
+        <meta data-var="sickbeard.SICKRAGE_BACKGROUND" data-content="${sickbeard.SICKRAGE_BACKGROUND}">
         <meta data-var="sickbeard.FANART_BACKGROUND" data-content="${sickbeard.FANART_BACKGROUND}">
         <meta data-var="sickbeard.FANART_BACKGROUND_OPACITY" data-content="${sickbeard.FANART_BACKGROUND_OPACITY}">
         <%block name="metas" />
@@ -87,21 +92,19 @@
         <link rel="stylesheet" type="text/css" href="${srRoot}/css/lib/jquery.qtip-2.2.1.min.css?${sbPID}"/>
         <link rel="stylesheet" type="text/css" href="${srRoot}/css/style.css?${sbPID}"/>
         <link rel="stylesheet" type="text/css" href="${srRoot}/css/print.css?${sbPID}" />
+        <link rel="stylesheet" type="text/css" href="${srRoot}/css/country-flags.css?${sbPID}"/>
 
         %if sickbeard.THEME_NAME != "light":
             <link rel="stylesheet" type="text/css" href="${srRoot}/css/${sickbeard.THEME_NAME}.css?${sbPID}" />
         %endif
 
-        % if srLogin:
-            <link rel="stylesheet" type="text/css" href="${srRoot}/css/country-flags.css?${sbPID}"/>
-        % endif
         <%block name="css" />
     </head>
     <body data-controller="${controller}" data-action="${action}">
         <nav class="navbar navbar-default navbar-fixed-top hidden-print" role="navigation">
             <div class="container-fluid">
                 <div class="navbar-header">
-                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#collapsible-navbar">
                         <span class="sr-only">Toggle navigation</span>
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
@@ -110,7 +113,7 @@
                     <a class="navbar-brand" href="${srRoot}/home/" title="SickRage"><img alt="SickRage" src="${srRoot}/images/sickrage.png" style="height: 50px;padding: 3px;" class="img-responsive pull-left" /></a>
                 </div>
                 % if srLogin:
-                    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                    <div class="collapse navbar-collapse" id="collapsible-navbar">
                         <ul class="nav navbar-nav navbar-right">
                             <li id="NAVhome" class="navbar-split dropdown${('', ' active')[topmenu == 'home']}">
                                 <a href="${srRoot}/home/" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown"><span>${_('Shows')}</span>
@@ -227,7 +230,7 @@
                                     <li><a href="${srRoot}/home/updateCheck?pid=${sbPID}"><i class="fa fa-wrench"></i>&nbsp;${_('Check For Updates')}</a></li>
                                     <li><a href="${srRoot}/home/restart/?pid=${sbPID}" class="confirm restart"><i class="fa fa-repeat"></i>&nbsp;${_('Restart')}</a></li>
                                     <li><a href="${srRoot}/home/shutdown/?pid=${sbPID}" class="confirm shutdown"><i class="fa fa-power-off"></i>&nbsp;${_('Shutdown')}</a></li>
-                                    % if srLogin is not True:
+                                    % if srLogin:
                                         <li><a href="${srRoot}/logout" class="confirm logout"><i class="fa fa-sign-out"></i>&nbsp;${_('Logout')}</a></li>
                                     % endif
                                     <li role="separator" class="divider"></li>
@@ -268,16 +271,8 @@
                     </div>
                 % endif
                 <div class="clearfix"></div>
-                % if sickbeard.BRANCH and sickbeard.BRANCH != 'master' and not sickbeard.DEVELOPER and srLogin:
-                    <div class="alert alert-danger upgrade-notification hidden-print" role="alert">
-                        <span>${_('You\'re using the {branch} branch. Please use \'master\' unless specifically asked').format(branch=sickbeard.BRANCH)}</span>
-                    </div>
-                % endif
-
-                % if sickbeard.NEWEST_VERSION_STRING and srLogin:
-                    <div class="alert alert-success upgrade-notification hidden-print" role="alert">
-                        <span>${sickbeard.NEWEST_VERSION_STRING}</span>
-                    </div>
+                % if srLogin:
+                    <div id="site-messages"/>
                 % endif
             </div>
             <div class="row">
@@ -285,6 +280,22 @@
                     <%block name="content" />
                 </div>
             </div>
+
+            <div class="modal fade" id="site-notification-modal">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+                            <h4 class="modal-title">Notice</h4>
+                        </div>
+                        <div class="modal-body"></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-dismiss="modal">Ok</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             % if srLogin:
                 <div class="row">
                     <div class="footer clearfix col-lg-10 col-lg-offset-1 col-md-10 col-md-offset-1 col-sm-12 col-xs-12">

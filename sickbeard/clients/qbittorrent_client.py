@@ -1,7 +1,7 @@
 # coding=utf-8
 
 # Author: Mr_Orange <mr_orange@hotmail.it>
-# URL: http://code.google.com/p/sickbeard/
+# URL: https://sickrage.github.io
 #
 # This file is part of SickRage.
 #
@@ -61,7 +61,7 @@ class qbittorrentAPI(GenericClient):
         self.session.cookies = self.response.cookies
         self.auth = self.response.content
 
-        return self.auth if not self.response.status_code == 404 else None
+        return (None, self.auth)[self.response.status_code != 404]
 
     def _add_torrent_uri(self, result):
 

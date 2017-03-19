@@ -1,7 +1,7 @@
 # coding=UTF-8
 # Author: Dennis Lutter <lad1337@gmail.com>
 
-# URL: http://code.google.com/p/sickbeard/
+# URL: https://sickrage.github.io
 #
 # This file is part of SickRage.
 #
@@ -39,6 +39,8 @@ Classes:
     TestCacheDBConnection
 """
 
+from __future__ import print_function, unicode_literals
+
 import os.path
 import shutil
 import sys
@@ -65,10 +67,10 @@ TEST_DB_NAME = "sickbeard.db"
 TEST_CACHE_DB_NAME = "cache.db"
 TEST_FAILED_DB_NAME = "failed.db"
 
-SHOW_NAME = u"show name"
+SHOW_NAME = "show name"
 SEASON = 4
 EPISODE = 2
-FILENAME = u"show name - s0" + str(SEASON) + "e0" + str(EPISODE) + ".mkv"
+FILENAME = "show name - s0" + str(SEASON) + "e0" + str(EPISODE) + ".mkv"
 FILE_DIR = os.path.join(TEST_DIR, SHOW_NAME)
 FILE_PATH = os.path.join(FILE_DIR, FILENAME)
 SHOW_DIR = os.path.join(TEST_DIR, SHOW_NAME + " final")
@@ -103,7 +105,7 @@ sickbeard.SYS_ENCODING = 'UTF-8'
 
 sickbeard.showList = []
 sickbeard.QUALITY_DEFAULT = 4  # hdtv
-sickbeard.FLATTEN_FOLDERS_DEFAULT = 0
+sickbeard.SEASON_FOLDERS_DEFAULT = 0
 
 sickbeard.NAMING_PATTERN = ''
 sickbeard.NAMING_ABD_PATTERN = ''
@@ -120,11 +122,12 @@ sickbeard.PROG_DIR = os.path.abspath(os.path.join(TEST_DIR, '..'))
 sickbeard.DATA_DIR = TEST_DIR
 sickbeard.CONFIG_FILE = os.path.join(sickbeard.DATA_DIR, "config.ini")
 sickbeard.CFG = ConfigObj(sickbeard.CONFIG_FILE, encoding='UTF-8')
+sickbeard.GUI_NAME = 'slick'
 
-sickbeard.BRANCH = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'branch', '')
-sickbeard.CUR_COMMIT_HASH = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'cur_commit_hash', '')
-sickbeard.GIT_USERNAME = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'git_username', '')
-sickbeard.GIT_PASSWORD = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'git_password', '', censor_log=True)
+sickbeard.BRANCH = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'branch')
+sickbeard.CUR_COMMIT_HASH = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'cur_commit_hash')
+sickbeard.GIT_USERNAME = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'git_username')
+sickbeard.GIT_PASSWORD = sickbeard.config.check_setting_str(sickbeard.CFG, 'General', 'git_password', censor_log=True)
 
 sickbeard.LOG_DIR = os.path.join(TEST_DIR, 'Logs')
 sickbeard.logger.log_file = os.path.join(sickbeard.LOG_DIR, 'test_sickbeard.log')
@@ -207,7 +210,7 @@ class SickbeardTestPostProcessorCase(unittest.TestCase):
         setup_test_show_dir()
         setup_test_processing_dir()
 
-        show = TVShow(1, 0001, 'en')
+        show = TVShow(1, 1, 'en')
         show.name = SHOW_NAME
         show.location = FILE_DIR
 
@@ -232,13 +235,16 @@ class SickbeardTestPostProcessorCase(unittest.TestCase):
         teardown_test_show_dir()
         teardown_test_processing_dir()
 
+
 class TestDBConnection(db.DBConnection, object):
     """
     Test connecting to the database.
     """
-    def __init__(self, db_file_name=TEST_DB_NAME):
-        db_file_name = os.path.join(TEST_DIR, db_file_name)
-        super(TestDBConnection, self).__init__(db_file_name)
+
+    def __init__(self, filename=TEST_DB_NAME, suffix=None, row_type=None):
+        if TEST_DIR not in filename:
+            filename = os.path.join(TEST_DIR, filename)
+        super(TestDBConnection, self).__init__(filename=filename, suffix=suffix, row_type=row_type)
 
 
 class TestCacheDBConnection(TestDBConnection, object):
@@ -247,7 +253,7 @@ class TestCacheDBConnection(TestDBConnection, object):
     """
     def __init__(self, provider_name):
         # pylint: disable=non-parent-init-called
-        db.DBConnection.__init__(self, os.path.join(TEST_DIR, TEST_CACHE_DB_NAME))
+        db.DBConnection.__init__(self, os.path.join(TEST_DIR, TEST_CACHE_DB_NAME), row_type='dict')
 
         # Create the table if it's not already there
         try:
@@ -318,7 +324,7 @@ def teardown_test_db():
     #            os.remove(file_name)
     #        except Exception as e:
     #            print 'ERROR: Failed to remove ' + file_name
-    #            print exception(e)
+    #            print(exception(e))
 
 
 def setup_test_episode_file():
@@ -335,7 +341,7 @@ def setup_test_episode_file():
     # pylint: disable=broad-except
     # Catching too general exception
     except Exception:
-        print "Unable to set up test episode"
+        print("Unable to set up test episode")
         raise
 
 

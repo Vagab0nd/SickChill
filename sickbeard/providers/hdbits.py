@@ -17,6 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with SickRage. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function, unicode_literals
+
 import datetime
 from requests.compat import urlencode, urljoin
 
@@ -60,7 +62,7 @@ class HDBitsProvider(TorrentProvider):
 
         if 'status' in parsedJSON and 'message' in parsedJSON:
             if parsedJSON.get('status') == 5:
-                logger.log(u"Invalid username or password. Check your settings", logger.WARNING)
+                logger.log("Invalid username or password. Check your settings", logger.WARNING)
 
         return True
 
@@ -83,7 +85,7 @@ class HDBitsProvider(TorrentProvider):
         # FIXME
         results = []
 
-        logger.log(u"Search string: {0}".format
+        logger.log("Search string: {0}".format
                    (search_params.decode('utf-8')), logger.DEBUG)
 
         self._check_auth()
@@ -96,7 +98,7 @@ class HDBitsProvider(TorrentProvider):
             if parsedJSON and 'data' in parsedJSON:
                 items = parsedJSON['data']
             else:
-                logger.log(u"Resulting JSON from provider isn't correct, not parsing it", logger.ERROR)
+                logger.log("Resulting JSON from provider isn't correct, not parsing it", logger.ERROR)
                 items = []
 
             for item in items:
@@ -147,7 +149,7 @@ class HDBitsProvider(TorrentProvider):
             elif show.anime:
                 post_data['tvdb'] = {
                     'id': show.indexerid,
-                    'episode': "{0:03d}".format(int(episode.scene_absolute_number))
+                    'episode': "{0:d}".format(int(episode.scene_absolute_number))
                 }
             else:
                 post_data['tvdb'] = {
@@ -165,7 +167,7 @@ class HDBitsProvider(TorrentProvider):
             elif show.anime:
                 post_data['tvdb'] = {
                     'id': show.indexerid,
-                    'season': "{0:03d}".format(season.scene_absolute_number),
+                    'season': "{0:d}".format(season.scene_absolute_number),
                 }
             else:
                 post_data['tvdb'] = {
@@ -185,7 +187,7 @@ class HDBitsCache(tvcache.TVCache):
         results = []
 
         try:
-            parsedJSON = self.provider.getURL(self.provider.urls['rss'], post_data=self.provider._make_post_data_JSON(), returns='json')
+            parsedJSON = self.provider.get_url(self.provider.urls['rss'], post_data=self.provider._make_post_data_JSON(), returns='json')
 
             if self.provider._checkAuthFromData(parsedJSON):
                 results = parsedJSON['data']

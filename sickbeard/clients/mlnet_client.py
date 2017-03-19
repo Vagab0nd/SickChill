@@ -1,7 +1,7 @@
 # coding=utf-8
 
 # Author: kounch
-# URL: http://code.google.com/p/sickbeard/
+# URL: https://sickrage.github.io
 #
 # This file is part of SickRage.
 #
@@ -37,7 +37,7 @@ class mlnetAPI(GenericClient):
         except Exception:
             return None
 
-        return self.auth if not self.response.status_code == 404 else None
+        return (None, self.auth)[self.response.status_code != 404]
 
     def _add_torrent_uri(self, result):
 

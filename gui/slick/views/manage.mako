@@ -3,9 +3,6 @@
     import sickbeard
     from sickbeard.common import statusStrings
 %>
-<%block name="scripts">
-    <script type="text/javascript" src="${srRoot}/js/massUpdate.js?${sbPID}"></script>
-</%block>
 
 <%block name="content">
     <%namespace file="/inc_defs.mako" import="renderQualityPill"/>
@@ -39,6 +36,7 @@
                             <tr>
                                 <th class="col-checkbox">${_('Edit')}<br><input type="checkbox" class="bulkCheck" id="editCheck" /></th>
                                 <th class="nowrap" style="text-align: left;">${_('Show Name')}</th>
+                                <th class="col-network">${_('Network')}</th>
                                 <th class="col-quality">${_('Quality')}</th>
                                 <th class="col-legend">${_('Sports')}</th>
                                 <th class="col-legend">${_('Scene')}</th>
@@ -62,7 +60,7 @@
                         <tbody>
                             <%
                                 myShowList = sickbeard.showList
-                                myShowList.sort(lambda x, y: cmp(x.name, y.name))
+                                myShowList.sort(lambda x, y: x.sort_name < y.sort_name)
                             %>
                             % for curShow in myShowList:
                             <%
@@ -87,13 +85,18 @@
                                 <tr>
                                     <td align="center"><input type="checkbox" class="editCheck" id="edit-${curShow.indexerid}" /></td>
                                     <td class="tvShow"><a href="${srRoot}/home/displayShow?show=${curShow.indexerid}">${curShow.name}</a></td>
+                                    <td align="center">
+                                        % if curShow.network:
+                                            <span title="${curShow.network}"><img class="show-network-image" src="data:image/png;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" data-src="${srRoot}/showPoster/?show=${curShow.indexerid}&amp;which=network" alt="${curShow.network}" title="${curShow.network}" /></span>
+                                        % endif
+                                    </td>
                                     <td align="center">${renderQualityPill(curShow.quality, showTitle=True)}</td>
-                                    <td align="center"><img src="${srRoot}/images/${('no16.png" alt="N"', 'yes16.png" alt="Y"')[int(curShow.is_sports) == 1]} width="16" height="16" /></td>
-                                    <td align="center"><img src="${srRoot}/images/${('no16.png" alt="N"', 'yes16.png" alt="Y"')[int(curShow.is_scene) == 1]} width="16" height="16" /></td>
-                                    <td align="center"><img src="${srRoot}/images/${('no16.png" alt="N"', 'yes16.png" alt="Y"')[int(curShow.is_anime) == 1]} width="16" height="16" /></td>
-                                    <td align="center"><img src="${srRoot}/images/${('no16.png" alt="N"', 'yes16.png" alt="Y"')[not int(curShow.flatten_folders) == 1]} width="16" height="16" /></td>
-                                    <td align="center"><img src="${srRoot}/images/${('no16.png" alt="N"', 'yes16.png" alt="Y"')[int(curShow.paused) == 1]} width="16" height="16" /></td>
-                                    <td align="center"><img src="${srRoot}/images/${('no16.png" alt="N"', 'yes16.png" alt="Y"')[int(curShow.subtitles) == 1]} width="16" height="16" /></td>
+                                    <td align="center"><span class="displayshow-icon-${("disable", "enable")[bool(curShow.is_sports)]}" title=${("N", "Y")[bool(curShow.is_sports)]}></span></td>
+                                    <td align="center"><span class="displayshow-icon-${("disable", "enable")[bool(curShow.is_scene)]}" title=${("N", "Y")[bool(curShow.is_scene)]}></span></td>
+                                    <td align="center"><span class="displayshow-icon-${("disable", "enable")[bool(curShow.is_anime)]}" title=${("N", "Y")[bool(curShow.is_anime)]}></span></td>
+                                    <td align="center"><span class="displayshow-icon-${("disable", "enable")[bool(curShow.season_folders)]}" title=${("N", "Y")[bool(curShow.season_folders)]}></span></td>
+                                    <td align="center"><span class="displayshow-icon-${("disable", "enable")[bool(curShow.paused)]}" title=${("N", "Y")[bool(curShow.paused)]}></span></td>
+                                    <td align="center"><span class="displayshow-icon-${("disable", "enable")[bool(curShow.subtitles)]}" title=${("N", "Y")[bool(curShow.subtitles)]}></span></td>
                                     <td align="center">${statusStrings[curShow.default_ep_status]}</td>
                                     <td align="center">${_(curShow.status)}</td>
                                     <td align="center">${curUpdate}</td>

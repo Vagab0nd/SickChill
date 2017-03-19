@@ -1,6 +1,6 @@
 # coding=utf-8
 # Author: Nic Wolfe <nic@wolfeden.ca>
-# URL: http://code.google.com/p/sickbeard/
+# URL: https://sickrage.github.io
 #
 # This file is part of SickRage.
 #
@@ -36,6 +36,9 @@ from sickrage.helper.encoding import ek
 from sickrage.helper.exceptions import CantRefreshShowException, CantRemoveShowException, CantUpdateShowException, \
     EpisodeDeletedException, MultipleShowObjectsException, ShowDirectoryNotFoundException
 from sickrage.show.Show import Show
+
+
+import six
 
 
 class ShowQueue(generic_queue.GenericQueue):
@@ -116,8 +119,8 @@ class ShowQueue(generic_queue.GenericQueue):
                 logger.DEBUG)
             return
 
-        if force == False and show.paused:
-            logger.log('Skipping show [{0}] because is paused.'.format(show.name), logger.DEBUG)
+        if show.paused and not force:
+            logger.log('Skipping show [{0}] because it is paused.'.format(show.name), logger.DEBUG)
             return
 
         logger.log('Queueing show refresh for {0}'.format(show.name), logger.DEBUG)
@@ -127,26 +130,27 @@ class ShowQueue(generic_queue.GenericQueue):
         return queueItemObj
 
     def renameShowEpisodes(self, show, force=False):
-        force_ = force
         queueItemObj = QueueItemRename(show)
         self.add_item(queueItemObj)
         return queueItemObj
 
     def download_subtitles(self, show, force=False):
-        force_ = force
         queueItemObj = QueueItemSubtitle(show)
         self.add_item(queueItemObj)
         return queueItemObj
 
     def addShow(self,  # pylint: disable=too-many-arguments, too-many-locals
-                indexer, indexer_id, showDir, default_status=None, quality=None, flatten_folders=None,
+                indexer, indexer_id, showDir, default_status=None, quality=None, season_folders=None,
                 lang=None, subtitles=None, subtitles_sr_metadata=None, anime=None, scene=None, paused=None,
                 blacklist=None, whitelist=None, default_status_after=None, root_dir=None):
 
         if lang is None:
             lang = sickbeard.INDEXER_DEFAULT_LANGUAGE
 
-        queueItemObj = QueueItemAdd(indexer, indexer_id, showDir, default_status, quality, flatten_folders, lang,
+        if default_status_after is None:
+            default_status_after = sickbeard.STATUS_DEFAULT_AFTER
+
+        queueItemObj = QueueItemAdd(indexer, indexer_id, showDir, default_status, quality, season_folders, lang,
                                     subtitles, subtitles_sr_metadata, anime, scene, paused, blacklist, whitelist,
                                     default_status_after, root_dir)
 
@@ -210,7 +214,7 @@ class ShowQueueItem(generic_queue.QueueItem):
     """
 
     def __init__(self, action_id, show):
-        generic_queue.QueueItem.__init__(self, ShowQueueActions.names[action_id], action_id)
+        super(ShowQueueItem, self).__init__(ShowQueueActions.names[action_id], action_id)
         self.show = show
 
     def isInQueue(self):
@@ -230,7 +234,7 @@ class ShowQueueItem(generic_queue.QueueItem):
 
 class QueueItemAdd(ShowQueueItem):  # pylint: disable=too-many-instance-attributes
     def __init__(self,  # pylint: disable=too-many-arguments, too-many-locals
-                 indexer, indexer_id, showDir, default_status, quality, flatten_folders,
+                 indexer, indexer_id, showDir, default_status, quality, season_folders,
                  lang, subtitles, subtitles_sr_metadata, anime, scene, paused, blacklist, whitelist,
                  default_status_after, root_dir):
 
@@ -243,7 +247,7 @@ class QueueItemAdd(ShowQueueItem):  # pylint: disable=too-many-instance-attribut
         self.indexer_id = indexer_id
         self.default_status = default_status
         self.quality = quality
-        self.flatten_folders = flatten_folders
+        self.season_folders = season_folders
         self.lang = lang
         self.subtitles = subtitles
         self.subtitles_sr_metadata = subtitles_sr_metadata
@@ -287,7 +291,7 @@ class QueueItemAdd(ShowQueueItem):  # pylint: disable=too-many-instance-attribut
 
         if self.showDir:
             try:
-                assert isinstance(self.showDir, unicode)
+                assert isinstance(self.showDir, six.text_type)
             except AssertionError:
                 logger.log(traceback.format_exc(), logger.WARNING)
                 self._finishEarly()
@@ -396,7 +400,7 @@ class QueueItemAdd(ShowQueueItem):  # pylint: disable=too-many-instance-attribut
             self.show.subtitles = self.subtitles if self.subtitles is not None else sickbeard.SUBTITLES_DEFAULT
             self.show.subtitles_sr_metadata = self.subtitles_sr_metadata
             self.show.quality = self.quality if self.quality else sickbeard.QUALITY_DEFAULT
-            self.show.flatten_folders = self.flatten_folders if self.flatten_folders is not None else sickbeard.FLATTEN_FOLDERS_DEFAULT
+            self.show.season_folders = self.season_folders if self.season_folders is not None else sickbeard.SEASON_FOLDERS_DEFAULT
             self.show.anime = self.anime if self.anime is not None else sickbeard.ANIME_DEFAULT
             self.show.scene = self.scene if self.scene is not None else sickbeard.SCENE_DEFAULT
             self.show.paused = self.paused if self.paused is not None else False

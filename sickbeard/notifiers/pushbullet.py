@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 # Author: Pedro Correia (http://github.com/pedrocorreia/)
 # Based on pushalot.py by Nic Wolfe <nic@wolfeden.ca>
-# URL: http://code.google.com/p/sickbeard/
+# URL: https://sickrage.github.io
 #
 # This file is part of SickRage.
 #
@@ -77,15 +77,11 @@ class Notifier(object):
             )
 
     def notify_git_update(self, new_version='??'):
-        link = re.match(r'.*href="(.*?)" .*', sickbeard.NEWEST_VERSION_STRING)
-        if link:
-            link = link.group(1)
-
         self._sendPushbullet(
             pushbullet_api=None,
             event=common.notifyStrings[common.NOTIFY_GIT_UPDATE],
             message=common.notifyStrings[common.NOTIFY_GIT_UPDATE_TEXT] + new_version,
-            link=link
+            # link=link
         )
 
     def notify_login(self, ipaddress=''):

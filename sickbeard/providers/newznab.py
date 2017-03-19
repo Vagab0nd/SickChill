@@ -113,7 +113,8 @@ class NewznabProvider(NZBProvider):  # pylint: disable=too-many-instance-attribu
                 providers_dict[default.name].search_fallback = default.search_fallback
                 providers_dict[default.name].enable_daily = default.enable_daily
                 providers_dict[default.name].enable_backlog = default.enable_backlog
-                providers_dict[default.name].catIDs = default.catIDs
+                providers_dict[default.name].catIDs = ','.join([x for x in providers_dict[default.name].catIDs.split(',')
+                                                                if 5000 <= try_int(x) <= 5999]) or default.catIDs
 
         return [x for x in providers_list if x]
 
@@ -133,8 +134,11 @@ class NewznabProvider(NZBProvider):  # pylint: disable=too-many-instance-attribu
             return
 
         def _parse_cap(tag):
+            result = ''
             elm = data.find(tag)
-            return elm.get('supportedparams', 'True') if elm and elm.get('available') else ''
+            if elm and elm.get('available') == 'yes':
+                result = elm.get('supportedparams', 'tvdbid,season,ep')
+            return result
 
         self.cap_tv_search = _parse_cap('tv-search')
         # self.cap_search = _parse_cap('search')
@@ -221,7 +225,7 @@ class NewznabProvider(NZBProvider):  # pylint: disable=too-many-instance-attribu
         try:
             err_desc = data.error.attrs['description']
             if not err_desc:
-                raise
+                raise AttributeError
         except (AttributeError, TypeError):
             return self._check_auth()
 

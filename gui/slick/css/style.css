@@ -540,6 +540,15 @@ span.show-option {
     display: inline-block;
 }
 
+.loading-spinner16 {
+    background-image: url("../images/loading16.gif");
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    position: relative;
+    top: 3px;
+}
+
 .show-container {
     margin: 4px;
     background-color: #F3F3F3;
@@ -877,12 +886,16 @@ home_trendingShows.mako
     border-radius: 6px;
 }
 
-.trakt-image {
+.trakt-image, .trakt-image img {
     height: 273px;
     width: 186px;
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
     border-bottom: 1px solid #111111;
+}
+
+.trakt-image img {
+    background-image: url(../images/trakt-placeholder.png);
 }
 
 /* =======================================================================
@@ -1997,6 +2010,11 @@ div.metadataDiv .disabled {
     background-size: 32px;
 }
 
+.icon-notifiers-discord {
+    background: url("../images/32px_discord_notifier.png");
+    background-size: 32px;
+}
+
 .icon-notifiers-kodi {
     background-position: 0 0;
 }
@@ -3083,10 +3101,10 @@ tablesorter.css
     vertical-align: middle;
 }
 
-/* remove extra border from left edge */
-.tablesorter th:first-child,
-.tablesorter td:first-child {
-    border-left: none;
+/* add extra border at right edge */
+.tablesorter th:last-child,
+.tablesorter td:last-child {
+    border-right: #FFFFFF 1px solid;
 }
 
 .tablesorter th {
@@ -3150,6 +3168,16 @@ thead.tablesorter-stickyHeader {
     text-align: center;
     background: #EEEEEE;
     border-bottom: 1px solid #DDDDDD;
+}
+
+/* add extra border at left edge */
+.tablesorter tr.tablesorter-filter-row td:first-child {
+    border-left: #FFFFFF 1px solid;
+}
+
+/* add extra border at right edge */
+.tablesorter tr.tablesorter-filter-row td:last-child {
+    border-right: #FFFFFF 1px solid;
 }
 
 /* hidden filter row */
@@ -3341,12 +3369,6 @@ span.token-input-delete-token {
 
 .nextline-block {
     display: block
-}
-
-.trakt-image {
-    display: block;
-    z-index: 0;
-    background-image: url(../images/poster-dark.jpg)
 }
 
 /* =======================================================================
