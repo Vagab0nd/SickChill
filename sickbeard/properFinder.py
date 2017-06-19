@@ -29,7 +29,7 @@ import traceback
 
 import sickbeard
 from sickbeard import db, helpers, logger
-from sickbeard.common import DOWNLOADED, Quality, SNATCHED, SNATCHED_PROPER, cpu_presets
+from sickbeard.common import cpu_presets, DOWNLOADED, Quality, SNATCHED, SNATCHED_PROPER
 from sickbeard.name_parser.parser import InvalidNameException, InvalidShowException, NameParser
 from sickbeard.search import pickBestResult, snatchEpisode
 from sickrage.helper.exceptions import AuthException, ex
@@ -156,11 +156,10 @@ class ProperFinder(object):  # pylint: disable=too-few-public-methods
                 continue
 
             # only get anime proper if it has release group and version
-            if bestResult.show.is_anime:
-                if not bestResult.release_group and bestResult.version == -1:
-                    logger.log("Proper " + bestResult.name + " doesn't have a release group and version, ignoring it",
-                               logger.DEBUG)
-                    continue
+            if bestResult.show.is_anime and not bestResult.release_group and bestResult.version == -1:
+                logger.log("Proper " + bestResult.name + " doesn't have a release group and version, ignoring it",
+                           logger.DEBUG)
+                continue
 
             # check if we actually want this proper (if it's the right quality)
             main_db_con = db.DBConnection()

@@ -24,12 +24,10 @@ import re
 
 from requests.compat import urljoin
 from requests.utils import dict_from_cookiejar
-
 from sickbeard import logger, tvcache
 from sickbeard.bs4_parser import BS4Parser
-
-from sickrage.helper.exceptions import AuthException
 from sickrage.helper.common import convert_size, try_int
+from sickrage.helper.exceptions import AuthException
 from sickrage.providers.torrent.TorrentProvider import TorrentProvider
 
 
@@ -193,7 +191,7 @@ class ImmortalseedProvider(TorrentProvider):  # pylint: disable=too-many-instanc
 
 
 class ImmortalseedCache(tvcache.TVCache):
-    def _getRSSData(self):
+    def _get_rss_data(self):
         params = {
             'secret_key': self.provider.passkey,
             'feedtype': 'downloadssl',
@@ -202,9 +200,9 @@ class ImmortalseedCache(tvcache.TVCache):
             'showrows': '50',
         }
 
-        return self.getRSSFeed(self.provider.urls['rss'], params=params)
+        return self.get_rss_feed(self.provider.urls['rss'], params=params)
 
-    def _checkAuth(self, data):
+    def _check_auth(self, data):
         return self.provider._check_auth_from_data(data) # pylint: disable=protected-access
 
 

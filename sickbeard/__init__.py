@@ -68,7 +68,7 @@ import requests
 
 from tornado.locale import load_gettext_translations
 
-gettext.install('messages', unicode=1, codeset='UTF-8')
+gettext.install('messages', unicode=1, codeset='UTF-8', names=["ngettext"])
 
 # Some strings come from metadata or libraries or 3rd party sites,
 # So we need to pre-define them to get translations for them
@@ -88,6 +88,7 @@ indexerApi = indexer_api.indexerApi
 PID = None
 
 CFG = None
+WINDOWS_SHARES = {}
 CONFIG_FILE = None
 
 # This is the version of the config we EXPECT to find
@@ -108,6 +109,7 @@ CREATEPID = False
 PIDFILE = ''
 
 SITE_MESSAGES = {}
+CLIENT_WEB_URLS = {'torrent': '', 'newznab': ''}
 
 DAEMON = None
 NO_RESIZE = False
@@ -215,6 +217,7 @@ ROOT_DIRS = None
 
 TRASH_REMOVE_SHOW = False
 TRASH_ROTATE_LOGS = False
+IGNORE_BROKEN_SYMLINKS = False
 SORT_ARTICLE = False
 DEBUG = False
 DBDEBUG = False
@@ -421,6 +424,7 @@ JOIN_NOTIFY_ONSNATCH = False
 JOIN_NOTIFY_ONDOWNLOAD = False
 JOIN_NOTIFY_ONSUBTITLEDOWNLOAD = False
 JOIN_ID = ''
+JOIN_APIKEY = ''
 
 USE_PROWL = False
 PROWL_NOTIFY_ONSNATCH = False
@@ -579,6 +583,7 @@ HISTORY_LAYOUT = None
 HISTORY_LIMIT = 0
 DISPLAY_SHOW_SPECIALS = False
 COMING_EPS_LAYOUT = None
+COMING_EPS_DISPLAY_SNATCHED = False
 COMING_EPS_DISPLAY_PAUSED = False
 COMING_EPS_SORT = None
 COMING_EPS_MISSED_RANGE = None
@@ -595,6 +600,8 @@ SICKRAGE_BACKGROUND = None
 SICKRAGE_BACKGROUND_PATH = None
 FANART_BACKGROUND = None
 FANART_BACKGROUND_OPACITY = None
+CUSTOM_CSS = None
+CUSTOM_CSS_PATH = None
 
 USE_SUBTITLES = False
 SUBTITLES_INCLUDE_SPECIALS = True
@@ -615,6 +622,7 @@ ADDIC7ED_USER = ADDIC7ED_PASS = None
 OPENSUBTITLES_USER = OPENSUBTITLES_PASS = None
 LEGENDASTV_USER = LEGENDASTV_PASS = None
 ITASA_USER = ITASA_PASS = None
+SUBSCENTER_USER = SUBSCENTER_PASS = None
 
 USE_FAILED_DOWNLOADS = False
 DELETE_FAILED = False
@@ -673,12 +681,12 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
             USE_PLEX_SERVER, PLEX_NOTIFY_ONSNATCH, PLEX_NOTIFY_ONDOWNLOAD, PLEX_NOTIFY_ONSUBTITLEDOWNLOAD, PLEX_UPDATE_LIBRARY, USE_PLEX_CLIENT, PLEX_CLIENT_USERNAME, PLEX_CLIENT_PASSWORD, \
             PLEX_SERVER_HOST, PLEX_SERVER_TOKEN, PLEX_CLIENT_HOST, PLEX_SERVER_USERNAME, PLEX_SERVER_PASSWORD, PLEX_SERVER_HTTPS, MIN_BACKLOG_FREQUENCY, SKIP_REMOVED_FILES, ALLOWED_EXTENSIONS, \
             USE_EMBY, EMBY_HOST, EMBY_APIKEY, SITE_MESSAGES, \
-            showUpdateScheduler, INDEXER_DEFAULT_LANGUAGE, EP_DEFAULT_DELETED_STATUS, LAUNCH_BROWSER, TRASH_REMOVE_SHOW, TRASH_ROTATE_LOGS, SORT_ARTICLE, \
+            showUpdateScheduler, INDEXER_DEFAULT_LANGUAGE, EP_DEFAULT_DELETED_STATUS, LAUNCH_BROWSER, TRASH_REMOVE_SHOW, TRASH_ROTATE_LOGS, IGNORE_BROKEN_SYMLINKS, SORT_ARTICLE, \
             NEWZNAB_DATA, NZBS, NZBS_UID, NZBS_HASH, INDEXER_DEFAULT, INDEXER_TIMEOUT, USENET_RETENTION, TORRENT_DIR, \
             QUALITY_DEFAULT, SEASON_FOLDERS_DEFAULT, SUBTITLES_DEFAULT, STATUS_DEFAULT, STATUS_DEFAULT_AFTER, \
             GROWL_NOTIFY_ONSNATCH, GROWL_NOTIFY_ONDOWNLOAD, GROWL_NOTIFY_ONSUBTITLEDOWNLOAD, TWITTER_NOTIFY_ONSNATCH, TWITTER_NOTIFY_ONDOWNLOAD, TWITTER_NOTIFY_ONSUBTITLEDOWNLOAD, USE_FREEMOBILE, FREEMOBILE_ID, FREEMOBILE_APIKEY, FREEMOBILE_NOTIFY_ONSNATCH, FREEMOBILE_NOTIFY_ONDOWNLOAD, FREEMOBILE_NOTIFY_ONSUBTITLEDOWNLOAD, \
             USE_TELEGRAM, TELEGRAM_ID, TELEGRAM_APIKEY, TELEGRAM_NOTIFY_ONSNATCH, TELEGRAM_NOTIFY_ONDOWNLOAD, TELEGRAM_NOTIFY_ONSUBTITLEDOWNLOAD, \
-            USE_JOIN, JOIN_ID, JOIN_NOTIFY_ONSNATCH, JOIN_NOTIFY_ONDOWNLOAD, JOIN_NOTIFY_ONSUBTITLEDOWNLOAD, \
+            USE_JOIN, JOIN_ID, JOIN_APIKEY, JOIN_NOTIFY_ONSNATCH, JOIN_NOTIFY_ONDOWNLOAD, JOIN_NOTIFY_ONSUBTITLEDOWNLOAD, \
             USE_GROWL, GROWL_HOST, GROWL_PASSWORD, USE_PROWL, PROWL_NOTIFY_ONSNATCH, PROWL_NOTIFY_ONDOWNLOAD, PROWL_NOTIFY_ONSUBTITLEDOWNLOAD, PROWL_API, PROWL_PRIORITY, PROWL_MESSAGE_TITLE, \
             USE_PYTIVO, PYTIVO_NOTIFY_ONSNATCH, PYTIVO_NOTIFY_ONDOWNLOAD, PYTIVO_NOTIFY_ONSUBTITLEDOWNLOAD, PYTIVO_UPDATE_LIBRARY, PYTIVO_HOST, PYTIVO_SHARE_NAME, PYTIVO_TIVO_NAME, \
             USE_NMA, NMA_NOTIFY_ONSNATCH, NMA_NOTIFY_ONDOWNLOAD, NMA_NOTIFY_ONSUBTITLEDOWNLOAD, NMA_API, NMA_PRIORITY, \
@@ -699,18 +707,18 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
             USE_EMAIL, EMAIL_HOST, EMAIL_PORT, EMAIL_TLS, EMAIL_USER, EMAIL_PASSWORD, EMAIL_FROM, EMAIL_NOTIFY_ONSNATCH, EMAIL_NOTIFY_ONDOWNLOAD, EMAIL_NOTIFY_ONSUBTITLEDOWNLOAD, EMAIL_LIST, EMAIL_SUBJECT, \
             USE_LISTVIEW, METADATA_KODI, METADATA_KODI_12PLUS, METADATA_MEDIABROWSER, METADATA_PS3, metadata_provider_dict, \
             NEWZBIN, NEWZBIN_USERNAME, NEWZBIN_PASSWORD, GIT_PATH, MOVE_ASSOCIATED_FILES, DELETE_NON_ASSOCIATED_FILES, SYNC_FILES, POSTPONE_IF_SYNC_FILES, dailySearchScheduler, NFO_RENAME, \
-            GUI_NAME, HOME_LAYOUT, HISTORY_LAYOUT, DISPLAY_SHOW_SPECIALS, COMING_EPS_LAYOUT, COMING_EPS_SORT, COMING_EPS_DISPLAY_PAUSED, COMING_EPS_MISSED_RANGE, FUZZY_DATING, TRIM_ZERO, DATE_PRESET, TIME_PRESET, TIME_PRESET_W_SECONDS, THEME_NAME, \
+            GUI_NAME, HOME_LAYOUT, HISTORY_LAYOUT, DISPLAY_SHOW_SPECIALS, COMING_EPS_LAYOUT, COMING_EPS_SORT, COMING_EPS_DISPLAY_PAUSED, COMING_EPS_DISPLAY_SNATCHED, COMING_EPS_MISSED_RANGE, FUZZY_DATING, TRIM_ZERO, DATE_PRESET, TIME_PRESET, TIME_PRESET_W_SECONDS, THEME_NAME, \
             POSTER_SORTBY, POSTER_SORTDIR, HISTORY_LIMIT, CREATE_MISSING_SHOW_DIRS, ADD_SHOWS_WO_DIR, USE_FREE_SPACE_CHECK, \
             METADATA_WDTV, METADATA_TIVO, METADATA_MEDE8ER, IGNORE_WORDS, TRACKERS_LIST, IGNORED_SUBS_LIST, REQUIRE_WORDS, CALENDAR_UNPROTECTED, CALENDAR_ICONS, NO_RESTART, \
             USE_SUBTITLES, SUBTITLES_INCLUDE_SPECIALS, SUBTITLES_LANGUAGES, SUBTITLES_DIR, SUBTITLES_SERVICES_LIST, SUBTITLES_SERVICES_ENABLED, SUBTITLES_HISTORY, SUBTITLES_FINDER_FREQUENCY, SUBTITLES_MULTI, SUBTITLES_KEEP_ONLY_WANTED, EMBEDDED_SUBTITLES_ALL, SUBTITLES_EXTRA_SCRIPTS, SUBTITLES_PERFECT_MATCH, subtitlesFinderScheduler, \
-            SUBTITLES_HEARING_IMPAIRED, ADDIC7ED_USER, ADDIC7ED_PASS, ITASA_USER, ITASA_PASS, LEGENDASTV_USER, LEGENDASTV_PASS, OPENSUBTITLES_USER, OPENSUBTITLES_PASS, \
+            SUBTITLES_HEARING_IMPAIRED, ADDIC7ED_USER, ADDIC7ED_PASS, ITASA_USER, ITASA_PASS, LEGENDASTV_USER, LEGENDASTV_PASS, OPENSUBTITLES_USER, OPENSUBTITLES_PASS, SUBSCENTER_USER, SUBSCENTER_PASS, \
             USE_FAILED_DOWNLOADS, DELETE_FAILED, ANON_REDIRECT, LOCALHOST_IP, DEBUG, DBDEBUG, DEFAULT_PAGE, PROXY_SETTING, PROXY_INDEXERS, \
             AUTOPOSTPROCESSOR_FREQUENCY, SHOWUPDATE_HOUR, \
             ANIME_DEFAULT, NAMING_ANIME, ANIMESUPPORT, USE_ANIDB, ANIDB_USERNAME, ANIDB_PASSWORD, ANIDB_USE_MYLIST, \
             ANIME_SPLIT_HOME, ANIME_SPLIT_HOME_IN_TABS, SCENE_DEFAULT, DOWNLOAD_URL, BACKLOG_DAYS, GIT_AUTH_TYPE, GIT_USERNAME, GIT_PASSWORD, GIT_TOKEN, \
             DEVELOPER, DISPLAY_ALL_SEASONS, SSL_VERIFY, NEWS_LAST_READ, NEWS_LATEST, SOCKET_TIMEOUT, \
             SYNOLOGY_DSM_HOST, SYNOLOGY_DSM_USERNAME, SYNOLOGY_DSM_PASSWORD, SYNOLOGY_DSM_PATH, GUI_LANG, SICKRAGE_BACKGROUND, SICKRAGE_BACKGROUND_PATH, \
-            FANART_BACKGROUND, FANART_BACKGROUND_OPACITY, USE_SLACK, SLACK_NOTIFY_SNATCH, SLACK_NOTIFY_DOWNLOAD, SLACK_WEBHOOK, \
+            FANART_BACKGROUND, FANART_BACKGROUND_OPACITY, CUSTOM_CSS, CUSTOM_CSS_PATH, USE_SLACK, SLACK_NOTIFY_SNATCH, SLACK_NOTIFY_DOWNLOAD, SLACK_WEBHOOK, \
             USE_DISCORD, DISCORD_NOTIFY_SNATCH, DISCORD_NOTIFY_DOWNLOAD, DISCORD_WEBHOOK
 
         if __INITIALIZED__:
@@ -853,14 +861,16 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         SICKRAGE_BACKGROUND_PATH = check_setting_str(CFG, 'GUI', 'sickrage_background_path')
         FANART_BACKGROUND = check_setting_bool(CFG, 'GUI', 'fanart_background', True)
         FANART_BACKGROUND_OPACITY = check_setting_float(CFG, 'GUI', 'fanart_background_opacity', 0.4, min_val=0.1, max_val=1.0)
+        CUSTOM_CSS = check_setting_bool(CFG, 'GUI', 'custom_css')
+        CUSTOM_CSS_PATH = check_setting_str(CFG, 'GUI', 'custom_css_path')
 
         GUI_NAME = check_setting_str(CFG, 'GUI', 'gui_name', 'slick')
         GUI_LANG = check_setting_str(CFG, 'GUI', 'language')
 
         if GUI_LANG:
-            gettext.translation('messages', LOCALE_DIR, languages=[GUI_LANG], codeset='UTF-8').install(unicode=1)
+            gettext.translation('messages', LOCALE_DIR, languages=[GUI_LANG], codeset='UTF-8').install(unicode=1, names=["ngettext"])
         else:
-            gettext.install('messages', LOCALE_DIR, unicode=1, codeset='UTF-8')
+            gettext.install('messages', LOCALE_DIR, unicode=1, codeset='UTF-8', names=["ngettext"])
 
         load_gettext_translations(LOCALE_DIR, 'messages')
 
@@ -909,6 +919,8 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
 
         TRASH_REMOVE_SHOW = check_setting_bool(CFG, 'General', 'trash_remove_show')
         TRASH_ROTATE_LOGS = check_setting_bool(CFG, 'General', 'trash_rotate_logs')
+
+        IGNORE_BROKEN_SYMLINKS = check_setting_bool(CFG, 'General', 'ignore_broken_symlinks')
 
         SORT_ARTICLE = check_setting_bool(CFG, 'General', 'sort_article')
 
@@ -1087,6 +1099,8 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         SYNOLOGY_DSM_PASSWORD = check_setting_str(CFG, 'Synology', 'password', censor_log=True)
         SYNOLOGY_DSM_PATH = check_setting_str(CFG, 'Synology', 'path')
 
+        helpers.manage_torrents_url(reset=True)
+
         USE_KODI = check_setting_bool(CFG, 'KODI', 'use_kodi')
         KODI_ALWAYS_ON = check_setting_bool(CFG, 'KODI', 'kodi_always_on', True)
         KODI_NOTIFY_ONSNATCH = check_setting_bool(CFG, 'KODI', 'kodi_notify_onsnatch')
@@ -1144,6 +1158,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         JOIN_NOTIFY_ONDOWNLOAD = check_setting_bool(CFG, 'Join', 'join_notify_ondownload')
         JOIN_NOTIFY_ONSUBTITLEDOWNLOAD = check_setting_bool(CFG, 'Join', 'join_notify_onsubtitledownload')
         JOIN_ID = check_setting_str(CFG, 'Join', 'join_id')
+        JOIN_APIKEY = check_setting_str(CFG, 'Join', 'join_apikey')
 
         USE_PROWL = check_setting_bool(CFG, 'Prowl', 'use_prowl')
         PROWL_NOTIFY_ONSNATCH = check_setting_bool(CFG, 'Prowl', 'prowl_notify_onsnatch')
@@ -1312,6 +1327,9 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         OPENSUBTITLES_USER = check_setting_str(CFG, 'Subtitles', 'opensubtitles_username', censor_log=True)
         OPENSUBTITLES_PASS = check_setting_str(CFG, 'Subtitles', 'opensubtitles_password', censor_log=True)
 
+        SUBSCENTER_USER = check_setting_str(CFG, 'Subtitles', 'subscenter_username', censor_log=True)
+        SUBSCENTER_PASS = check_setting_str(CFG, 'Subtitles', 'subscenter_password', censor_log=True)
+
         USE_FAILED_DOWNLOADS = check_setting_bool(CFG, 'FailedDownloads', 'use_failed_downloads')
         DELETE_FAILED = check_setting_bool(CFG, 'FailedDownloads', 'delete_failed')
 
@@ -1354,8 +1372,9 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         DISPLAY_SHOW_SPECIALS = check_setting_bool(CFG, 'GUI', 'display_show_specials', True)
         COMING_EPS_LAYOUT = check_setting_str(CFG, 'GUI', 'coming_eps_layout', 'banner')
         COMING_EPS_DISPLAY_PAUSED = check_setting_bool(CFG, 'GUI', 'coming_eps_display_paused')
+        COMING_EPS_DISPLAY_SNATCHED = check_setting_bool(CFG, 'GUI', 'coming_eps_display_snatched')
         COMING_EPS_SORT = check_setting_str(CFG, 'GUI', 'coming_eps_sort', 'date')
-        COMING_EPS_MISSED_RANGE = check_setting_int(CFG, 'GUI', 'coming_eps_missed_range', 7, min_val=0, max_val=42810)
+        COMING_EPS_MISSED_RANGE = check_setting_int(CFG, 'GUI', 'coming_eps_missed_range', 7, min_val=0, max_val=42810, fallback_def=False)
         FUZZY_DATING = check_setting_bool(CFG, 'GUI', 'fuzzy_dating')
         TRIM_ZERO = check_setting_bool(CFG, 'GUI', 'trim_zero')
         DATE_PRESET = check_setting_str(CFG, 'GUI', 'date_preset', '%x')
@@ -1366,14 +1385,17 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         POSTER_SORTDIR = check_setting_int(CFG, 'GUI', 'poster_sortdir', 1, min_val=0, max_val=1)
         DISPLAY_ALL_SEASONS = check_setting_bool(CFG, 'General', 'display_all_seasons', True)
 
+        if check_section(CFG, 'Shares'):
+            WINDOWS_SHARES.update(CFG['Shares'])
+
         # initialize NZB and TORRENT providers
         providerList = providers.makeProviderList()
 
         NEWZNAB_DATA = check_setting_str(CFG, 'Newznab', 'newznab_data')
-        newznabProviderList = NewznabProvider.get_providers_list(NEWZNAB_DATA)
+        newznabProviderList = NewznabProvider.providers_list(NEWZNAB_DATA)
 
         TORRENTRSS_DATA = check_setting_str(CFG, 'TorrentRss', 'torrentrss_data')
-        torrentRssProviderList = TorrentRssProvider.get_providers_list(TORRENTRSS_DATA)
+        torrentRssProviderList = TorrentRssProvider.providers_list(TORRENTRSS_DATA)
 
         # dynamically load provider settings
         for curTorrentProvider in [curProvider for curProvider in providers.sortedProviderList() if
@@ -1930,6 +1952,7 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
             'launch_browser': int(LAUNCH_BROWSER),
             'trash_remove_show': int(TRASH_REMOVE_SHOW),
             'trash_rotate_logs': int(TRASH_ROTATE_LOGS),
+            'ignore_broken_symlinks': int(IGNORE_BROKEN_SYMLINKS),
             'sort_article': int(SORT_ARTICLE),
             'proxy_setting': PROXY_SETTING,
             'proxy_indexers': int(PROXY_INDEXERS),
@@ -1984,6 +2007,8 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
             'display_all_seasons': int(DISPLAY_ALL_SEASONS),
             'news_last_read': NEWS_LAST_READ,
         },
+
+        'Shares': WINDOWS_SHARES,
 
         'Blackhole': {
             'nzb_dir': NZB_DIR,
@@ -2113,6 +2138,7 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
             'join_notify_ondownload': int(JOIN_NOTIFY_ONDOWNLOAD),
             'join_notify_onsubtitledownload': int(JOIN_NOTIFY_ONSUBTITLEDOWNLOAD),
             'join_id': JOIN_ID,
+            'join_apikey': JOIN_APIKEY,
         },
 
         'Prowl': {
@@ -2306,12 +2332,15 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
             'sickrage_background_path': SICKRAGE_BACKGROUND_PATH,
             'fanart_background': int(FANART_BACKGROUND),
             'fanart_background_opacity': FANART_BACKGROUND_OPACITY,
+            'custom_css': int(CUSTOM_CSS),
+            'custom_css_path': CUSTOM_CSS_PATH,
             'home_layout': HOME_LAYOUT,
             'history_layout': HISTORY_LAYOUT,
             'history_limit': HISTORY_LIMIT,
             'display_show_specials': int(DISPLAY_SHOW_SPECIALS),
             'coming_eps_layout': COMING_EPS_LAYOUT,
             'coming_eps_display_paused': int(COMING_EPS_DISPLAY_PAUSED),
+            'coming_eps_display_snatched': int(COMING_EPS_DISPLAY_SNATCHED),
             'coming_eps_sort': COMING_EPS_SORT,
             'coming_eps_missed_range': config.min_max(COMING_EPS_MISSED_RANGE, 7, 0, 42810),
             'fuzzy_dating': int(FUZZY_DATING),
@@ -2350,6 +2379,9 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
 
             'opensubtitles_username': OPENSUBTITLES_USER,
             'opensubtitles_password': helpers.encrypt(OPENSUBTITLES_PASS, ENCRYPTION_VERSION),
+
+            'subscenter_username': SUBSCENTER_USER,
+            'subscenter_password': helpers.encrypt(SUBSCENTER_PASS, ENCRYPTION_VERSION),
         },
 
         'FailedDownloads': {

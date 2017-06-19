@@ -20,26 +20,25 @@
 from __future__ import print_function, unicode_literals
 
 import re
-from datetime import datetime
-
 from base64 import b16encode, b32decode
+from datetime import datetime
 from itertools import chain
 from os.path import join
 from random import shuffle
-import six
 
 import sickbeard
+import six
+from requests.utils import add_dict_to_cookiejar
 from sickbeard import logger
 from sickbeard.classes import Proper, SearchResult
 from sickbeard.common import MULTI_EP_RESULT, Quality, SEASON_RESULT, UA_POOL
 from sickbeard.db import DBConnection
-from sickbeard.helpers import download_file, getURL, remove_file_failed, make_session
+from sickbeard.helpers import download_file, getURL, make_session, remove_file_failed
 from sickbeard.name_parser.parser import InvalidNameException, InvalidShowException, NameParser
 from sickbeard.show_name_helpers import allPossibleShowNames
 from sickbeard.tvcache import TVCache
 from sickrage.helper.common import replace_extension, sanitize_filename
 from sickrage.helper.encoding import ek
-from requests.utils import add_dict_to_cookiejar
 
 
 class GenericProvider(object):  # pylint: disable=too-many-instance-attributes
@@ -116,7 +115,7 @@ class GenericProvider(object):  # pylint: disable=too-many-instance-attributes
         return False
 
     def find_propers(self, search_date=None):
-        results = self.cache.listPropers(search_date)
+        results = self.cache.list_propers(search_date)
 
         return [Proper(x[b'name'], x[b'url'], datetime.fromtimestamp(x[b'time']), self.show) for x in results]
 
@@ -130,8 +129,8 @@ class GenericProvider(object):  # pylint: disable=too-many-instance-attributes
         searched_scene_season = None
 
         for episode in episodes:
-            cache_result = self.cache.searchCache(episode, manualSearch=manual_search,
-                                                  downCurQuality=download_current_quality)
+            cache_result = self.cache.search_cache(episode, manual_search=manual_search,
+                                                   down_cur_quality=download_current_quality)
             if cache_result:
                 if episode.episode not in results:
                     results[episode.episode] = cache_result
@@ -214,6 +213,12 @@ class GenericProvider(object):  # pylint: disable=too-many-instance-attributes
                         [ep for ep in episodes if (ep.season, ep.scene_season)[ep.show.is_scene] ==
                         (parse_result.season_number, parse_result.scene_season)[ep.show.is_scene] and
                         (ep.episode, ep.scene_episode)[ep.show.is_scene] in parse_result.episode_numbers]
+                    ]) and not all([
+                        # fallback for anime on absolute numbering
+                        parse_result.is_anime,
+                        parse_result.ab_episode_numbers is not None,
+                        [ep for ep in episodes if ep.show.is_anime and
+                        ep.absolute_number in parse_result.ab_episode_numbers]
                     ]):
 
                         logger.log(
@@ -263,7 +268,7 @@ class GenericProvider(object):  # pylint: disable=too-many-instance-attributes
                 logger.log('Adding item from search to cache: {0}'.format(title), logger.DEBUG)
                 # pylint: disable=protected-access
                 # Access to a protected member of a client class
-                ci = self.cache._addCacheEntry(title, url, parse_result=parse_result)
+                ci = self.cache._add_cache_entry(title, url, parse_result=parse_result)
 
                 if ci is not None:
                     cl.append(ci)
@@ -317,7 +322,7 @@ class GenericProvider(object):  # pylint: disable=too-many-instance-attributes
         if cl:
             # pylint: disable=protected-access
             # Access to a protected member of a client class
-            cache_db = self.cache._getDB()
+            cache_db = self.cache._get_db()
             cache_db.mass_action(cl)
 
         return results
@@ -367,7 +372,7 @@ class GenericProvider(object):  # pylint: disable=too-many-instance-attributes
         return re.sub(r'[^\w\d_]', '_', str(name).strip().lower())
 
     def search_rss(self, episodes):
-        return self.cache.findNeededEpisodes(episodes)
+        return self.cache.find_needed_episodes(episodes)
 
     def seed_ratio(self):  # pylint: disable=no-self-use
         return ''

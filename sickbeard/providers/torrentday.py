@@ -21,12 +21,11 @@
 from __future__ import unicode_literals
 
 import re
+
+import validators
 from requests.compat import urljoin
 from requests.utils import dict_from_cookiejar
-import validators
-
 from sickbeard import logger, tvcache
-
 from sickrage.helper.common import convert_size, try_int
 from sickrage.providers.torrent.TorrentProvider import TorrentProvider
 
@@ -49,7 +48,7 @@ class TorrentDayProvider(TorrentProvider):  # pylint: disable=too-many-instance-
 
         # URLs
         self.custom_url = None
-        self.url = 'https://classic.torrentday.com'
+        self.url = 'https://www.torrentday.com'
         self.urls = {
             'login': urljoin(self.url, '/t'),
             'search': urljoin(self.url, '/V3/API/API.php'),
@@ -136,14 +135,14 @@ class TorrentDayProvider(TorrentProvider):  # pylint: disable=too-many-instance-
                 if self.freeleech:
                     post_data.update({'free': 'on'})
 
-                parsedJSON = self.get_url(search_url, post_data=post_data, returns='json')
-                if not parsedJSON:
+                parsed_json = self.get_url(search_url, post_data=post_data, returns='json')
+                if not parsed_json:
                     logger.log('No data returned from provider', logger.DEBUG)
                     self.session.cookies.clear()
                     continue
 
                 try:
-                    torrents = parsedJSON.get('Fs', [])[0].get('Cn', {}).get('torrents', [])
+                    torrents = parsed_json.get('Fs', [])[0].get('Cn', {}).get('torrents', [])
                 except Exception:
                     logger.log('Data returned from provider does not contain any torrents', logger.DEBUG)
                     continue

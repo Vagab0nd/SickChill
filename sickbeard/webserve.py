@@ -27,62 +27,41 @@ import os
 import re
 import time
 import traceback
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
-from requests.compat import urljoin
-import markdown2
-
-from mako.template import Template as MakoTemplate
-from mako.lookup import TemplateLookup
-from mako.exceptions import RichTraceback
-from mako.runtime import UNDEFINED
-
-from mimetypes import guess_type
-
-from operator import attrgetter
-
-from tornado.routes import route
-from tornado.web import RequestHandler, StaticFileHandler, HTTPError, authenticated
-from tornado.gen import coroutine
-from tornado.ioloop import IOLoop
-from tornado.process import cpu_count
-from tornado.concurrent import run_on_executor
-
 # noinspection PyCompatibility
 from concurrent.futures import ThreadPoolExecutor
+from mimetypes import guess_type
+from operator import attrgetter
 
-from dateutil import tz
 import adba
+import markdown2
+import sickbeard
+import six
+from dateutil import tz
 from libtrakt import TraktAPI
 from libtrakt.exceptions import traktException
-
-import sickbeard
-from sickbeard import config, sab, clients, notifiers, ui, logger, \
-    helpers, classes, db, search_queue, naming, subtitles as subtitle_module, \
-    network_timezones
-from sickbeard.providers import newznab, rsstorrent
-from sickbeard.common import Quality, Overview, statusStrings, cpu_presets, \
-    SNATCHED, UNAIRED, IGNORED, WANTED, FAILED, SKIPPED, NAMING_LIMITED_EXTEND_E_PREFIXED
-
+from mako.exceptions import RichTraceback
+from mako.lookup import TemplateLookup
+from mako.runtime import UNDEFINED
+from mako.template import Template as MakoTemplate
+from requests.compat import urljoin
+from sickbeard import classes, clients, config, db, helpers, logger, naming, network_timezones, notifiers, sab, search_queue, subtitles as subtitle_module, ui
 from sickbeard.blackandwhitelist import BlackAndWhiteList, short_group_names
 from sickbeard.browser import foldersAtPath
-from sickbeard.scene_numbering import get_scene_numbering, set_scene_numbering, get_scene_numbering_for_show, \
-    get_xem_numbering_for_show, get_scene_absolute_numbering_for_show, get_xem_absolute_numbering_for_show, \
-    get_scene_absolute_numbering
-
-from sickbeard.webapi import function_mapper
-from sickbeard.imdbPopular import imdb_popular
+from sickbeard.common import (cpu_presets, FAILED, IGNORED, NAMING_LIMITED_EXTEND_E_PREFIXED, Overview, Quality, SKIPPED, SNATCHED, statusStrings, UNAIRED,
+                              WANTED)
 from sickbeard.helpers import get_showname_from_indexer
+from sickbeard.imdbPopular import imdb_popular
+from sickbeard.providers import newznab, rsstorrent
+from sickbeard.scene_numbering import (get_scene_absolute_numbering, get_scene_absolute_numbering_for_show, get_scene_numbering, get_scene_numbering_for_show,
+                                       get_xem_absolute_numbering_for_show, get_xem_numbering_for_show, set_scene_numbering)
+from sickbeard.traktTrending import trakt_trending
 from sickbeard.versionChecker import CheckVersion
-
-from sickrage.helper import setup_github, episode_num, try_int, sanitize_filename
+from sickbeard.webapi import function_mapper
+from sickrage.helper import episode_num, sanitize_filename, setup_github, try_int
 from sickrage.helper.common import pretty_file_size
 from sickrage.helper.encoding import ek, ss
-from sickrage.helper.exceptions import CantRefreshShowException, CantUpdateShowException, ex
-from sickrage.helper.exceptions import MultipleShowObjectsException, NoNFOException, ShowDirectoryNotFoundException
+from sickrage.helper.exceptions import (CantRefreshShowException, CantUpdateShowException, ex, MultipleShowObjectsException, NoNFOException,
+                                        ShowDirectoryNotFoundException)
 from sickrage.media.ShowBanner import ShowBanner
 from sickrage.media.ShowFanArt import ShowFanArt
 from sickrage.media.ShowNetworkLogo import ShowNetworkLogo
@@ -93,13 +72,21 @@ from sickrage.show.History import History as HistoryTool
 from sickrage.show.Show import Show
 from sickrage.system.Restart import Restart
 from sickrage.system.Shutdown import Shutdown
-
-import six
-
 # noinspection PyUnresolvedReferences
 from six.moves import urllib
 # noinspection PyUnresolvedReferences
 from six.moves.urllib.parse import unquote_plus
+from tornado.concurrent import run_on_executor
+from tornado.gen import coroutine
+from tornado.ioloop import IOLoop
+from tornado.process import cpu_count
+from tornado.routes import route
+from tornado.web import authenticated, HTTPError, RequestHandler, StaticFileHandler
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 
 mako_lookup = {}
@@ -156,6 +143,7 @@ class PageTemplate(MakoTemplate):
         self.arguments['controller'] = "FixME"
         self.arguments['action'] = "FixME"
         self.arguments['show'] = UNDEFINED
+        self.arguments['manage_torrents_url'] = helpers.manage_torrents_url()
 
     def render(self, *args, **kwargs):
         for key in self.arguments:
@@ -349,17 +337,6 @@ class KeyHandler(RequestHandler):
             self.finish({'success': False, 'error': 'Failed returning results'})
 
 
-class LocaleFileHandler(StaticFileHandler):
-    """ Handles serving locale data on /locale/{lang_code}.(json|po|mo) """
-    def initialize(self, path):
-        """ Alter 'path' to replace {lang_code} with the requested lang (for example: en_US) """
-        super(LocaleFileHandler, self).initialize(path.format(lang_code=self.request.path.split('/')[-1].split('.')[0]))
-
-    def get(self, path=None, file_type=None, include_body=True):
-        """ Ignore 'path' and get file messages.{file_type} of the requested lang """
-        super(LocaleFileHandler, self).get('messages.' + file_type, include_body)
-
-
 @route('(.*)(/?)')
 class WebRoot(WebHandler):
     def __init__(self, *args, **kwargs):
@@ -483,6 +460,13 @@ class WebRoot(WebHandler):
 
         return self.redirect("/schedule/")
 
+
+    def toggleScheduleDisplaySnatched(self):
+
+        sickbeard.COMING_EPS_DISPLAY_SNATCHED = not sickbeard.COMING_EPS_DISPLAY_SNATCHED
+
+        return self.redirect("/schedule/")
+
     def setScheduleSort(self, sort):
         if sort not in ('date', 'network', 'show') or sickbeard.COMING_EPS_LAYOUT == 'calendar':
             sort = 'date'
@@ -510,7 +494,7 @@ class WebRoot(WebHandler):
 
 
 class CalendarHandler(BaseHandler):
-    def get(self):
+    def get(self, *args, **kwargs):
         if sickbeard.CALENDAR_UNPROTECTED:
             self.write(self.calendar())
         else:
@@ -601,6 +585,19 @@ class UI(WebRoot):
     def __init__(self, *args, **kwargs):
         super(UI, self).__init__(*args, **kwargs)
 
+    def locale_json(self):
+        """ Get /locale/{lang_code}/LC_MESSAGES/messages.json """
+        locale_file = ek(os.path.normpath, '{locale_dir}/{lang}/LC_MESSAGES/messages.json'.format(
+            locale_dir=sickbeard.LOCALE_DIR, lang=sickbeard.GUI_LANG))
+
+        if os.path.isfile(locale_file):
+            self.set_header('Content-Type', 'application/json')
+            with open(locale_file, 'r') as content:
+                return content.read()
+        else:
+            self.set_status(204)  # "No Content"
+            return None
+
     @staticmethod
     def add_message():
         ui.notifications.message(_('Test 1'), _('This is test number 1'))
@@ -621,14 +618,15 @@ class UI(WebRoot):
 
         return json.dumps(messages)
 
-    def set_site_message(self, message, level):
+    def set_site_message(self, message, tag, level):
         self.set_header('Cache-Control', 'max-age=0,no-cache,no-store')
         if message:
-            helpers.add_site_message(message, level)
+            helpers.add_site_message(message, tag=tag, level=level)
         else:
             if sickbeard.BRANCH and sickbeard.BRANCH != 'master' and not sickbeard.DEVELOPER and self.get_current_user():
-                message = _('You\'re using the {branch} branch. Please use \'master\' unless specifically asked').format(branch=sickbeard.BRANCH)
-                helpers.add_site_message(message, 'danger')
+                message = _('You\'re using the {branch} branch. '
+                            'Please use \'master\' unless specifically asked').format(branch=sickbeard.BRANCH)
+                helpers.add_site_message(message, tag='not_using_master_branch', level='danger')
 
         return sickbeard.SITE_MESSAGES
 
@@ -648,24 +646,32 @@ class UI(WebRoot):
                 return content.read()
         return None
 
+    def custom_css(self):
+        if sickbeard.CUSTOM_CSS_PATH and ek(os.path.isfile, sickbeard.CUSTOM_CSS_PATH):
+            self.set_header('Content-Type', 'text/css')
+            with open(sickbeard.CUSTOM_CSS_PATH, 'r') as content:
+                return content.read()
+        return None
+
 
 @route('/browser(/?.*)')
 class WebFileBrowser(WebRoot):
     def __init__(self, *args, **kwargs):
         super(WebFileBrowser, self).__init__(*args, **kwargs)
 
-    def index(self, path='', includeFiles=False, imagesOnly=False):  # pylint: disable=arguments-differ
+    def index(self, path='', includeFiles=False, fileTypes=''):  # pylint: disable=arguments-differ
 
         self.set_header('Cache-Control', 'max-age=0,no-cache,no-store')
         self.set_header('Content-Type', 'application/json')
 
-        return json.dumps(foldersAtPath(path, True, bool(int(includeFiles)), bool(int(imagesOnly))))
+        return json.dumps(foldersAtPath(path, True, bool(int(includeFiles)), fileTypes.split(',')))
 
-    def complete(self, term, includeFiles=False, imagesOnly=False):
+    def complete(self, term, includeFiles=False, fileTypes=''):
 
         self.set_header('Cache-Control', 'max-age=0,no-cache,no-store')
         self.set_header('Content-Type', 'application/json')
-        paths = [entry['path'] for entry in foldersAtPath(ek(os.path.dirname, term), includeFiles=bool(int(includeFiles)), imagesOnly=bool(int(imagesOnly)))
+        paths = [entry['path'] for entry in foldersAtPath(ek(os.path.dirname, term), includeFiles=bool(int(includeFiles)),
+                                                          fileTypes=fileTypes.split(','))
                  if 'path' in entry]
 
         return json.dumps(paths)
@@ -728,16 +734,23 @@ class Home(WebRoot):
                         anime.append(show)
                     else:
                         shows.append(show)
-            showlists = [["Shows", shows], ["Anime", anime]]
+
+            sortedShowLists = [
+                ["Shows", sorted(shows, key=lambda mbr: attrgetter('sort_name')(mbr))],
+                ["Anime", sorted(anime, key=lambda mbr: attrgetter('sort_name')(mbr))]
+            ]
         else:
             shows = []
             for show in sickbeard.showList:
                 if selected_root_dir in show._location:
                     shows.append(show)
-            showlists = [["Shows", shows]]
+
+            sortedShowLists = [
+                ["Shows", sorted(shows, key=lambda mbr: attrgetter('sort_name')(mbr))]
+            ]
 
         stats = self.show_statistics()
-        return t.render(title=_("Home"), header=_("Show List"), topmenu="home", showlists=showlists, show_stat=stats[
+        return t.render(title=_("Home"), header=_("Show List"), topmenu="home", sortedShowLists=sortedShowLists, show_stat=stats[
             0], max_download_count=stats[1], controller="home", action="index", selected_root=selected_root or '-1')
 
     @staticmethod
@@ -868,9 +881,9 @@ class Home(WebRoot):
             return _("Error sending Telegram notification: {message}").format(message=message)
 
     @staticmethod
-    def testJoin(join_id=None):
+    def testJoin(join_id=None, join_apikey=None):
 
-        result, message = notifiers.join_notifier.test_notify(join_id)
+        result, message = notifiers.join_notifier.test_notify(join_id, join_apikey)
         if result:
             return _("join notification succeeded. Check your join clients to make sure it worked")
         else:
@@ -916,11 +929,6 @@ class Home(WebRoot):
             return _("Pushover notification succeeded. Check your Pushover clients to make sure it worked")
         else:
             return _("Error sending Pushover notification")
-
-    @staticmethod
-    def putio_authorize():
-        client = clients.getClientInstance('putio')
-        return client().authentication_url  # pylint: disable=protected-access
 
     @staticmethod
     def twitterStep1():
@@ -1350,29 +1358,29 @@ class Home(WebRoot):
 
         show_message = ''
 
-        if sickbeard.showQueueScheduler.action.isBeingAdded(show_obj):
+        if sickbeard.showQueueScheduler.action.is_being_added(show_obj):
             show_message = _('This show is in the process of being downloaded - the info below is incomplete.')
 
-        elif sickbeard.showQueueScheduler.action.isBeingUpdated(show_obj):
+        elif sickbeard.showQueueScheduler.action.is_being_updated(show_obj):
             show_message = _('The information on this page is in the process of being updated.')
 
-        elif sickbeard.showQueueScheduler.action.isBeingRefreshed(show_obj):
+        elif sickbeard.showQueueScheduler.action.is_being_refreshed(show_obj):
             show_message = _('The episodes below are currently being refreshed from disk')
 
-        elif sickbeard.showQueueScheduler.action.isBeingSubtitled(show_obj):
+        elif sickbeard.showQueueScheduler.action.is_being_subtitled(show_obj):
             show_message = _('Currently downloading subtitles for this show')
 
-        elif sickbeard.showQueueScheduler.action.isInRefreshQueue(show_obj):
+        elif sickbeard.showQueueScheduler.action.is_in_refresh_queue(show_obj):
             show_message = _('This show is queued to be refreshed.')
 
-        elif sickbeard.showQueueScheduler.action.isInUpdateQueue(show_obj):
+        elif sickbeard.showQueueScheduler.action.is_in_update_queue(show_obj):
             show_message = _('This show is queued and awaiting an update.')
 
-        elif sickbeard.showQueueScheduler.action.isInSubtitleQueue(show_obj):
+        elif sickbeard.showQueueScheduler.action.is_in_subtitle_queue(show_obj):
             show_message = _('This show is queued and awaiting subtitles download.')
 
-        if not sickbeard.showQueueScheduler.action.isBeingAdded(show_obj):
-            if not sickbeard.showQueueScheduler.action.isBeingUpdated(show_obj):
+        if not sickbeard.showQueueScheduler.action.is_being_added(show_obj):
+            if not sickbeard.showQueueScheduler.action.is_being_updated(show_obj):
                 if show_obj.paused:
                     submenu.append({'title': _('Resume'), 'path': 'home/togglePause?show={0:d}'.format(show_obj.indexerid), 'icon': 'fa fa-play'})
                 else:
@@ -1391,7 +1399,7 @@ class Home(WebRoot):
 
                 submenu.append({'title': _('Preview Rename'), 'path': 'home/testRename?show={0:d}'.format(show_obj.indexerid), 'icon': 'fa fa-tag'})
 
-                if sickbeard.USE_SUBTITLES and show_obj.subtitles and not sickbeard.showQueueScheduler.action.isBeingSubtitled(show_obj):
+                if sickbeard.USE_SUBTITLES and show_obj.subtitles and not sickbeard.showQueueScheduler.action.is_being_subtitled(show_obj):
                     submenu.append({'title': _('Download Subtitles'), 'path': 'home/subtitleShow?show={0:d}'.format(show_obj.indexerid), 'icon': 'fa fa-language'})
 
         epCounts = {
@@ -1618,7 +1626,7 @@ class Home(WebRoot):
             if bool(show_obj.season_folders) != season_folders:
                 show_obj.season_folders = season_folders
                 try:
-                    sickbeard.showQueueScheduler.action.refreshShow(show_obj)
+                    sickbeard.showQueueScheduler.action.refresh_show(show_obj)
                 except CantRefreshShowException as e:
                     errors.append(_("Unable to refresh this show: {error}").format(error=e))
 
@@ -1647,13 +1655,12 @@ class Home(WebRoot):
                 logger.log(old_location + " != " + location, logger.DEBUG)  # pylint: disable=protected-access
                 if not (ek(os.path.isdir, location) or sickbeard.CREATE_MISSING_SHOW_DIRS or sickbeard.ADD_SHOWS_WO_DIR):
                     errors.append(_("New location <tt>{location}</tt> does not exist").format(location=location))
-
                 else:
                     # change it
                     try:
                         show_obj.location = location
                         try:
-                            sickbeard.showQueueScheduler.action.refreshShow(show_obj)
+                            sickbeard.showQueueScheduler.action.refresh_show(show_obj)
                         except CantRefreshShowException as e:
                             errors.append(_("Unable to refresh this show: {error}").format(error=e))
                             # grab updated info from TVDB
@@ -1669,7 +1676,7 @@ class Home(WebRoot):
         # force the update
         if do_update:
             try:
-                sickbeard.showQueueScheduler.action.updateShow(show_obj, True)
+                sickbeard.showQueueScheduler.action.update_show(show_obj, True)
                 time.sleep(cpu_presets[sickbeard.CPU_PRESET])
             except CantUpdateShowException as e:
                 errors.append(_("Unable to update show: {error}").format(error=e))
@@ -1757,7 +1764,7 @@ class Home(WebRoot):
 
         # force the update
         try:
-            sickbeard.showQueueScheduler.action.updateShow(show_obj, bool(force))
+            sickbeard.showQueueScheduler.action.update_show(show_obj, bool(force))
         except CantUpdateShowException as e:
             ui.notifications.error(_("Unable to update this show."), ex(e))
 
@@ -2212,8 +2219,8 @@ class Home(WebRoot):
 
         try:
             new_subtitles = ep_obj.download_subtitles(force_lang=lang)
-        except Exception as ex:
-            return json.dumps({'result': 'failure', 'errorMessage': ex.message})
+        except Exception as error:
+            return json.dumps({'result': 'failure', 'errorMessage': error.message})
 
         if new_subtitles:
             new_languages = [subtitle_module.name_from_code(code) for code in new_subtitles]
@@ -2657,8 +2664,7 @@ class HomeAddShows(Home):
 
     def getTrendingShows(self, traktList=None):
         """
-        Display the new show page which collects a tvdb id, folder, and extra options and
-        posts them to addNewShow
+        Display the new show page which collects a tvdb id, folder, and extra options and posts them to addNewShow
         """
         t = PageTemplate(rh=self, filename="trendingShows.mako")
         if not traktList:
@@ -2688,60 +2694,20 @@ class HomeAddShows(Home):
             page_url = "shows/anticipated"
 
         trending_shows = []
-
-        trakt_api = TraktAPI(sickbeard.SSL_VERIFY, sickbeard.TRAKT_TIMEOUT)
-
+        black_list = False
         try:
-            not_liked_show = ""
-            if sickbeard.TRAKT_ACCESS_TOKEN != '':
-                library_shows = trakt_api.traktRequest("sync/collection/shows?extended=full") or []
-                if sickbeard.TRAKT_BLACKLIST_NAME:
-                    not_liked_show = trakt_api.traktRequest("users/" + sickbeard.TRAKT_USERNAME + "/lists/" + sickbeard.TRAKT_BLACKLIST_NAME + "/items") or []
-                else:
-                    logger.log("Trakt blacklist name is empty", logger.DEBUG)
+            trending_shows, black_list = trakt_trending.fetch_trending_shows(traktList, page_url)
+        except Exception as e:
+            logger.log("Could not get trending shows: {0}".format(ex(e)), logger.WARNING)
 
-            if traktList not in ["recommended", "newshow", "newseason"]:
-                limit_show = "?limit=" + str(100 + len(not_liked_show)) + "&"
-            else:
-                limit_show = "?"
+        return t.render(black_list=black_list, trending_shows=trending_shows)
 
-            shows = trakt_api.traktRequest(page_url + limit_show + "extended=full,images") or []
-
-            if sickbeard.TRAKT_ACCESS_TOKEN != '':
-                library_shows = trakt_api.traktRequest("sync/collection/shows?extended=full") or []
-
-            for show in shows:
-                try:
-                    if 'show' not in show:
-                        show['show'] = show
-
-                    if not Show.find(sickbeard.showList, [int(show['show']['ids']['tvdb'])]):
-                        if sickbeard.TRAKT_ACCESS_TOKEN != '':
-                            if show['show']['ids']['tvdb'] not in (lshow['show']['ids']['tvdb'] for lshow in library_shows):
-                                if not_liked_show:
-                                    if show['show']['ids']['tvdb'] not in (show['show']['ids']['tvdb'] for show in not_liked_show if show['type'] == 'show'):
-                                        trending_shows += [show]
-                                else:
-                                    trending_shows += [show]
-                        else:
-                            if not_liked_show:
-                                if show['show']['ids']['tvdb'] not in (show['show']['ids']['tvdb'] for show in not_liked_show if show['type'] == 'show'):
-                                    trending_shows += [show]
-                            else:
-                                trending_shows += [show]
-
-                except MultipleShowObjectsException:
-                    continue
-
-            if sickbeard.TRAKT_BLACKLIST_NAME != '':
-                blacklist = True
-            else:
-                blacklist = False
-
-        except traktException as e:
-            logger.log("Could not connect to Trakt service: {0}".format(ex(e)), logger.WARNING)
-
-        return t.render(blacklist=blacklist, trending_shows=trending_shows)
+    def getTrendingShowImage(self, indexerId):
+        image_url = trakt_trending.get_image_url(indexerId)
+        if image_url:
+            image_path = trakt_trending.get_image_path(trakt_trending.get_image_name(indexerId))
+            trakt_trending.cache_image(image_url, image_path)
+            return indexerId
 
     def popularShows(self):
         """
@@ -2753,7 +2719,7 @@ class HomeAddShows(Home):
         try:
             popular_shows = imdb_popular.fetch_popular_shows()
         except Exception as e:
-            # print(traceback.format_exc())
+            logger.log("Could not get popular shows: {0}".format(ex(e)), logger.WARNING)
             popular_shows = None
 
         return t.render(title=_("Popular Shows"), header=_("Popular Shows"),
@@ -2860,8 +2826,12 @@ class HomeAddShows(Home):
         show_name = get_showname_from_indexer(1, indexer_id)
         show_dir = None
 
+        if not show_name:
+            ui.notifications.error(_('Unable to add show'))
+            return self.redirect('/home/')
+
         # add the show
-        sickbeard.showQueueScheduler.action.addShow(
+        sickbeard.showQueueScheduler.action.add_show(
             indexer=1, indexer_id=indexer_id, showDir=show_dir, default_status=default_status, quality=quality,
             season_folders=season_folders, lang=indexer_lang, subtitles=subtitles, subtitles_sr_metadata=None,
             anime=anime, scene=scene, paused=None, blacklist=blacklist, whitelist=whitelist,
@@ -2981,7 +2951,7 @@ class HomeAddShows(Home):
         newQuality = Quality.combineQualities([int(q) for q in anyQualities], [int(q) for q in bestQualities])
 
         # add the show
-        sickbeard.showQueueScheduler.action.addShow(
+        sickbeard.showQueueScheduler.action.add_show(
             indexer, indexer_id, showDir=show_dir, default_status=int(defaultStatus), quality=newQuality,
             season_folders=season_folders, lang=indexerLang, subtitles=subtitles, subtitles_sr_metadata=subtitles_sr_metadata,
             anime=anime, scene=scene, paused=None, blacklist=blacklist, whitelist=whitelist,
@@ -3049,7 +3019,7 @@ class HomeAddShows(Home):
 
             if indexer is not None and indexer_id is not None:
                 # add the show
-                sickbeard.showQueueScheduler.action.addShow(
+                sickbeard.showQueueScheduler.action.add_show(
                     indexer, indexer_id, show_dir,
                     default_status=sickbeard.STATUS_DEFAULT,
                     quality=sickbeard.QUALITY_DEFAULT,
@@ -3556,18 +3526,18 @@ class Manage(Home, WebRoot):
                 continue
 
             if curShowID in toDelete:
-                sickbeard.showQueueScheduler.action.removeShow(show_obj, True)
+                sickbeard.showQueueScheduler.action.remove_show(show_obj, True)
                 # don't do anything else if it's being deleted
                 continue
 
             if curShowID in toRemove:
-                sickbeard.showQueueScheduler.action.removeShow(show_obj)
+                sickbeard.showQueueScheduler.action.remove_show(show_obj)
                 # don't do anything else if it's being remove
                 continue
 
             if curShowID in toUpdate:
                 try:
-                    sickbeard.showQueueScheduler.action.updateShow(show_obj, True)
+                    sickbeard.showQueueScheduler.action.update_show(show_obj, True)
                     updates.append(show_obj.name)
                 except CantUpdateShowException as e:
                     errors.append(_("Unable to update show: {excption_format}").format(excption_format=e))
@@ -3575,13 +3545,13 @@ class Manage(Home, WebRoot):
             # don't bother refreshing shows that were updated anyway
             if curShowID in toRefresh and curShowID not in toUpdate:
                 try:
-                    sickbeard.showQueueScheduler.action.refreshShow(show_obj)
+                    sickbeard.showQueueScheduler.action.refresh_show(show_obj)
                     refreshes.append(show_obj.name)
                 except CantRefreshShowException as e:
                     errors.append(_("Unable to refresh show {show_name}: {excption_format}").format(show_name=show_obj.name, excption_format=e))
 
             if curShowID in toRename:
-                sickbeard.showQueueScheduler.action.renameShowEpisodes(show_obj)
+                sickbeard.showQueueScheduler.action.rename_show_episodes(show_obj)
                 renames.append(show_obj.name)
 
             if curShowID in toSubtitle:
@@ -3619,34 +3589,6 @@ class Manage(Home, WebRoot):
                                      messageDetail)
 
         return self.redirect("/manage/")
-
-    def manageTorrents(self):
-        t = PageTemplate(rh=self, filename="manage_torrents.mako")
-        info_download_station = ''
-
-        if re.search('localhost', sickbeard.TORRENT_HOST):
-            webui_url = re.sub('localhost', sickbeard.LOCALHOST_IP or helpers.get_lan_ip(), sickbeard.TORRENT_HOST)
-        else:
-            webui_url = sickbeard.TORRENT_HOST
-
-        if sickbeard.TORRENT_METHOD == 'utorrent':
-            webui_url = '/'.join(s.strip('/') for s in (webui_url, 'gui/'))
-        if sickbeard.TORRENT_METHOD == 'download_station':
-            if helpers.check_url(urljoin(webui_url, 'download/')):
-                webui_url += 'download/'
-            else:
-                info_download_station = '<p>' + _('For best results please set the Download Station alias as') + ' <code>download</code>. '
-                info_download_station += _('You can check this setting in the Synology DSM') + ' ' + '<b>' + _('Control Panel') + '</b> > <b>' + _('Application Portal') + '</b>.'
-                info_download_station += _('Make sure you allow DSM to be embedded with iFrames too in') + ' ' + '<b>'
-                info_download_station += _('Control Panel') + '</b> > <b>' + _('DSM Settings') + '</b> > <b>' + _('Security') + '</b>.'
-                info_download_station += '</p><br>'
-
-        if not sickbeard.TORRENT_PASSWORD == "" and not sickbeard.TORRENT_USERNAME == "":
-            webui_url = re.sub('://', '://' + str(sickbeard.TORRENT_USERNAME) + ':' + str(sickbeard.TORRENT_PASSWORD) + '@', webui_url)
-
-        return t.render(
-            webui_url=webui_url, info_download_station=info_download_station,
-            title=_('Manage Torrents'), header=_('Manage Torrents'), topmenu='manage')
 
     def failedDownloads(self, limit=100, toRemove=None):
         failed_db_con = db.DBConnection('failed.db')
@@ -3886,6 +3828,44 @@ class Config(WebRoot):
         )
 
 
+@route('/config/shares(/?.*)')
+class ConfigShares(Config):
+    def __init__(self, *args, **kwargs):
+        super(ConfigShares, self).__init__(*args, **kwargs)
+
+    def index(self):
+
+        t = PageTemplate(rh=self, filename="config_shares.mako")
+        return t.render(title=_('Config - Shares'), header=_('Windows Shares Configuration'),
+                        topmenu='config', submenu=self.ConfigMenu(),
+                        controller="config", action="shares")
+
+    def save_shares(self, shares):
+        new_shares = {}
+        for index, share in enumerate(shares):
+            if share.get('server') and share.get('path') and share.get('name'):
+                new_shares[share.get('name')] = {'server': share.get('server'), 'path': share.get('path')}
+            elif any([share.get('server'), share.get('path'), share.get('name')]):
+                info = []
+                if not share.get('name'):
+                    info.append('name')
+                if not share.get('server'):
+                    info.append('server')
+                if not share.get('path'):
+                    info.append('path')
+
+                info = ' and '.join(info)
+                logger.log('Cannot save share #{index}. You must enter name, server and path.'
+                           '{info} {copula} missing, got: [name: {name}, server:{server}, path: {path}]'.format(
+                                index=index, info=info, copula=('is', 'are')['and' in info],
+                                name=share.get('name'), server=share.get('server'), path=share.get('path')))
+
+        sickbeard.WINDOWS_SHARES.clear()
+        sickbeard.WINDOWS_SHARES.update(new_shares)
+
+        ui.notifications.message(_('Saved Shares'), _('Your Windows share settings have been saved'))
+
+
 @route('/config/general(/?.*)')
 class ConfigGeneral(Config):
     def __init__(self, *args, **kwargs):
@@ -3947,18 +3927,19 @@ class ConfigGeneral(Config):
             calendar_unprotected=None, calendar_icons=None, debug=None, ssl_verify=None, no_restart=None, coming_eps_missed_range=None,
             fuzzy_dating=None, trim_zero=None, date_preset=None, date_preset_na=None, time_preset=None,
             indexer_timeout=None, download_url=None, rootDir=None, theme_name=None, default_page=None, fanart_background=None, fanart_background_opacity=None,
-            sickrage_background=None, sickrage_background_path=None, git_reset=None, git_auth_type=0, git_username=None, git_password=None, git_token=None,
-            display_all_seasons=None, gui_language=None):
+            sickrage_background=None, sickrage_background_path=None, custom_css=None, custom_css_path=None,
+            git_reset=None, git_auth_type=0, git_username=None, git_password=None, git_token=None,
+            display_all_seasons=None, gui_language=None, ignore_broken_symlinks=None):
 
         results = []
 
         if gui_language != sickbeard.GUI_LANG:
             if gui_language:
                 # Selected language
-                gettext.translation('messages', sickbeard.LOCALE_DIR, languages=[gui_language], codeset='UTF-8').install(unicode=1)
+                gettext.translation('messages', sickbeard.LOCALE_DIR, languages=[gui_language], codeset='UTF-8').install(unicode=1, names=["ngettext"])
             else:
                 # System default language
-                gettext.install('messages', sickbeard.LOCALE_DIR, unicode=1, codeset='UTF-8')
+                gettext.install('messages', sickbeard.LOCALE_DIR, unicode=1, codeset='UTF-8', names=["ngettext"])
 
             sickbeard.GUI_LANG = gui_language
 
@@ -3978,6 +3959,7 @@ class ConfigGeneral(Config):
 
         sickbeard.TRASH_REMOVE_SHOW = config.checkbox_to_value(trash_remove_show)
         sickbeard.TRASH_ROTATE_LOGS = config.checkbox_to_value(trash_rotate_logs)
+        sickbeard.IGNORE_BROKEN_SYMLINKS = config.checkbox_to_value(ignore_broken_symlinks)
         config.change_update_frequency(update_frequency)
         sickbeard.LAUNCH_BROWSER = config.checkbox_to_value(launch_browser)
         sickbeard.SORT_ARTICLE = config.checkbox_to_value(sort_article)
@@ -3986,13 +3968,12 @@ class ConfigGeneral(Config):
         sickbeard.PROXY_SETTING = proxy_setting
         sickbeard.PROXY_INDEXERS = config.checkbox_to_value(proxy_indexers)
 
-        git_credentials_changed = sickbeard.GIT_AUTH_TYPE, sickbeard.GIT_USERNAME, sickbeard.GIT_PASSWORD, sickbeard.GIT_TOKEN != git_auth_type, git_username, git_password, git_token
         sickbeard.GIT_AUTH_TYPE = int(git_auth_type)
         sickbeard.GIT_USERNAME = git_username
         sickbeard.GIT_PASSWORD = git_password
         sickbeard.GIT_TOKEN = git_token
 
-        if git_credentials_changed:
+        if (sickbeard.GIT_AUTH_TYPE, sickbeard.GIT_USERNAME, sickbeard.GIT_PASSWORD, sickbeard.GIT_TOKEN) != (git_auth_type, git_username, git_password, git_token):
             # Re-Initializes sickbeard.gh, so a restart isn't necessary
             setup_github()
 
@@ -4009,7 +3990,9 @@ class ConfigGeneral(Config):
 
         sickbeard.SSL_VERIFY = config.checkbox_to_value(ssl_verify)
         # sickbeard.LOG_DIR is set in config.change_log_dir()
-        sickbeard.COMING_EPS_MISSED_RANGE = config.min_max(try_int(coming_eps_missed_range), 7, 0, 42810),
+
+        sickbeard.COMING_EPS_MISSED_RANGE = config.min_max(coming_eps_missed_range, 7, 0, 42810)
+
         sickbeard.DISPLAY_ALL_SEASONS = config.checkbox_to_value(display_all_seasons)
         sickbeard.NOTIFY_ON_LOGIN = config.checkbox_to_value(notify_on_login)
         sickbeard.WEB_PORT = try_int(web_port)
@@ -4033,7 +4016,7 @@ class ConfigGeneral(Config):
 
         if time_preset:
             sickbeard.TIME_PRESET_W_SECONDS = time_preset
-            sickbeard.TIME_PRESET = sickbeard.TIME_PRESET_W_SECONDS.replace(":%S", "")
+            sickbeard.TIME_PRESET = time_preset.replace(":%S", "")
 
         sickbeard.TIMEZONE_DISPLAY = timezone_display
 
@@ -4060,6 +4043,8 @@ class ConfigGeneral(Config):
         config.change_sickrage_background(sickrage_background_path)
         sickbeard.FANART_BACKGROUND = config.checkbox_to_value(fanart_background)
         sickbeard.FANART_BACKGROUND_OPACITY = fanart_background_opacity
+        sickbeard.CUSTOM_CSS = config.checkbox_to_value(custom_css)
+        config.change_custom_css(custom_css_path)
 
         sickbeard.DEFAULT_PAGE = default_page
 
@@ -4260,6 +4245,8 @@ class ConfigSearch(Config):
                 sickbeard.TORRENT_PASSWORD = sickbeard.SYNOLOGY_DSM_PASSWORD
             if not sickbeard.TORRENT_PATH:
                 sickbeard.TORRENT_PATH = sickbeard.SYNOLOGY_DSM_PATH
+
+        helpers.manage_torrents_url(reset=True)
 
         sickbeard.save_config()
 
@@ -4927,7 +4914,7 @@ class ConfigNotifications(Config):
             use_telegram=None, telegram_notify_onsnatch=None, telegram_notify_ondownload=None,
             telegram_notify_onsubtitledownload=None, telegram_id=None, telegram_apikey=None,
             use_join=None, join_notify_onsnatch=None, join_notify_ondownload=None,
-            join_notify_onsubtitledownload=None, join_id=None,
+            join_notify_onsubtitledownload=None, join_id=None, join_apikey=None,
             use_prowl=None, prowl_notify_onsnatch=None, prowl_notify_ondownload=None,
             prowl_notify_onsubtitledownload=None, prowl_api=None, prowl_priority=0,
             prowl_show_list=None, prowl_show=None, prowl_message_title=None,
@@ -5028,6 +5015,7 @@ class ConfigNotifications(Config):
         sickbeard.JOIN_NOTIFY_ONDOWNLOAD = config.checkbox_to_value(join_notify_ondownload)
         sickbeard.JOIN_NOTIFY_ONSUBTITLEDOWNLOAD = config.checkbox_to_value(join_notify_onsubtitledownload)
         sickbeard.JOIN_ID = join_id
+        sickbeard.JOIN_APIKEY = join_apikey
 
         sickbeard.USE_PROWL = config.checkbox_to_value(use_prowl)
         sickbeard.PROWL_NOTIFY_ONSNATCH = config.checkbox_to_value(prowl_notify_onsnatch)
@@ -5193,7 +5181,7 @@ class ConfigSubtitles(Config):
             service_order=None, subtitles_history=None, subtitles_finder_frequency=None,
             subtitles_multi=None, embedded_subtitles_all=None, subtitles_extra_scripts=None, subtitles_hearing_impaired=None,
             addic7ed_user=None, addic7ed_pass=None, itasa_user=None, itasa_pass=None, legendastv_user=None, legendastv_pass=None,
-            opensubtitles_user=None, opensubtitles_pass=None, subtitles_download_in_pp=None, subtitles_keep_only_wanted=None):
+            opensubtitles_user=None, opensubtitles_pass=None, subscenter_user=None, subscenter_pass=None, subtitles_download_in_pp=None, subtitles_keep_only_wanted=None):
 
         config.change_subtitle_finder_frequency(subtitles_finder_frequency)
         config.change_use_subtitles(use_subtitles)
@@ -5230,6 +5218,8 @@ class ConfigSubtitles(Config):
         sickbeard.LEGENDASTV_PASS = legendastv_pass or ''
         sickbeard.OPENSUBTITLES_USER = opensubtitles_user or ''
         sickbeard.OPENSUBTITLES_PASS = opensubtitles_pass or ''
+        sickbeard.SUBSCENTER_USER = subscenter_user or ''
+        sickbeard.SUBSCENTER_PASS = subscenter_pass or ''
 
         sickbeard.save_config()
         # Reset provider pool so next time we use the newest settings

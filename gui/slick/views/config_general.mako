@@ -5,10 +5,7 @@
     import sickbeard
     from sickbeard.common import SKIPPED, ARCHIVED, IGNORED, statusStrings, cpu_presets
     from sickbeard.sbdatetime import sbdatetime, date_presets, time_presets
-    from sickbeard.helpers import anon_url
-
-    # noinspection PyProtectedMember
-    from tornado._locale_data import LOCALE_NAMES
+    from sickbeard.helpers import anon_url, LOCALE_NAMES
 
     def lang_name(code):
         return LOCALE_NAMES.get(code, {}).get("name", u"Unknown")
@@ -421,9 +418,7 @@
                                 <label for="fanart_background">${_('on the show summary page')}</label>
                             </div>
                         </div>
-
                         <div id="content_fanart_background">
-
                             <div class="field-pair row">
                                 <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
                                     <label class="component-title">${_('Fanart transparency')}</label>
@@ -441,7 +436,37 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
+                        <div class="field-pair row">
+                            <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
+                                <label class="component-title">${_('Use a custom stylesheet file')}</label>
+                            </div>
+                            <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
+                                <input type="checkbox" class="enabler" name="custom_css" id="custom_css"
+                                    ${('', 'checked="checked"')[bool(sickbeard.CUSTOM_CSS)]} />
+                                <label for="custom_css">${_('use a custom .css file to style SickRage (for advanced users)')}</label>
+                            </div>
+                        </div>
+                        <div id="content_custom_css">
+                            <div class="field-pair row">
+                                <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
+                                    <label class="component-title">${_('Stylesheet File Path')}</label>
+                                </div>
+                                <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <input type="text" name="custom_css_path" id="custom_css_path"
+                                                   value="${sickbeard.CUSTOM_CSS_PATH}" class="form-control input-sm input350" autocapitalize="off" />
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label for="custom_css_path" class="component-desc">${_('Path to the stylesheet (.css) file')}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="field-pair row">
@@ -969,6 +994,20 @@
                                 <div class="row">
                                     <div class="col-md-12">
                                         <label>${_('if disabled the episode will be set to the default deleted status')}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-pair row">
+                            <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
+                                <label class="component-title">${_('Ignore Broken Symbolic Links')}</label>
+                            </div>
+                            <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <input type="checkbox" name="ignore_broken_symlinks" id="ignore_broken_symlinks" ${('', 'checked="checked"')[bool(sickbeard.IGNORE_BROKEN_SYMLINKS)]}/>
+                                        <label for="ignore_broken_symlinks">${_('If checked, broken symbolic links warnings generated when calculating show size will be logged as debug')}</label>
                                     </div>
                                 </div>
                             </div>

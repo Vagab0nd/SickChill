@@ -24,6 +24,7 @@ import codecs
 import datetime
 import io
 import locale
+import platform
 import os
 import shutil
 import signal
@@ -67,11 +68,13 @@ from sickbeard import db, logger, network_timezones, failed_history, name_cache
 from sickbeard.tv import TVShow
 from sickbeard.webserveInit import SRWebServer
 from sickbeard.event_queue import Events
+from sickbeard.versionChecker import SourceUpdateManager, GitUpdateManager
 from configobj import ConfigObj  # pylint: disable=import-error
 
 from sickrage.helper.encoding import ek
 from sickrage.helper.argument_parser import SickRageArgumentParser
 
+# noinspection PyUnresolvedReferences
 from six.moves import reload_module
 
 
@@ -171,13 +174,17 @@ class SickRage(object):
 
         args = SickRageArgumentParser(sickbeard.PROG_DIR).parse_args()
 
+        if args.force_update:
+            result = self.force_update()
+            sys.exit(int(not result))  # Ok -> 0 , Error -> 1
+
         # Need console logging for SickBeard.py and SickBeard-console.exe
         sickbeard.NO_RESIZE = args.noresize
         self.console_logging = (not hasattr(sys, 'frozen')) or (sickbeard.MY_NAME.lower().find('-console') > 0) and not args.quiet
         self.no_launch = args.nolaunch
         self.forced_port = args.port
         if args.daemon:
-            self.run_as_daemon = not (sys.platform == 'win32' or sys.platform == 'darwin')
+            self.run_as_daemon = platform.system() != 'Windows'
             self.console_logging = False
             self.no_launch = True
 
@@ -449,7 +456,7 @@ class SickRage(object):
             # shutdown web server
             if self.web_server:
                 logger.log('Shutting down Tornado')
-                self.web_server.shutDown()
+                self.web_server.shutdown()
 
                 try:
                     self.web_server.join(10)
@@ -485,6 +492,52 @@ class SickRage(object):
         # Make sure the logger has stopped, just in case
         logger.shutdown()
         os._exit(0)  # pylint: disable=protected-access
+
+    @staticmethod
+    def force_update():
+        """
+        Forces SickRage to update to the latest version and exit.
+
+        :return: True if successful, False otherwise
+        """
+
+        def update_with_git():
+            def run_git(updater, cmd):
+                stdout_, stderr_, exit_status = updater._run_git(updater._git_path, cmd)
+                if not exit_status == 0:
+                    print('Failed to run command: {0} {1}'.format(updater._git_path, cmd))
+                    return False
+                else:
+                    return True
+
+            updater = GitUpdateManager()
+            if not run_git(updater, 'config remote.origin.url https://github.com/SickRage/SickRage.git'):
+                return False
+            if not run_git(updater, 'fetch origin'):
+                return False
+            if not run_git(updater, 'checkout master'):
+                return False
+            if not run_git(updater, 'reset --hard origin/master'):
+                return False
+
+            return True
+
+        if ek(os.path.isdir, ek(os.path.join, sickbeard.PROG_DIR, '.git')):  # update with git
+            print('Forcing SickRage to update using git...')
+            result = update_with_git()
+            if result:
+                print('Successfully updated to latest commit. You may now run SickRage normally.')
+                return True
+            else:
+                print('Error while trying to force an update using git.')
+
+        print('Forcing SickRage to update using source...')
+        if not SourceUpdateManager().update():
+            print('Failed to force an update.')
+            return False
+
+        print('Successfully updated to latest commit. You may now run SickRage normally.')
+        return True
 
 
 if __name__ == '__main__':

@@ -22,12 +22,11 @@
 from __future__ import unicode_literals
 
 import re
+
 from requests.compat import urljoin
 from requests.utils import dict_from_cookiejar
-
 from sickbeard import logger, tvcache
 from sickbeard.bs4_parser import BS4Parser
-
 from sickrage.helper.common import convert_size, try_int
 from sickrage.providers.torrent.TorrentProvider import TorrentProvider
 
@@ -150,7 +149,7 @@ class ArcheTorrentProvider(TorrentProvider):  # pylint: disable=too-many-instanc
                         try:
                             id = re.search('id=([0-9]+)', cells[labels.index('Nom')].find('a')['href']).group(1)
                             title = cells[labels.index('Nom')].get_text(strip=True)
-                            download_url = urljoin(self.urls['download'], '?id=%s&name=%s' % (id, title))
+                            download_url = urljoin(self.urls['download'], '?id={0}&name={1}'.format(id, title))
                             if not all([title, download_url]):
                                 continue
 

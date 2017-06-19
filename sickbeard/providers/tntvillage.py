@@ -26,8 +26,7 @@ import traceback
 from sickbeard import db, logger, tvcache
 from sickbeard.bs4_parser import BS4Parser
 from sickbeard.common import Quality
-from sickbeard.name_parser.parser import NameParser, InvalidNameException, InvalidShowException
-
+from sickbeard.name_parser.parser import InvalidNameException, InvalidShowException, NameParser
 from sickrage.helper.common import convert_size, try_int
 from sickrage.helper.exceptions import AuthException
 from sickrage.providers.torrent.TorrentProvider import TorrentProvider
@@ -335,9 +334,9 @@ class TNTVillageProvider(TorrentProvider):  # pylint: disable=too-many-instance-
                                     link = result.find('td').find('a')
                                     title = link.string
                                     download_url = self.urls['download'] % result('td')[8].find('a')['href'][-8:]
-                                    leechers = result('td')[3]('td')[1].text
+                                    leechers = result('td')[3]('td')[0].text
                                     leechers = int(leechers.strip('[]'))
-                                    seeders = result('td')[3]('td')[2].text
+                                    seeders = result('td')[3]('td')[1].text
                                     seeders = int(seeders.strip('[]'))
                                     torrent_size = result('td')[3]('td')[3].text.strip('[]') + " GB"
                                     size = convert_size(torrent_size) or -1

@@ -50,10 +50,11 @@ function notifyModal(message){
     $('#site-notification-modal').modal();
 }
 
-function addSiteMessage(level, message){
+function addSiteMessage(level, tag, message){
     level = level || 'danger';
+    tag = tag || '';
     message = message || '';
-    $.post(srRoot + '/ui/set_site_message', {level: level, message: message}, function (siteMessages) {
+    $.post(srRoot + '/ui/set_site_message', {level: level, tag: tag, message: message}, function (siteMessages) {
         var messagesDiv = $('#site-messages');
         if (messagesDiv !== undefined) {
             messagesDiv.empty();
@@ -82,29 +83,8 @@ function shiftReturn(array){
     return array;
 }
 
-// Handle gettext.js
-var gt = null;
-(function loadTranslation() {
-    var lang = $('html').attr('lang');
-    if (lang !== '') {
-        $.ajax({
-            dataType: "json",
-            url: srRoot + '/locale/' + lang + '.json',
-            async: true, // NOTE: This should be false, but it logs a `deprecated` warning from jQuery.
-            success: function(data) {
-                gt = new Gettext(data.messages); // jshint ignore:line
-            },
-            failure: function() {
-                gt = new Gettext(); // jshint ignore:line
-            }
-        });
-    } else {
-        // @FIXME: add support for 'System Language' option
-        gt = new Gettext(); // jshint ignore:line
-    }
-})();
 var __ = _; // Moves `underscore` to __
-_ = function(str) { return gt.gettext(str); }; // Create shortcut
+_ = function(str) { return str; }; // Temporary (gets replaced)
 
 var SICKRAGE = {
     common: {
@@ -146,7 +126,10 @@ var SICKRAGE = {
 
             $("a.removeshow").confirm({
                 title: "Remove Show",
-                text: 'Are you sure you want to remove <span class="footerhighlight">' + $('#showtitle').data('showname') + '</span> from the database?<br><br><input type="checkbox" id="deleteFiles"> <span class="red-text">Check to delete files as well. IRREVERSIBLE</span></input>',
+                text: 'Are you sure you want to remove <span class="footerhighlight">' + $('#showtitle').data('showname') +
+                    '</span> from the database?<br><br>' +
+                    '<input type="checkbox" id="deleteFiles" name="deleteFiles"/>&nbsp;' +
+                    '<label for="deleteFiles" class="red-text">Check to delete files as well. IRREVERSIBLE</label>',
                 confirm: function(e) {
                     location.href = e.context.href + ($('#deleteFiles')[0].checked ? '&full=1' : '');
                 }
@@ -441,8 +424,9 @@ var SICKRAGE = {
             });
         },
         index: function() {
-            $('#log_dir').fileBrowser({title: 'Select log file folder location'});
-            $('#sickrage_background_path').fileBrowser({title: 'Select Background Image', key: 'sickrage_background_path', includeFiles: 1, imagesOnly: 1});
+            $('#log_dir').fileBrowser({title: _('Select log file folder location')});
+            $('#sickrage_background_path').fileBrowser({title: _('Select Background Image'), key: 'sickrage_background_path', includeFiles: 1, fileTypes: ['images']});
+            $('#custom_css_path').fileBrowser({title: _('Select CSS file'), key: 'custom_css_path', includeFiles: 1, fileTypes: ['css']});
         },
         backupRestore: function(){
             $('#Backup').on('click', function() {
@@ -466,8 +450,8 @@ var SICKRAGE = {
                     });
             });
 
-            $('#backupDir').fileBrowser({ title: 'Select backup folder to save to', key: 'backupPath' });
-            $('#backupFile').fileBrowser({ title: 'Select backup files to restore', key: 'backupFile', includeFiles: 1 });
+            $('#backupDir').fileBrowser({ title: _('Select backup folder to save to'), key: 'backupPath' });
+            $('#backupFile').fileBrowser({ title: _('Select backup files to restore'), key: 'backupFile', includeFiles: 1 });
             $('#config-components').tabs();
         },
         notifications: function() {
@@ -476,7 +460,7 @@ var SICKRAGE = {
                 growl.host = $.trim($('#growl_host').val());
                 growl.password = $.trim($('#growl_password').val());
                 if (!growl.host) {
-                    $('#testGrowl-result').html('Please fill out the necessary fields above.');
+                    $('#testGrowl-result').html( _('Please fill out the necessary fields above.') );
                     $('#growl_host').addClass('warning');
                     return;
                 }
@@ -497,7 +481,7 @@ var SICKRAGE = {
                 prowl.api = $.trim($('#prowl_api').val());
                 prowl.priority = $('#prowl_priority').val();
                 if (!prowl.api) {
-                    $('#testProwl-result').html('Please fill out the necessary fields above.');
+                    $('#testProwl-result').html( _('Please fill out the necessary fields above.') );
                     $('#prowl_api').addClass('warning');
                     return;
                 }
@@ -519,7 +503,7 @@ var SICKRAGE = {
                 kodi.username = $.trim($('#kodi_username').val());
                 kodi.password = $.trim($('#kodi_password').val());
                 if (!kodi.host) {
-                    $('#testKODI-result').html('Please fill out the necessary fields above.');
+                    $('#testKODI-result').html( _('Please fill out the necessary fields above.') );
                     $('#kodi_host').addClass('warning');
                     return;
                 }
@@ -543,7 +527,7 @@ var SICKRAGE = {
                 plex.client.username = $.trim($('#plex_client_username').val());
                 plex.client.password = $.trim($('#plex_client_password').val());
                 if (!plex.client.host) {
-                    $('#testPHT-result').html('Please fill out the necessary fields above.');
+                    $('#testPHT-result').html( _('Please fill out the necessary fields above.') );
                     $('#plex_client_host').addClass('warning');
                     return;
                 }
@@ -568,7 +552,7 @@ var SICKRAGE = {
                 plex.server.password = $.trim($('#plex_server_password').val());
                 plex.server.token = $.trim($('#plex_server_token').val());
                 if (!plex.server.host) {
-                    $('#testPMS-result').html('Please fill out the necessary fields above.');
+                    $('#testPMS-result').html( _('Please fill out the necessary fields above.') );
                     $('#plex_server_host').addClass('warning');
                     return;
                 }
@@ -591,7 +575,7 @@ var SICKRAGE = {
                 emby.host = $('#emby_host').val();
                 emby.apikey = $('#emby_apikey').val();
                 if (!emby.host || !emby.apikey) {
-                    $('#testEMBY-result').html('Please fill out the necessary fields above.');
+                    $('#testEMBY-result').html( _('Please fill out the necessary fields above.') );
                     if (!emby.host) {
                         $('#emby_host').addClass('warning');
                     } else {
@@ -620,7 +604,7 @@ var SICKRAGE = {
                 var boxcar2 = {};
                 boxcar2.accesstoken = $.trim($('#boxcar2_accesstoken').val());
                 if (!boxcar2.accesstoken) {
-                    $('#testBoxcar2-result').html('Please fill out the necessary fields above.');
+                    $('#testBoxcar2-result').html( _('Please fill out the necessary fields above.') );
                     $('#boxcar2_accesstoken').addClass('warning');
                     return;
                 }
@@ -640,7 +624,7 @@ var SICKRAGE = {
                 pushover.userkey = $('#pushover_userkey').val();
                 pushover.apikey = $('#pushover_apikey').val();
                 if (!pushover.userkey || !pushover.apikey) {
-                    $('#testPushover-result').html('Please fill out the necessary fields above.');
+                    $('#testPushover-result').html( _('Please fill out the necessary fields above.') );
                     if (!pushover.userkey) {
                         $('#pushover_userkey').addClass('warning');
                     } else {
@@ -677,7 +661,7 @@ var SICKRAGE = {
                 $.get(srRoot + '/home/twitterStep1', function (data) {
                     window.open(data);
                 }).done(function() {
-                    $('#testTwitter-result').html('<b>Step1:</b> Confirm Authorization');
+                    $('#testTwitter-result').html( _('<b>Step 1:</b> Confirm Authorization') );
                 });
             });
 
@@ -685,7 +669,7 @@ var SICKRAGE = {
                 var twitter = {};
                 twitter.key = $.trim($('#twitter_key').val());
                 if (!twitter.key) {
-                    $('#testTwitter-result').html('Please fill out the necessary fields above.');
+                    $('#testTwitter-result').html( _('Please fill out the necessary fields above.') );
                     $('#twitter_key').addClass('warning');
                     return;
                 }
@@ -764,7 +748,7 @@ var SICKRAGE = {
                 nmj.database = $('#nmj_database').val();
                 nmj.mount = $('#nmj_mount').val();
                 if (!nmj.host) {
-                    $('#testNMJ-result').html('Please fill out the necessary fields above.');
+                    $('#testNMJ-result').html( _('Please fill out the necessary fields above.') );
                     $('#nmj_host').addClass('warning');
                     return;
                 }
@@ -824,7 +808,7 @@ var SICKRAGE = {
                 var nmjv2 = {};
                 nmjv2.host = $.trim($('#nmjv2_host').val());
                 if (!nmjv2.host) {
-                    $('#testNMJv2-result').html('Please fill out the necessary fields above.');
+                    $('#testNMJv2-result').html( _('Please fill out the necessary fields above.') );
                     $('#nmjv2_host').addClass('warning');
                     return;
                 }
@@ -844,7 +828,7 @@ var SICKRAGE = {
                 freemobile.id = $.trim($('#freemobile_id').val());
                 freemobile.apikey = $.trim($('#freemobile_apikey').val());
                 if (!freemobile.id || !freemobile.apikey) {
-                    $('#testFreeMobile-result').html('Please fill out the necessary fields above.');
+                    $('#testFreeMobile-result').html( _('Please fill out the necessary fields above.') );
                     if (!freemobile.id) {
                         $('#freemobile_id').addClass('warning');
                     } else {
@@ -874,7 +858,7 @@ var SICKRAGE = {
                 telegram.id = $.trim($('#telegram_id').val());
                 telegram.apikey = $.trim($('#telegram_apikey').val());
                 if (!telegram.id || !telegram.apikey) {
-                    $('#testTelegram-result').html('Please fill out the necessary fields above.');
+                    $('#testTelegram-result').html( _('Please fill out the necessary fields above.') );
                     if (!telegram.id) {
                         $('#telegram_id').addClass('warning');
                     } else {
@@ -902,12 +886,18 @@ var SICKRAGE = {
             $('#testJoin').on('click', function () {
                 var join = {};
                 join.id = $.trim($('#join_id').val());
-                if (!join.id ) {
-                    $('#testJoin-result').html('Please fill out the necessary fields above.');
+                join.apikey = $.trim($('#join_apikey').val());
+                if (!join.id || !join.apikey) {
+                    $('#testJoin-result').html( _('Please fill out the necessary fields above.') );
                     if (!join.id) {
                         $('#join_id').addClass('warning');
                     } else {
                         $('#join_id').removeClass('warning');
+                    }
+                    if (!join.apikey) {
+                        $('#join_apikey').addClass('warning');
+                    } else {
+                        $('#join_apikey').removeClass('warning');
                     }
                     return;
                 }
@@ -915,7 +905,8 @@ var SICKRAGE = {
                 $(this).prop('disabled', true);
                 $('#testJoin-result').html(loading);
                 $.post(srRoot + '/home/testJoin', {
-                    'join_id': join.id
+                    'join_id': join.id,
+                    'join_apikey': join.apikey
                 }).done(function (data) {
                     $('#testJoin-result').html(data);
                     $('#testJoin').prop('disabled', false);
@@ -957,7 +948,7 @@ var SICKRAGE = {
                 trakt.username = $.trim($('#trakt_username').val());
                 trakt.trendingBlacklist = $.trim($('#trakt_blacklist_name').val());
                 if (!trakt.username) {
-                    $('#testTrakt-result').html('Please fill out the necessary fields above.');
+                    $('#testTrakt-result').html( _('Please fill out the necessary fields above.') );
                     if (!trakt.username) {
                         $('#trakt_username').addClass('warning');
                     } else {
@@ -967,7 +958,7 @@ var SICKRAGE = {
                 }
 
                 if (/\s/g.test(trakt.trendingBlacklist)) {
-                    $('#testTrakt-result').html('Check blacklist name; the value needs to be a trakt slug');
+                    $('#testTrakt-result').html( _('Check blacklist name; the value needs to be a trakt slug') );
                     $('#trakt_blacklist_name').addClass('warning');
                     return;
                 }
@@ -1012,7 +1003,7 @@ var SICKRAGE = {
                 } else {
                     to = prompt('Enter an email address to send the test to:', null);
                     if (to === null || to.length === 0 || to.match(/.*@.*/) === null) {
-                        status.html('<p style="color: red;">You must provide a recipient email address!</p>');
+                        status.html('<p style="color: red;">' + _('You must provide a recipient email address!') + '</p>');
                     } else {
                         $.post(srRoot + '/home/testEmail', {
                             'host': host,
@@ -1034,7 +1025,7 @@ var SICKRAGE = {
                 nma.api = $.trim($('#nma_api').val());
                 nma.priority = $('#nma_priority').val();
                 if (!nma.api) {
-                    $('#testNMA-result').html('Please fill out the necessary fields above.');
+                    $('#testNMA-result').html( _('Please fill out the necessary fields above.') );
                     $('#nma_api').addClass('warning');
                     return;
                 }
@@ -1054,7 +1045,7 @@ var SICKRAGE = {
                 var pushalot = {};
                 pushalot.authToken = $.trim($('#pushalot_authorizationtoken').val());
                 if (!pushalot.authToken) {
-                    $('#testPushalot-result').html('Please fill out the necessary fields above.');
+                    $('#testPushalot-result').html( _('Please fill out the necessary fields above.') );
                     $('#pushalot_authorizationtoken').addClass('warning');
                     return;
                 }
@@ -1073,7 +1064,7 @@ var SICKRAGE = {
                 var pushbullet = {};
                 pushbullet.api = $.trim($('#pushbullet_api').val());
                 if (!pushbullet.api) {
-                    $('#testPushbullet-result').html('Please fill out the necessary fields above.');
+                    $('#testPushbullet-result').html( _('Please fill out the necessary fields above.') );
                     $('#pushbullet_api').addClass('warning');
                     return;
                 }
@@ -1097,7 +1088,7 @@ var SICKRAGE = {
                 }
 
                 if(!pushbullet.api) {
-                    $('#testPushbullet-result').html("You didn't supply a Pushbullet api key");
+                    $('#testPushbullet-result').html( _("You didn't supply a Pushbullet api key") );
                     $("#pushbullet_api").focus();
                     return false;
                 }
@@ -1123,7 +1114,7 @@ var SICKRAGE = {
 
                 $("#pushbullet_device_list").on('change', function(){
                     $("#pushbullet_device").val($("#pushbullet_device_list").val());
-                    $('#testPushbullet-result').html("Don't forget to save your new pushbullet settings.");
+                    $('#testPushbullet-result').html( _("Don't forget to save your new pushbullet settings.") );
                 });
 
                 $.post(srRoot + "/home/getPushbulletChannels", {
@@ -1152,7 +1143,7 @@ var SICKRAGE = {
 
                     $("#pushbullet_channel_list").on('change', function () {
                         $("#pushbullet_channel").val($("#pushbullet_channel_list").val());
-                        $('#testPushbullet-result').html("Don't forget to save your new pushbullet settings.");
+                        $('#testPushbullet-result').html( _("Don't forget to save your new pushbullet settings.") );
                     });
                 });
             }
@@ -1252,8 +1243,8 @@ var SICKRAGE = {
         },
         postProcessing: function() {
             $('#config-components').tabs();
-            $('#tv_download_dir').fileBrowser({ title: 'Select TV Download Directory' });
-            $('#unpack_dir').fileBrowser({ title: 'Select Unpack Directory' });
+            $('#tv_download_dir').fileBrowser({ title: _('Select TV Download Directory') });
+            $('#unpack_dir').fileBrowser({ title: _('Select Unpack Directory') });
 
             // http://stackoverflow.com/questions/2219924/idiomatic-jquery-delayed-event-only-after-a-short-pause-in-typing-e-g-timew
             var typewatch = (function () {
@@ -1808,9 +1799,9 @@ var SICKRAGE = {
         },
         search: function() {
             $('#config-components').tabs();
-            $('#nzb_dir').fileBrowser({ title: 'Select .nzb black hole/watch location' });
-            $('#torrent_dir').fileBrowser({ title: 'Select .torrent black hole/watch location' });
-            $('#torrent_path').fileBrowser({ title: 'Select .torrent download location' });
+            $('#nzb_dir').fileBrowser({ title: _('Select .nzb black hole/watch location') });
+            $('#torrent_dir').fileBrowser({ title: _('Select .torrent black hole/watch location') });
+            $('#torrent_path').fileBrowser({ title: _('Select .torrent download location') });
 
             $.fn.nzbMethodHandler = function() {
                 var selectedProvider = $('#nzb_method :selected').val(),
@@ -1890,18 +1881,18 @@ var SICKRAGE = {
                     if (selectedProvider.toLowerCase() === 'utorrent') {
                         client = 'uTorrent';
                         $('#torrent_path_option').hide();
-                        $('#torrent_seed_time_label').text('Minimum seeding time is');
+                        $('#torrent_seed_time_label').text( _('Minimum seeding time is') );
                         $('#torrent_seed_time_option').show();
-                        $('#host_desc_torrent').text('URL to your uTorrent client (e.g. http://localhost:8000)');
+                        $('#host_desc_torrent').text( _('URL to your uTorrent client (e.g. http://localhost:8000)') );
                     } else if (selectedProvider.toLowerCase() === 'transmission'){
                         client = 'Transmission';
-                        $('#torrent_seed_time_label').text('Stop seeding when inactive for');
+                        $('#torrent_seed_time_label').text( _('Stop seeding when inactive for') );
                         $('#torrent_seed_time_option').show();
                         $('#torrent_high_bandwidth_option').show();
                         $('#torrent_label_option').hide();
                         $('#torrent_label_anime_option').hide();
                         $('#torrent_rpcurl_option').show();
-                        $('#host_desc_torrent').text('URL to your Transmission client (e.g. http://localhost:9091)');
+                        $('#host_desc_torrent').text( _('URL to your Transmission client (e.g. http://localhost:9091)') );
                     } else if (selectedProvider.toLowerCase() === 'deluge'){
                         client = 'Deluge';
                         $('#torrent_verify_cert_option').show();
@@ -1911,7 +1902,7 @@ var SICKRAGE = {
                         $('#label_anime_warning_deluge').show();
                         $('#torrent_username_option').hide();
                         $('#torrent_username').prop('value', '');
-                        $('#host_desc_torrent').text('URL to your Deluge client (e.g. http://localhost:8112)');
+                        $('#host_desc_torrent').text( _('URL to your Deluge client (e.g. http://localhost:8112)') );
                     } else if (selectedProvider.toLowerCase() === 'deluged'){
                         client = 'Deluge';
                         $('#torrent_verify_cert_option').hide();
@@ -1920,18 +1911,19 @@ var SICKRAGE = {
                         $('#label_warning_deluge').show();
                         $('#label_anime_warning_deluge').show();
                         $('#torrent_username_option').show();
-                        $('#host_desc_torrent').text('IP or Hostname of your Deluge Daemon (e.g. scgi://localhost:58846)');
+                        $('#host_desc_torrent').text( _('IP or Hostname of your Deluge Daemon (e.g. scgi://localhost:58846)') );
                     } else if (selectedProvider.toLowerCase() === 'download_station'){
                         client = 'Synology DS';
                         $('#torrent_label_option').hide();
                         $('#torrent_label_anime_option').hide();
                         $('#torrent_paused_option').hide();
                         $('#torrent_path_option').find('.fileBrowser').hide();
-                        $('#host_desc_torrent').text('URL to your Synology DS client (e.g. http://localhost:5000)');
+                        $('#host_desc_torrent').text( _('URL to your Synology DS client (e.g. http://localhost:5000)') );
                         $('#path_synology').show();
                     } else if (selectedProvider.toLowerCase() === 'rtorrent'){
                         client = 'rTorrent';
-                        $('#host_desc_torrent').text('URL to your rTorrent client (e.g. scgi://localhost:5000 <br> or https://localhost/rutorrent/plugins/httprpc/action.php)');
+                        $('#host_desc_torrent').html( _('URL to your rTorrent client (e.g. scgi://localhost:5000 <br> ' +
+                                                        'or https://localhost/rutorrent/plugins/httprpc/action.php)') );
                         $('#torrent_verify_cert_option').show();
                         $('#torrent_verify_deluge').hide();
                         $('#torrent_verify_rtorrent').show();
@@ -1941,7 +1933,7 @@ var SICKRAGE = {
                         $('#torrent_path_option').hide();
                         $('#label_warning_qbittorrent').show();
                         $('#label_anime_warning_qbittorrent').show();
-                        $('#host_desc_torrent').text('URL to your qbittorrent client (e.g. http://localhost:8080)');
+                        $('#host_desc_torrent').text( _('URL to your qBittorrent client (e.g. http://localhost:8080)') );
                     } else if (selectedProvider.toLowerCase() === 'mlnet'){
                         client = 'mlnet';
                         $('#torrent_path_option').hide();
@@ -1951,7 +1943,7 @@ var SICKRAGE = {
                         $('#torrent_verify_rtorrent').hide();
                         $('#torrent_label_anime_option').hide();
                         $('#torrent_paused_option').hide();
-                        $('#host_desc_torrent').text('URL to your MLDonkey (e.g. http://localhost:4080)');
+                        $('#host_desc_torrent').text( _('URL to your MLDonkey (e.g. http://localhost:4080)') );
                     }
                     else if (selectedProvider.toLowerCase() === 'putio'){
                         client = 'putio';
@@ -1963,7 +1955,12 @@ var SICKRAGE = {
                         $('#torrent_label_anime_option').hide();
                         $('#torrent_paused_option').hide();
                         $('#torrent_host_option').hide();
-                        $('#host_desc_torrent').text('URL to your putio client (e.g. http://localhost:8080)');
+                        $('#host_desc_torrent').text( _('URL to your putio client (e.g. http://localhost:8080)') );
+                        $('label[for="torrent_password"]').html(
+                            '<a href="' + anonURL + 'https://app.put.io/oauth/apps/new" target="_blank">' +
+                            _('Create a new OAuth app for put.io') + '</a>');
+                        $('#username_title.component-title').text( _('Put.io Parent Folder') );
+                        $('#password_title.component-title').text( _('Put.io OAuth Token') );
                     }
                     $('#host_title').text(client + host);
                     $('#username_title').text(client + username);
@@ -2045,14 +2042,6 @@ var SICKRAGE = {
                 torrent.username = $('#torrent_username').val();
                 torrent.password = $('#torrent_password').val();
 
-                if (torrent.method.toLowerCase() === 'putio') {
-                    $.post(srRoot + '/home/putio_authorize', function (data) {
-                        window.open(data);
-                    }).done(function() {
-                        $('#test_torrent_result').html('Confirm Authorization');
-                    });
-                }
-
                 $.post(srRoot + '/home/testTorrent', {
                     'torrent_method': torrent.method,
                     'host': torrent.host,
@@ -2126,565 +2115,8 @@ var SICKRAGE = {
             $("#service_order_list").disableSelection();
         },
         providers: function() {
-            $.fn.showHideProviders = function() {
-                $('.providerDiv').each(function(){
-                    var providerName = $(this).attr('id');
-                    var selectedProvider = $('#editAProvider :selected').val();
-
-                    if (selectedProvider + 'Div' == providerName) { // jshint ignore:line
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            };
-
-            var ifExists = function(loopThroughArray, searchFor) {
-                var found = false;
-
-                loopThroughArray.forEach(function(rootObject) {
-                    if (rootObject.name === searchFor) {
-                        found = true;
-                    }
-                    console.log(rootObject.name + " while searching for: "+  searchFor);
-                });
-                return found;
-            };
-
-            /**
-             * Gets categories for the provided newznab provider.
-             * @param {String} isDefault
-             * @param {Array} selectedProvider
-             * @return no return data. Function updateNewznabCaps() is run at callback
-             */
-            $.fn.getCategories = function (isDefault, selectedProvider) {
-
-                var name = selectedProvider[0];
-                var url = selectedProvider[1];
-                var key = selectedProvider[2];
-
-                if (!name || !url || !key) {
-                    return;
-                }
-
-                var params = {url: url, name: name, key: key};
-
-                $(".updating_categories").wrapInner('<span><img src="' + srRoot + '/images/loading16' + themeSpinner + '.gif"> Updating Categories ...</span>');
-                var jqxhr = $.getJSON(srRoot + '/config/providers/getNewznabCategories', params, function(data){
-                    $(this).updateNewznabCaps( data, selectedProvider );
-                    // console.debug(data.tv_categories); // jshint ignore:line
-                });
-                jqxhr.always(function() {
-                    $(".updating_categories").empty();
-                });
-            };
-
-            var newznabProviders = [];
-            var torrentRssProviders = [];
-
-            $.fn.addProvider = function (id, name, url, key, cat, isDefault, showProvider) {
-                url = $.trim(url);
-                if (!url) {
-                    return;
-                }
-
-                if (!/^https?:\/\//i.test(url)) {
-                    url = "http://" + url;
-                }
-
-                if (url.match('/$') === null) {
-                    url = url + '/';
-                }
-
-                var newData = [isDefault, [name, url, key, cat]];
-                newznabProviders[id] = newData;
-
-                $('#editANewznabProvider').addOption(id, name);
-                $(this).populateNewznabSection();
-
-                if ($('#provider_order_list > #'+id).length === 0 && showProvider !== false) {
-                    var toAdd = '<li class="ui-state-default" id="' + id + '"> <input type="checkbox" id="enable_' + id + '" class="provider_enabler" CHECKED> <a href="' + anonURL + url + '" class="imgLink" target="_new"><img src="' + srRoot + '/images/providers/newznab.png" alt="' + name + '" width="16" height="16"></a> ' + name + '</li>';
-
-                    $('#provider_order_list').append(toAdd);
-                    $('#provider_order_list').sortable("refresh");
-                }
-
-                $(this).makeNewznabProviderString();
-            };
-
-            $.fn.addTorrentRssProvider = function (id, name, url, cookies, titleTAG) {
-                var newData = [name, url, cookies, titleTAG];
-                torrentRssProviders[id] = newData;
-
-                $('#editATorrentRssProvider').addOption(id, name);
-                $(this).populateTorrentRssSection();
-
-                if ($('#provider_order_list > #'+id).length === 0) {
-                    $('#provider_order_list').append('<li class="ui-state-default" id="' + id + '"> <input type="checkbox" id="enable_' + id + '" class="provider_enabler" CHECKED> <a href="' + anonURL + url + '" class="imgLink" target="_new"><img src="' + srRoot + '/images/providers/torrentrss.png" alt="' + name + '" width="16" height="16"></a> ' + name + '</li>');
-                    $('#provider_order_list').sortable("refresh");
-                }
-
-                $(this).makeTorrentRssProviderString();
-            };
-
-            $.fn.updateProvider = function (id, url, key, cat) {
-                newznabProviders[id][1][1] = url;
-                newznabProviders[id][1][2] = key;
-                newznabProviders[id][1][3] = cat;
-
-                $(this).populateNewznabSection();
-
-                $(this).makeNewznabProviderString();
-            };
-
-            $.fn.deleteProvider = function (id) {
-                $('#editANewznabProvider').removeOption(id);
-                delete newznabProviders[id];
-                $(this).populateNewznabSection();
-                $('li').remove('#'+id);
-                $(this).makeNewznabProviderString();
-            };
-
-            $.fn.updateTorrentRssProvider = function (id, url, cookies, titleTAG) {
-                torrentRssProviders[id][1] = url;
-                torrentRssProviders[id][2] = cookies;
-                torrentRssProviders[id][3] = titleTAG;
-                $(this).populateTorrentRssSection();
-                $(this).makeTorrentRssProviderString();
-            };
-
-            $.fn.deleteTorrentRssProvider = function (id) {
-                $('#editATorrentRssProvider').removeOption(id);
-                delete torrentRssProviders[id];
-                $(this).populateTorrentRssSection();
-                $('li').remove('#'+id);
-                $(this).makeTorrentRssProviderString();
-            };
-
-            $.fn.populateNewznabSection = function() {
-                var selectedProvider = $('#editANewznabProvider :selected').val();
-                var data = '';
-                var isDefault = '';
-                var rrcat = '';
-
-                if (selectedProvider === 'addNewznab') {
-                    data = ['','',''];
-                    isDefault = 0;
-                    $('#newznab_add_div').show();
-                    $('#newznab_update_div').hide();
-                    $('#newznab_cat').attr('disabled','disabled');
-                    $('#newznab_cap').attr('disabled','disabled');
-                    $('#newznab_cat_update').attr('disabled','disabled');
-                    $('#newznabcapdiv').hide();
-
-                    $("#newznab_cat option").each(function() {
-                        $(this).remove();
-                        return;
-                    });
-
-                    $("#newznab_cap option").each(function() {
-                        $(this).remove();
-                        return;
-                    });
-
-                } else {
-                    data = newznabProviders[selectedProvider][1];
-                    isDefault = newznabProviders[selectedProvider][0];
-                    $('#newznab_add_div').hide();
-                    $('#newznab_update_div').show();
-                    $('#newznab_cat').removeAttr("disabled");
-                    $('#newznab_cap').removeAttr("disabled");
-
-                    if ($('#newznab_cap:has(option)').length) {
-                        $('#newznab_cat_update').removeAttr("disabled");
-                    } else {
-                        $('#newznab_cat_update').attr("disabled","disabled");
-                    }
-                    $('#newznabcapdiv').show();
-                }
-
-                $('#newznab_name').val(data[0]);
-                $('#newznab_url').val(data[1]);
-                $('#newznab_key').val(data[2]);
-
-                //Check if not already array
-                if (typeof data[3] === 'string') {
-                    rrcat = data[3].split(",");
-                } else {
-                    rrcat = data[3];
-                }
-
-                // Update the category select box (on the right)
-                var newCatOptions = [];
-                if (rrcat) {
-                    rrcat.forEach(function (cat) {
-                        if (cat !== '') {
-                            newCatOptions.push({text : cat, value : cat});
-                        }
-                    });
-                    $("#newznab_cat").replaceOptions(newCatOptions);
-                }
-
-                if (selectedProvider === 'addNewznab') {
-                    $('#newznab_name').removeAttr("disabled");
-                    $('#newznab_url').removeAttr("disabled");
-                } else {
-                    $('#newznab_name').attr("disabled", "disabled");
-
-                    if (isDefault) {
-                        $('#newznab_url').attr("disabled", "disabled");
-                        $('#newznab_delete').attr("disabled", "disabled");
-                    } else {
-                        $('#newznab_url').removeAttr("disabled");
-                        $('#newznab_delete').removeAttr("disabled");
-                    }
-
-                    //Get Categories Capabilities
-                    if (data[0] && data[1] && data[2] && !ifExists($.fn.newznabProvidersCapabilities, data[0])) {
-                        $(this).getCategories(isDefault, data);
-                    }
-                    $(this).updateNewznabCaps(null, data);
-                }
-            };
-
-            /**
-             * Updates the Global array $.fn.newznabProvidersCapabilities with a combination of newznab prov name
-             * and category capabilities. Return
-             * @param {Array} newzNabCaps, is the returned object with newznabprovider Name and Capabilities.
-             * @param {Array} selectedProvider
-             * @return no return data. The multiselect input $("#newznab_cap") is updated, as a result.
-             */
-            $.fn.updateNewznabCaps = function( newzNabCaps, selectedProvider ) {
-                if (newzNabCaps && !ifExists($.fn.newznabProvidersCapabilities, selectedProvider[0])) {
-                    $.fn.newznabProvidersCapabilities.push({'name' : selectedProvider[0], 'categories' : newzNabCaps.tv_categories}); // jshint ignore:line
-                }
-
-                //Loop through the array and if currently selected newznab provider name matches one in the array, use it to
-                //update the capabilities select box (on the left).
-                $("#newznab_cap").empty();
-                if (selectedProvider[0]) {
-                    $.fn.newznabProvidersCapabilities.forEach(function(newzNabCap) {
-                        if (newzNabCap.name && newzNabCap.name === selectedProvider[0] && newzNabCap.categories instanceof Array) {
-                            var newCapOptions = [];
-                            newzNabCap.categories.forEach(function(categorySet) {
-                                if (categorySet.id && categorySet.name) {
-                                    newCapOptions.push({value : categorySet.id, text : categorySet.name + "(" + categorySet.id + ")"});
-                                }
-                            });
-                            $("#newznab_cap").replaceOptions(newCapOptions);
-                        }
-                    });
-                }
-                if ($('#newznab_cap:has(option)').length) {
-                    $('#newznab_cat_update').removeAttr("disabled");
-                } else {
-                    $('#newznab_cat_update').attr("disabled","disabled");
-                }
-            };
-
-            $.fn.makeNewznabProviderString = function() {
-                var provStrings = [];
-
-                for (var id in newznabProviders) {
-                    if (newznabProviders.hasOwnProperty(id)) {
-                        provStrings.push(newznabProviders[id][1].join('|'));
-                    }
-                }
-
-                $('#newznab_string').val(provStrings.join('!!!'));
-            };
-
-            $.fn.populateTorrentRssSection = function() {
-                var selectedProvider = $('#editATorrentRssProvider :selected').val();
-                var data = '';
-
-                if (selectedProvider === 'addTorrentRss') {
-                    data = ['','','','title'];
-                    $('#torrentrss_add_div').show();
-                    $('#torrentrss_update_div').hide();
-                } else {
-                    data = torrentRssProviders[selectedProvider];
-                    $('#torrentrss_add_div').hide();
-                    $('#torrentrss_update_div').show();
-                }
-
-                $('#torrentrss_name').val(data[0]);
-                $('#torrentrss_url').val(data[1]);
-                $('#torrentrss_cookies').val(data[2]);
-                $('#torrentrss_titleTAG').val(data[3]);
-
-                if (selectedProvider === 'addTorrentRss') {
-                    $('#torrentrss_name').removeAttr("disabled");
-                    $('#torrentrss_url').removeAttr("disabled");
-                    $('#torrentrss_cookies').removeAttr("disabled");
-                    $('#torrentrss_titleTAG').removeAttr("disabled");
-                } else {
-                    $('#torrentrss_name').attr("disabled", "disabled");
-                    $('#torrentrss_url').removeAttr("disabled");
-                    $('#torrentrss_cookies').removeAttr("disabled");
-                    $('#torrentrss_titleTAG').removeAttr("disabled");
-                    $('#torrentrss_delete').removeAttr("disabled");
-                }
-            };
-
-            $.fn.makeTorrentRssProviderString = function() {
-                var provStrings = [];
-                for (var id in torrentRssProviders) {
-                    if (torrentRssProviders.hasOwnProperty(id)) {
-                        provStrings.push(torrentRssProviders[id].join('|'));
-                    }
-                }
-
-                $('#torrentrss_string').val(provStrings.join('!!!'));
-            };
-
-
-            $.fn.refreshProviderList = function() {
-                var idArr = $("#provider_order_list").sortable('toArray');
-                var finalArr = [];
-                $.each(idArr, function(key, val) {
-                    var checked = + $('#enable_'+val).prop('checked') ? '1' : '0';
-                    finalArr.push(val + ':' + checked);
-                });
-
-                $("#provider_order").val(finalArr.join(' '));
-                $(this).refreshEditAProvider();
-            };
-
-            $.fn.refreshEditAProvider = function() {
-                $('#editAProvider').empty();
-
-                var idArr = $("#provider_order_list").sortable('toArray');
-                var finalArr = [];
-                $.each(idArr, function(key, val) {
-                    if ($('#enable_'+val).prop('checked')) {
-                        finalArr.push(val);
-                    }
-                });
-
-                if (finalArr.length > 0) {
-                    $('<select>').prop('id','editAProvider').addClass('form-control input-sm').appendTo('#provider-list');
-                    for (var i = 0, len = finalArr.length; i < len; i++) {
-                        var provider = finalArr[i];
-                        $('#editAProvider').append($('<option>').prop('value',provider).text($.trim($('#'+provider).text()).replace(/\s\*$/, '').replace(/\s\*\*$/, '')));
-                    }
-                } else {
-                    document.getElementsByClassName('component-desc')[0].innerHTML = "No providers available to configure.";
-                }
-
-                $(this).showHideProviders();
-            };
-
-            $(this).on('change', '.newznab_key', function(){
-                var providerId = $(this).attr('id');
-                providerId = providerId.substring(0, providerId.length-'_hash'.length);
-
-                var url = $('#'+providerId+'_url').val();
-                var cat = $('#'+providerId+'_cat').val();
-                var key = $(this).val();
-
-                $(this).updateProvider(providerId, url, key, cat);
-            });
-
-            $('#newznab_key,#newznab_url').change(function(){
-                var selectedProvider = $('#editANewznabProvider :selected').val();
-
-                if (selectedProvider === "addNewznab"){
-                    return;
-                }
-
-                var url = $('#newznab_url').val();
-                var key = $('#newznab_key').val();
-
-                var cat = $('#newznab_cat option').map(function(i, opt) {
-                    return $(opt).text();
-                }).toArray().join(',');
-
-                $(this).updateProvider(selectedProvider, url, key, cat);
-            });
-
-            $('#torrentrss_url,#torrentrss_cookies,#torrentrss_titleTAG').change(function(){
-                var selectedProvider = $('#editATorrentRssProvider :selected').val();
-
-                if (selectedProvider === "addTorrentRss"){
-                    return;
-                }
-
-                var url = $('#torrentrss_url').val();
-                var cookies = $('#torrentrss_cookies').val();
-                var titleTAG = $('#torrentrss_titleTAG').val();
-
-                $(this).updateTorrentRssProvider(selectedProvider, url, cookies, titleTAG);
-            });
-
-            $('body').on('change', '#editAProvider',function(){
-                $(this).showHideProviders();
-            });
-
-            $('#editANewznabProvider').change(function(){
-                $(this).populateNewznabSection();
-            });
-
-            $('#editATorrentRssProvider').change(function(){
-                $(this).populateTorrentRssSection();
-            });
-
-            $('.provider_enabler').on('change', function(){
-                $(this).refreshProviderList();
-            });
-
-            $('#newznab_cat_update').click(function(){
-                // console.debug('Clicked Button');
-
-                // Maybe check if there is anything selected?
-                $("#newznab_cat option").each(function() {
-                    $(this).remove();
-                });
-
-                var newOptions = [];
-
-                // When the update botton is clicked, loop through the capabilities list
-                // and copy the selected category id's to the category list on the right.
-                $("#newznab_cap option:selected").each(function(){
-                    var selectedCat = $(this).val();
-                    // console.debug(selectedCat);
-                    newOptions.push({text: selectedCat, value: selectedCat});
-                });
-
-                $("#newznab_cat").replaceOptions(newOptions);
-
-                var selectedProvider = $("#editANewznabProvider :selected").val();
-                if (selectedProvider === "addNewznab"){
-                    return;
-                }
-
-                var url = $('#newznab_url').val();
-                var key = $('#newznab_key').val();
-
-                var cat = $('#newznab_cat option').map(function(i, opt) {
-                    return $(opt).text();
-                }).toArray().join(',');
-
-                $("#newznab_cat option:not([value])").remove();
-
-                $(this).updateProvider(selectedProvider, url, key, cat);
-            });
-
-
-            $('#newznab_add').click(function(){
-                var name = $.trim($('#newznab_name').val());
-                var url = $.trim($('#newznab_url').val());
-                var key = $.trim($('#newznab_key').val());
-                //var cat = $.trim($('#newznab_cat').val());
-
-                var cat = $.trim($('#newznab_cat option').map(function(i, opt) {
-                    return $(opt).text();
-                }).toArray().join(','));
-
-                if (!name || !url || !key) {
-                    return;
-                }
-
-                var params = {name: name};
-
-                // send to the form with ajax, get a return value
-                $.getJSON(srRoot + '/config/providers/canAddNewznabProvider', params, function(data){
-                    if (data.error !== undefined) {
-                        alert(data.error);
-                        return;
-                    }
-                    $(this).addProvider(data.success, name, url, key, cat, 0);
-                });
-            });
-
-            $('.newznab_delete').click(function(){
-                var selectedProvider = $('#editANewznabProvider :selected').val();
-                $(this).deleteProvider(selectedProvider);
-            });
-
-            $('#torrentrss_add').click(function(){
-                var name = $('#torrentrss_name').val();
-                var url = $('#torrentrss_url').val();
-                var cookies = $('#torrentrss_cookies').val();
-                var titleTAG = $('#torrentrss_titleTAG').val();
-                var params = { name: name, url: url, cookies: cookies, titleTAG: titleTAG};
-
-                // send to the form with ajax, get a return value
-                $.getJSON(srRoot + '/config/providers/canAddTorrentRssProvider', params, function(data){
-                    if (data.error !== undefined) {
-                        alert(data.error);
-                        return;
-                    }
-
-                    $(this).addTorrentRssProvider(data.success, name, url, cookies, titleTAG);
-                    $(this).refreshEditAProvider();
-                });
-            });
-
-            $('.torrentrss_delete').on('click', function(){
-                $(this).deleteTorrentRssProvider($('#editATorrentRssProvider :selected').val());
-                $(this).refreshEditAProvider();
-            });
-
-            $(this).on('change', "[class='providerDiv_tip'] input", function(){
-                $('div .providerDiv ' + "[name=" + $(this).attr('name') + "]").replaceWith($(this).clone());
-                $('div .providerDiv ' + "[newznab_name=" + $(this).attr('id') + "]").replaceWith($(this).clone());
-            });
-
-            $(this).on('change', "[class='providerDiv_tip'] select", function(){
-                $(this).find('option').each( function() {
-                    if ($(this).is(':selected')) {
-                        $(this).prop('defaultSelected', true);
-                    } else {
-                        $(this).prop('defaultSelected', false);
-                    }
-                });
-                $('div .providerDiv ' + "[name=" + $(this).attr('name') + "]").empty().replaceWith($(this).clone());
-            });
-
-            $.fn.makeTorrentOptionString = function(providerId) {
-                var seedRatio  = $('.providerDiv_tip #' + providerId + '_seed_ratio').prop('value');
-                var seedTime   = $('.providerDiv_tip #' + providerId + '_seed_time').prop('value');
-                var processMet = $('.providerDiv_tip #' + providerId + '_process_method').prop('value');
-                var optionString = $('.providerDiv_tip #' + providerId + '_option_string');
-
-                optionString.val([seedRatio, seedTime, processMet].join('|'));
-            };
-
-            $(this).on('change', '.seed_option', function(){
-                var providerId = $(this).attr('id').split('_')[0];
-                $(this).makeTorrentOptionString(providerId);
-            });
-
-            $.fn.replaceOptions = function(options) {
-                var self, $option;
-
-                this.empty();
-                self = this;
-
-                $.each(options, function(index, option) {
-                    $option = $("<option></option>").attr("value", option.value).text(option.text);
-                    self.append($option);
-                });
-            };
-
-            // initialization stuff
-            $.fn.newznabProvidersCapabilities = [];
-
-            $(this).showHideProviders();
-
-            $("#provider_order_list").sortable({
-                placeholder: 'ui-state-highlight',
-                update: function () {
-                    $(this).refreshProviderList();
-                }
-            });
-
-            $("#provider_order_list").disableSelection();
-
-            if ($('#editANewznabProvider').length) {
-                $(this).populateNewznabSection();
-            }
+            // @TODO This function need to be filled with ConfigProviders.js but can't be as we've got scope issues currently.
+            console.log('This function need to be filled with ConfigProviders.js but can\'t be as we\'ve got scope issues currently.');
         }
     },
     home: {
@@ -3376,12 +2808,12 @@ var SICKRAGE = {
                 $('.collapse.toggle').on('hide.bs.collapse', function () {
                     var reg = /collapseSeason-([0-9]+)/g;
                     var result = reg.exec(this.id);
-                    $('#showseason-' + result[1]).text('Show Episodes');
+                    $('#showseason-' + result[1]).text( _('Show Episodes') );
                 });
                 $('.collapse.toggle').on('show.bs.collapse', function () {
                     var reg = /collapseSeason-([0-9]+)/g;
                     var result = reg.exec(this.id);
-                    $('#showseason-' + result[1]).text('Hide Episodes');
+                    $('#showseason-' + result[1]).text( _('Hide Episodes') );
                 });
             });
 
@@ -3389,7 +2821,7 @@ var SICKRAGE = {
         editShow: function() {
             var allExceptions = [];
 
-            $('#location').fileBrowser({ title: 'Select Show Location' });
+            $('#location').fileBrowser({ title: _('Select Show Location') });
 
             SICKRAGE.common.QualityChooser.init();
 
@@ -3453,7 +2885,7 @@ var SICKRAGE = {
             $(this).toggleSceneException();
         },
         postProcess: function() {
-            $('#episodeDir').fileBrowser({ title: 'Select Unprocessed Episode Folder', key: 'postprocessPath' });
+            $('#episodeDir').fileBrowser({ title: _('Select Unprocessed Episode Folder'), key: 'postprocessPath' });
         },
         status: function() {
             $("#schedulerStatusTable").tablesorter({
@@ -3783,7 +3215,7 @@ var SICKRAGE = {
             $('.delete_root_dir').click(function(){
                 var curIndex = findDirIndex($(this).attr('id'));
                 $('#new_root_dir_'+curIndex).val(null);
-                $('#display_new_root_dir_'+curIndex).html('<b>DELETED</b>');
+                $('#display_new_root_dir_'+curIndex).html('<b>' + _('DELETED') + '</b>');
             });
 
             SICKRAGE.common.QualityChooser.init();
@@ -4082,7 +3514,8 @@ var SICKRAGE = {
     },
     schedule: {
         init: function() {
-
+            // set webcal link for calendar subscription
+            $(".btn-cal-subscribe").attr("href", document.location.href.replace(/https?/, 'webcal').replace('schedule', 'calendar'));
         },
         index: function() {
             if(isMeta('sickbeard.COMING_EPS_LAYOUT', ['list'])){
@@ -4090,7 +3523,7 @@ var SICKRAGE = {
                 var sort = getMeta('sickbeard.COMING_EPS_SORT');
                 var sortList = (sort in sortCodes) ? [[sortCodes[sort], 0]] : [[0, 0]];
 
-                $('.resetsorting').on('click', function(){
+                $('.resetsorting').on('click', function() {
                     $('#showListTable').trigger('filterReset');
                 });
 
@@ -4205,6 +3638,32 @@ var SICKRAGE = {
                 });
             };
 
+            $.loadTraktImages = function() {
+                var url = srRoot + '/addShows/getTrendingShowImage';
+                var ajaxCount = 0;
+                $('img.trakt-image').each(function() {
+                    // only load image from indexer when there is a indexer_id present in data-src-indexer-id
+                    var indexerId = $(this).attr('data-src-indexer-id');
+                    if (indexerId) {
+                        // use setTimemout to delay lookup for each lookup
+                        // if this is not done, all retrieval of cache urls (by changing the src value) will be done after all retrieval of images
+                        // this because the cache urls are appended to the request queue of the browser after the ajax calls for retrieval of images
+                        setTimeout(function () {
+                            $.post(url, {indexerId: indexerId}, function (data) {
+                                if (data) {
+                                    // replace src with cache location
+                                    $('img.trakt-image[data-src-indexer-id="' + data + '"]').attr('src', $('img.trakt-image[data-src-indexer-id="' + data + '"]').attr('data-src-cache'));
+                                }
+                            });
+                        }, 300 + (300 * ajaxCount));
+                        ajaxCount++;
+                    } else {
+                        // no indexer_id present -> load it directly from cache
+                        $(this).attr('src', $(this).attr('data-src-cache'));
+                    }
+                });
+            };
+
             $.fn.loadRemoteShows = function(path, loadingTxt, errorTxt) {
                 $(this).html('<img id="searchingAnim" src="' + srRoot + '/images/loading32' + themeSpinner + '.gif" height="32" width="32" />&nbsp;' + loadingTxt);
                 $(this).load(srRoot + path + ' #container', function(response, status) {
@@ -4212,6 +3671,7 @@ var SICKRAGE = {
                         $(this).empty().html(errorTxt);
                     } else {
                         $.initRemoteShowGrid();
+                        $.loadTraktImages();
                     }
                 });
             };
@@ -4316,7 +3776,7 @@ var SICKRAGE = {
                 if (searchRequestXhr) { searchRequestXhr.abort(); }
 
                 var searchingFor = $('#nameToSearch').val().trim() + ' on ' + $('#providedIndexer option:selected').text() + ' in ' + $('#indexerLangSelect').val();
-                $('#searchResults').empty().html('<img id="searchingAnim" src="' + srRoot + '/images/loading32' + themeSpinner + '.gif" height="32" width="32" /> searching ' + searchingFor + '...');
+                $('#searchResults').empty().html('<img id="searchingAnim" src="' + srRoot + '/images/loading32' + themeSpinner + '.gif" height="32" width="32" /> ' + _('searching {searchingFor}...').replace(/{searchingFor}/, searchingFor));
 
                 searchRequestXhr = $.ajax({
                     url: srRoot + '/addShows/searchIndexersForShowName',
@@ -4327,7 +3787,7 @@ var SICKRAGE = {
                     timeout: parseInt($('#indexer_timeout').val(), 10) * 1000,
                     dataType: 'json',
                     error: function () {
-                        $('#searchResults').empty().html('search timed out, try again or try another indexer');
+                        $('#searchResults').empty().html( _('search timed out, try again or try another indexer') );
                     },
                     success: function (data) {
                         var firstResult = true;
@@ -4496,7 +3956,7 @@ var SICKRAGE = {
                     }
                 });
 
-                $('#tableDiv').html('<img id="searchingAnim" src="' + srRoot + '/images/loading32.gif" height="32" width="32" /> loading folders...');
+                $('#tableDiv').html('<img id="searchingAnim" src="' + srRoot + '/images/loading32.gif" height="32" width="32" /> ' + _('loading folders...'));
                 $.post(srRoot + '/addShows/massAddTable/', url, function(data) {
                     $('#tableDiv').html(data);
                     $("#addRootDirTable").tablesorter({
@@ -4586,6 +4046,19 @@ var UTIL = {
         UTIL.exec(controller, action);
     }
 };
-if (navigator.userAgent.indexOf('PhantomJS') === -1) {
-    $(document).ready(UTIL.init);
-}
+
+// Handle js-gettext + load javascript functions
+var gt = null, _n = null;
+$.getJSON(srRoot + '/ui/locale.json', function(data) {
+    if (data !== undefined) {
+        gt = new Gettext(data.messages); // jshint ignore:line
+    } else {
+        gt = new Gettext(); // jshint ignore:line
+    }
+    _ = function(str) { return gt.gettext(str); }; // Shortcut for normal gettext
+    _n = function(str, pluralStr, num) { return gt.ngettext(str, pluralStr, num); }; // Shortcut for plural gettext
+
+    if (navigator.userAgent.indexOf('PhantomJS') === -1) {
+        $(document).ready(UTIL.init);
+    }
+});

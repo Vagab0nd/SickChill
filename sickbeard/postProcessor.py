@@ -28,20 +28,24 @@ import stat
 import subprocess
 
 import adba
-
 import sickbeard
+import six
 from sickbeard import common, db, failed_history, helpers, history, logger, notifiers, show_name_helpers
 from sickbeard.helpers import verify_freespace
 from sickbeard.name_parser.parser import InvalidNameException, InvalidShowException, NameParser
 from sickrage.helper import glob
-from sickrage.helper.common import SUBTITLE_EXTENSIONS, remove_extension, replace_extension
+from sickrage.helper.common import remove_extension, replace_extension, SUBTITLE_EXTENSIONS
 from sickrage.helper.encoding import ek
-from sickrage.helper.exceptions import EpisodeNotFoundException, EpisodePostProcessingFailedException, \
-    ShowDirectoryNotFoundException, ex
+from sickrage.helper.exceptions import EpisodeNotFoundException, EpisodePostProcessingFailedException, ex, ShowDirectoryNotFoundException
 from sickrage.show.Show import Show
 
+METHOD_COPY = "copy"
+METHOD_MOVE = "move"
+METHOD_HARDLINK = "hardlink"
+METHOD_SYMLINK = "symlink"
+METHOD_SYMLINK_REVERSED = "symlink_reversed"
 
-import six
+PROCESS_METHODS = [METHOD_COPY, METHOD_MOVE, METHOD_HARDLINK, METHOD_SYMLINK, METHOD_SYMLINK_REVERSED]
 
 
 class PostProcessor(object):  # pylint: disable=too-many-instance-attributes
@@ -536,8 +540,9 @@ class PostProcessor(object):  # pylint: disable=too-many-instance-attributes
 
         # if the result is complete then remember that for later
         # if the result is complete then set release name
-        if parse_result.series_name and ((parse_result.season_number is not None and parse_result.episode_numbers) or
-                                         parse_result.air_date) and parse_result.release_group:
+        if (parse_result.series_name and
+                ((parse_result.season_number is not None and parse_result.episode_numbers) or parse_result.air_date) and
+                parse_result.release_group):
 
             if not self.release_name:
                 self.release_name = helpers.remove_non_release_groups(remove_extension(ek(os.path.basename, parse_result.original_name)))
@@ -1151,25 +1156,25 @@ class PostProcessor(object):  # pylint: disable=too-many-instance-attributes
 
         try:
             # move the episode and associated files to the show dir
-            if self.process_method == "copy":
+            if self.process_method == METHOD_COPY:
                 if helpers.is_file_locked(self.file_path, False):
                     raise EpisodePostProcessingFailedException("File is locked for reading")
                 self._copy(self.file_path, dest_path, new_base_name, sickbeard.MOVE_ASSOCIATED_FILES,
                            sickbeard.USE_SUBTITLES and ep_obj.show.subtitles)
-            elif self.process_method == "move":
+            elif self.process_method == METHOD_MOVE:
                 if helpers.is_file_locked(self.file_path, True):
                     raise EpisodePostProcessingFailedException("File is locked for reading/writing")
                 self._move(self.file_path, dest_path, new_base_name, sickbeard.MOVE_ASSOCIATED_FILES,
                            sickbeard.USE_SUBTITLES and ep_obj.show.subtitles)
-            elif self.process_method == "hardlink":
+            elif self.process_method == METHOD_HARDLINK:
                 self._hardlink(self.file_path, dest_path, new_base_name, sickbeard.MOVE_ASSOCIATED_FILES,
                                sickbeard.USE_SUBTITLES and ep_obj.show.subtitles)
-            elif self.process_method == "symlink":
+            elif self.process_method == METHOD_SYMLINK:
                 if helpers.is_file_locked(self.file_path, True):
                     raise EpisodePostProcessingFailedException("File is locked for reading/writing")
                 self._moveAndSymlink(self.file_path, dest_path, new_base_name, sickbeard.MOVE_ASSOCIATED_FILES,
                                      sickbeard.USE_SUBTITLES and ep_obj.show.subtitles)
-            elif self.process_method == "symlink_reversed":
+            elif self.process_method == METHOD_SYMLINK_REVERSED:
                 self._symlink(self.file_path, dest_path, new_base_name, sickbeard.MOVE_ASSOCIATED_FILES,
                                      sickbeard.USE_SUBTITLES and ep_obj.show.subtitles)
             else:

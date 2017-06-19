@@ -23,9 +23,28 @@ from __future__ import unicode_literals
 import datetime
 import os.path
 import re
+import shutil
 import stat
 import threading
 import traceback
+
+import sickbeard
+import six
+from imdb import imdb
+from sickbeard import db, helpers, image_cache, logger, network_timezones, notifiers, postProcessor, subtitles
+from sickbeard.blackandwhitelist import BlackAndWhiteList
+from sickbeard.common import (ARCHIVED, DOWNLOADED, FAILED, IGNORED, NAMING_DUPLICATE, NAMING_EXTEND, NAMING_LIMITED_EXTEND, NAMING_LIMITED_EXTEND_E_PREFIXED,
+                              NAMING_SEPARATED_REPEAT, Overview, Quality, SKIPPED, SNATCHED, SNATCHED_PROPER, statusStrings, UNAIRED, UNKNOWN, WANTED)
+from sickbeard.indexers.indexer_config import INDEXER_TVRAGE
+from sickbeard.name_parser.parser import InvalidNameException, InvalidShowException, NameParser
+from sickrage.helper import glob
+from sickrage.helper.common import dateTimeFormat, episode_num, remove_extension, replace_extension, sanitize_filename, try_int
+from sickrage.helper.encoding import ek
+from sickrage.helper.exceptions import (EpisodeDeletedException, EpisodeNotFoundException, ex, MultipleEpisodesInDatabaseException,
+                                        MultipleShowObjectsException, MultipleShowsInDatabaseException, NoNFOException, ShowDirectoryNotFoundException,
+                                        ShowNotFoundException)
+from sickrage.show.Show import Show
+from unidecode import unidecode
 
 try:
     import xml.etree.cElementTree as etree
@@ -36,37 +55,6 @@ try:
     from send2trash import send2trash
 except ImportError:
     pass
-
-from imdb import imdb
-
-import sickbeard
-from sickbeard import db
-from sickbeard import helpers, logger
-from sickbeard import image_cache
-from sickbeard import notifiers
-from sickbeard import postProcessor
-from sickbeard import subtitles
-from sickbeard.blackandwhitelist import BlackAndWhiteList
-from sickbeard import network_timezones
-from sickbeard.indexers.indexer_config import INDEXER_TVRAGE
-from sickbeard.name_parser.parser import NameParser, InvalidNameException, InvalidShowException
-
-from sickrage.helper import glob
-from sickrage.helper.common import dateTimeFormat, remove_extension, replace_extension, sanitize_filename, try_int, episode_num
-from sickrage.helper.encoding import ek
-from sickrage.helper.exceptions import EpisodeDeletedException, EpisodeNotFoundException, ex
-from sickrage.helper.exceptions import MultipleEpisodesInDatabaseException, MultipleShowsInDatabaseException
-from sickrage.helper.exceptions import MultipleShowObjectsException, NoNFOException, ShowDirectoryNotFoundException
-from sickrage.helper.exceptions import ShowNotFoundException
-from sickrage.show.Show import Show
-
-from sickbeard.common import Quality, Overview, statusStrings
-from sickbeard.common import DOWNLOADED, SNATCHED, SNATCHED_PROPER, ARCHIVED, IGNORED, UNAIRED, WANTED, SKIPPED, UNKNOWN
-from sickbeard.common import NAMING_DUPLICATE, NAMING_EXTEND, NAMING_LIMITED_EXTEND, NAMING_SEPARATED_REPEAT, \
-    NAMING_LIMITED_EXTEND_E_PREFIXED
-
-import shutil
-import six
 
 
 def dirty_setter(attr_name):
@@ -164,14 +152,11 @@ class TVShow(object):  # pylint: disable=too-many-instance-attributes, too-many-
 
     @property
     def network_logo_name(self):
-        return self.network.replace('\u00C9', 'e').replace('\u00E9', 'e').lower()
+        return unidecode(self.network).lower()
 
     @property
     def sort_name(self):
-        name = self.name
-        if not sickbeard.SORT_ARTICLE:
-            name = re.sub(r'(?:The|A|An)\s', '', name, flags=re.I)
-        return name.lower()
+        return helpers.sortable_name(self.name)
 
     def _getLocation(self):
         # no dir check needed if missing show dirs are created during post-processing
@@ -1242,21 +1227,23 @@ class TVShow(object):  # pylint: disable=too-many-instance-attributes, too-many-
         curStatus_, curQuality = Quality.splitCompositeStatus(epStatus)
 
         # if it's one of these then we want it as long as it's in our allowed initial qualities
-        if epStatus in (WANTED, SKIPPED, UNKNOWN):
+        if epStatus in (WANTED, SKIPPED, UNKNOWN, FAILED):
             logger.log("Existing episode status is '{status}', getting found result for {name} {ep} with quality {quality}".format
                        (status=epStatus_text, name=self.name, ep=episode_num(season, episode),
                         quality=Quality.qualityStrings[quality]), logger.DEBUG)
             return True
         elif manualSearch:
-            if (downCurQuality and quality >= curQuality) or (not downCurQuality and quality > curQuality):
+            if (downCurQuality and quality >= curQuality) or (not downCurQuality and quality != curQuality):
                 logger.log("Usually ignoring found result, but forced search allows the quality,"
                            " getting found result for {name} {ep} with quality {quality}".format
                            (name=self.name, ep=episode_num(season, episode), quality=Quality.qualityStrings[quality]),
                            logger.DEBUG)
                 return True
 
-        # if we are re-downloading then we only want it if it's in our preferred_qualities list and better than what we have, or we only have one bestQuality and we do not have that quality yet
-        if epStatus in Quality.DOWNLOADED + Quality.SNATCHED + Quality.SNATCHED_PROPER and quality in preferred_qualities and (quality > curQuality or curQuality not in preferred_qualities):
+        # if we are re-downloading then we only want it if it's in our preferred_qualities list and better than what we have,
+        # or we only have one bestQuality and we do not have that quality yet
+        if (epStatus in Quality.DOWNLOADED + Quality.SNATCHED + Quality.SNATCHED_PROPER and quality in preferred_qualities
+            and (quality > curQuality or curQuality not in preferred_qualities)):
             logger.log("Episode already exists with quality {existing_quality} but the found result"
                        " quality {new_quality} is wanted more, getting found result for {name} {ep}".format
                        (existing_quality=Quality.qualityStrings[curQuality],
