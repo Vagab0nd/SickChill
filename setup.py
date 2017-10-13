@@ -44,8 +44,8 @@ setup(
     description="Automatic Video Library Manager for TV Shows",
     long_description=long_description,
 
-    url='https://sickchill.github.io',
-    download_url='https://github.com/SickChill/SickChill.git',
+    url='https://sickrage.github.io',
+    download_url='https://github.com/Vagab0nd/SickChill.git',
 
     author='miigotu',
     author_email='miigotu@gmail.com',
