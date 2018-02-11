@@ -45,7 +45,7 @@ setup(
     long_description=long_description,
 
     url='https://sickrage.github.io',
-    download_url='https://github.com/SickRage/SickRage.git',
+    download_url='https://github.com/Vagab0nd/SickRage-alt.git',
 
     author='miigotu',
     author_email='miigotu@gmail.com',

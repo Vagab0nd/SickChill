@@ -798,6 +798,9 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         GIT_REMOTE = check_setting_str(CFG, 'General', 'git_remote', 'origin')
         GIT_REMOTE_URL = check_setting_str(CFG, 'General', 'git_remote_url',
                                            'https://github.com/{0}/{1}.git'.format(GIT_ORG, GIT_REPO))
+        
+        if 'sickragetv' in GIT_REMOTE_URL.lower():
+              GIT_REMOTE_URL = 'https://github.com/SickRage/SickRage.git'
 
         # current commit hash
         CUR_COMMIT_HASH = check_setting_str(CFG, 'General', 'cur_commit_hash')
