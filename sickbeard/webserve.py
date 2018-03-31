@@ -48,11 +48,10 @@ from six.moves import urllib
 # noinspection PyUnresolvedReferences
 from six.moves.urllib.parse import unquote_plus
 from tornado.concurrent import run_on_executor
-from tornado.escape import utf8, xhtml_escape
+from tornado.escape import utf8, xhtml_escape, xhtml_unescape
 from tornado.gen import coroutine
 from tornado.ioloop import IOLoop
 from tornado.process import cpu_count
-from tornado.routes import route
 from tornado.web import addslash, authenticated, HTTPError, RequestHandler
 
 import sickbeard
@@ -65,6 +64,7 @@ from sickbeard.common import (cpu_presets, FAILED, IGNORED, NAMING_LIMITED_EXTEN
 from sickbeard.helpers import get_showname_from_indexer
 from sickbeard.imdbPopular import imdb_popular
 from sickbeard.providers import newznab, rsstorrent
+from sickbeard.routes import route
 from sickbeard.scene_numbering import (get_scene_absolute_numbering, get_scene_absolute_numbering_for_show, get_scene_numbering, get_scene_numbering_for_show,
                                        get_xem_absolute_numbering_for_show, get_xem_numbering_for_show, set_scene_numbering)
 from sickbeard.traktTrending import trakt_trending
@@ -2513,8 +2513,9 @@ class HomeAddShows(Home):
     def sanitizeFileName(name):
         return sanitize_filename(name)
 
-    @staticmethod
-    def searchIndexersForShowName(search_term, lang=None, indexer=None):
+    def searchIndexersForShowName(self, search_term, lang=None, indexer=None):
+        self.set_header(b'Cache-Control', 'max-age=0,no-cache,no-store')
+        self.set_header(b'Content-Type', 'application/json')
         if not lang or lang == 'null':
             lang = sickbeard.INDEXER_DEFAULT_LANGUAGE
 
@@ -2560,7 +2561,7 @@ class HomeAddShows(Home):
                                    show['seriesname'], show['firstaired'], show['in_show_list']) for show in shows})
 
         lang_id = sickbeard.indexerApi().config['langabbv_to_id'][lang]
-        return json.dumps({'results': final_results, 'langid': lang_id})
+        return json.dumps({'results': final_results, 'langid': lang_id, 'success': len(final_results) > 0})
 
     def massAddTable(self, rootDir=None):
         t = PageTemplate(rh=self, filename="home_massAddTable.mako")
@@ -2572,7 +2573,7 @@ class HomeAddShows(Home):
         else:
             root_dirs = rootDir
 
-        root_dirs = [unquote_plus(x) for x in root_dirs]
+        root_dirs = [unquote_plus(xhtml_unescape(x)) for x in root_dirs]
 
         if sickbeard.ROOT_DIRS:
             default_index = int(sickbeard.ROOT_DIRS.split('|')[0])
@@ -2960,7 +2961,7 @@ class HomeAddShows(Home):
             indexer = int(series_pieces[1])
             indexer_id = int(series_pieces[3])
             # Show name was sent in UTF-8 in the form
-            show_name = series_pieces[4].decode('utf-8')
+            show_name = xhtml_unescape(series_pieces[4]).decode('utf-8')
         else:
             # if no indexer was provided use the default indexer set in General settings
             if not providedIndexer:
@@ -3055,7 +3056,7 @@ class HomeAddShows(Home):
         elif not isinstance(shows_to_add, list):
             shows_to_add = [shows_to_add]
 
-        shows_to_add = [unquote_plus(x) for x in shows_to_add]
+        shows_to_add = [unquote_plus(xhtml_unescape(x)) for x in shows_to_add]
 
         indexer_id_given = []
         dirs_only = []
@@ -5317,7 +5318,7 @@ class ConfigAnime(Config):
 
         sickbeard.USE_ANIDB = config.checkbox_to_value(use_anidb)
         sickbeard.ANIDB_USERNAME = anidb_username
-        sickbeard.ANIDB_PASSWORD = filters.unhide(sickbeard.ANIDB_PASS, anidb_password)
+        sickbeard.ANIDB_PASSWORD = filters.unhide(sickbeard.ANIDB_PASSWORD, anidb_password)
         sickbeard.ANIDB_USE_MYLIST = config.checkbox_to_value(anidb_use_mylist)
         sickbeard.ANIME_SPLIT_HOME = config.checkbox_to_value(split_home)
         sickbeard.ANIME_SPLIT_HOME_IN_TABS = config.checkbox_to_value(split_home_in_tabs)
