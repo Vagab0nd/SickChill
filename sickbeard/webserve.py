@@ -88,7 +88,7 @@ from sickrage.system.Shutdown import Shutdown
 try:
     import json
 except ImportError:
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements,PyUnresolvedReferences
     import simplejson as json
 
 
@@ -156,6 +156,7 @@ class PageTemplate(MakoTemplate):
                 kwargs[key] = self.arguments[key]
 
         kwargs['makoStartTime'] = time.time()
+        # noinspection PyBroadException
         try:
             return self.template.render_unicode(*args, **kwargs)
         except Exception:
@@ -277,12 +278,12 @@ class WebHandler(BaseHandler):
             for arg, value in six.iteritems(kwargs):
                 if len(value) == 1:
                     kwargs[arg] = xhtml_escape(value[0])
-                elif isinstance(value, basestring):
+                elif isinstance(value, six.string_types):
                     kwargs[arg] = xhtml_escape(value)
                 elif isinstance(value, list):
                     kwargs[arg] = [xhtml_escape(v) for v in value]
                 else:
-                    raise
+                    raise Exception
 
             result = function(**kwargs)
             return result
@@ -330,6 +331,7 @@ class KeyHandler(RequestHandler):
         super(KeyHandler, self).__init__(*args, **kwargs)
 
     def get(self, *args, **kwargs):
+        # noinspection PyBroadException
         try:
             if self.get_argument('u', '') != sickbeard.WEB_USERNAME or self.get_argument('p', '') != sickbeard.WEB_PASSWORD:
                 raise Exception
@@ -666,13 +668,13 @@ class WebFileBrowser(WebRoot):
         self.set_header(b'Cache-Control', 'max-age=0,no-cache,no-store')
         self.set_header(b'Content-Type', 'application/json')
 
-        return json.dumps(foldersAtPath(path, True, bool(int(includeFiles)), fileTypes.split(',')))
+        return json.dumps(foldersAtPath(xhtml_unescape(path), True, bool(int(includeFiles)), fileTypes.split(',')))
 
     def complete(self, term, includeFiles=False, fileTypes=''):
 
         self.set_header(b'Cache-Control', 'max-age=0,no-cache,no-store')
         self.set_header(b'Content-Type', 'application/json')
-        paths = [entry['path'] for entry in foldersAtPath(ek(os.path.dirname, term), includeFiles=bool(int(includeFiles)),
+        paths = [entry['path'] for entry in foldersAtPath(ek(os.path.dirname, xhtml_unescape(term)), includeFiles=bool(int(includeFiles)),
                                                           fileTypes=fileTypes.split(','))
                  if 'path' in entry]
 
@@ -1516,9 +1518,8 @@ class Home(WebRoot):
     @staticmethod
     def plotDetails(show, season, episode):
         main_db_con = db.DBConnection()
-        result = main_db_con.selectOne(
-            "SELECT description FROM tv_episodes WHERE showid = ? AND season = ? AND episode = ?",
-            (int(show), int(season), int(episode)))
+        result = main_db_con.select_one(
+            "SELECT description FROM tv_episodes WHERE showid = ? AND season = ? AND episode = ?", (int(show), int(season), int(episode)))
         return result[b'description'] if result else 'Episode not found.'
 
     @staticmethod
@@ -1701,7 +1702,7 @@ class Home(WebRoot):
             if not isinstance(location, six.text_type):
                 location = ek(six.text_type, location, 'utf-8')
 
-            location = ek(os.path.normpath, location)
+            location = ek(os.path.normpath, xhtml_unescape(location))
             # noinspection PyProtectedMember
             old_location = ek(os.path.normpath, show_obj._location)
             # if we change location clear the db of episodes, change it, write to db, and rescan
@@ -2228,6 +2229,7 @@ class Home(WebRoot):
                 continue
 
             if isinstance(searchThread, sickbeard.search_queue.ManualSearchQueueItem):
+                # noinspection PyTypeChecker
                 if not [x for x in episodes if x['episodeindexid'] == searchThread.segment.indexerid]:
                     episodes += getEpisodes(searchThread, searchstatus)
             else:
@@ -2259,6 +2261,7 @@ class Home(WebRoot):
         if error_msg or not ep_obj:
             return json.dumps({'result': 'failure', 'errorMessage': error_msg})
 
+        # noinspection PyBroadException
         try:
             new_subtitles = ep_obj.download_subtitles()  # pylint: disable=no-member
         except Exception:
@@ -2425,6 +2428,7 @@ class HomeNews(Home):
         super(HomeNews, self).__init__(*args, **kwargs)
 
     def index(self, *args_, **kwargs_):
+        # noinspection PyBroadException
         try:
             news = sickbeard.versionCheckScheduler.action.check_for_new_news()
         except Exception:
@@ -2447,6 +2451,7 @@ class HomeChangeLog(Home):
         super(HomeChangeLog, self).__init__(*args, **kwargs)
 
     def index(self, *args_, **kwargs_):
+        # noinspection PyBroadException
         try:
             changes = helpers.getURL('http://sickrage.github.io/sickrage-news/CHANGES.md', session=helpers.make_session(), returns='text')
         except Exception:
@@ -2475,11 +2480,11 @@ class HomePostProcess(Home):
                        is_priority=None, delete_on="0", failed="0", proc_type="manual", force_next=False, *args_, **kwargs):
 
         mode = kwargs.get('type', proc_type)
-        process_path = ss(kwargs.get('dir', proc_dir) or '')
+        process_path = ss(kwargs.get('dir', xhtml_unescape(proc_dir)) or '')
         if not process_path:
             return self.redirect("/home/postprocess/")
 
-        release_name = ss(nzbName) if nzbName else nzbName
+        release_name = ss(xhtml_unescape(nzbName)) if nzbName else nzbName
 
         result = sickbeard.postProcessorTaskScheduler.action.add_item(
             process_path, release_name, method=process_method, force=force,
@@ -2519,7 +2524,7 @@ class HomeAddShows(Home):
         if not lang or lang == 'null':
             lang = sickbeard.INDEXER_DEFAULT_LANGUAGE
 
-        search_term = search_term.encode('utf-8')
+        search_term = xhtml_unescape(search_term).encode('utf-8')
 
         searchTerms = [search_term]
 
@@ -2547,6 +2552,7 @@ class HomeAddShows(Home):
             logger.log("Searching for Show with searchterm(s): {0} on Indexer: {1}".format(
                 searchTerms, sickbeard.indexerApi(indexer).name), logger.DEBUG)
             for searchTerm in searchTerms:
+                # noinspection PyBroadException
                 try:
                     indexerResults = t[searchTerm]
                 except Exception:
@@ -2590,12 +2596,14 @@ class HomeAddShows(Home):
 
         main_db_con = db.DBConnection()
         for root_dir in root_dirs:
+            # noinspection PyBroadException
             try:
                 file_list = ek(os.listdir, root_dir)
             except Exception:
                 continue
 
             for cur_file in file_list:
+                # noinspection PyBroadException
                 try:
                     cur_path = ek(os.path.normpath, ek(os.path.join, root_dir, cur_file))
                     if not ek(os.path.isdir, cur_path):
@@ -2969,13 +2977,13 @@ class HomeAddShows(Home):
 
             indexer = int(providedIndexer)
             indexer_id = int(whichSeries)
-            show_name = ek(os.path.basename, ek(os.path.normpath, fullShowPath))
+            show_name = ek(os.path.basename, ek(os.path.normpath, xhtml_unescape(fullShowPath)))
 
         # use the whole path if it's given, or else append the show name to the root dir to get the full show path
         if fullShowPath:
-            show_dir = ek(os.path.normpath, fullShowPath)
+            show_dir = ek(os.path.normpath, xhtml_unescape(fullShowPath))
         else:
-            show_dir = ek(os.path.join, rootDir, sanitize_filename(show_name))
+            show_dir = ek(os.path.join, rootDir, sanitize_filename(xhtml_unescape(show_name)))
 
         # blanket policy - if the dir exists you should have used "add existing show" numbnuts
         if ek(os.path.isdir, show_dir) and not fullShowPath:
@@ -3775,6 +3783,7 @@ class History(WebRoot):
                 'time': row[b'date']
             }
 
+            # noinspection PyTypeChecker
             if not any((history[b'show_id'] == row[b'show_id'] and
                         history[b'season'] == row[b'season'] and
                         history[b'episode'] == row[b'episode'] and
@@ -4601,6 +4610,7 @@ class ConfigProviders(Config):
         if not name:
             return json.dumps({'error': 'Invalid name specified'})
 
+        url = config.clean_url(url)
         tempProvider = rsstorrent.TorrentRssProvider(name, url, cookies, titleTAG)
 
         if tempProvider.get_id() in (x.get_id() for x in sickbeard.torrentRssProviderList):
@@ -4737,204 +4747,86 @@ class ConfigProviders(Config):
                 torrentRssProviderDict[cur_id].enabled = cur_enabled
 
         # dynamically load provider settings
-        for curTorrentProvider in [prov for prov in sickbeard.providers.sortedProviderList() if
-                                   prov.provider_type == GenericProvider.TORRENT]:
+        for curProvider in sickbeard.providers.sortedProviderList():
+            if hasattr(curProvider, 'custom_url'):
+                curProvider.custom_url = str(kwargs.get(curProvider.get_id('_custom_url'), '')).strip()
 
-            if hasattr(curTorrentProvider, 'custom_url'):
-                try:
-                    curTorrentProvider.custom_url = str(kwargs[curTorrentProvider.get_id() + '_custom_url']).strip()
-                except Exception:
-                    curTorrentProvider.custom_url = None
+            if hasattr(curProvider, 'minseed'):
+                curProvider.minseed = int(str(kwargs.get(curProvider.get_id('_minseed'), 0)).strip())
 
-            if hasattr(curTorrentProvider, 'minseed'):
-                try:
-                    curTorrentProvider.minseed = int(str(kwargs[curTorrentProvider.get_id() + '_minseed']).strip())
-                except Exception:
-                    curTorrentProvider.minseed = 0
+            if hasattr(curProvider, 'minleech'):
+                curProvider.minleech = int(str(kwargs.get(curProvider.get_id('_minleech'), 0)).strip())
 
-            if hasattr(curTorrentProvider, 'minleech'):
-                try:
-                    curTorrentProvider.minleech = int(str(kwargs[curTorrentProvider.get_id() + '_minleech']).strip())
-                except Exception:
-                    curTorrentProvider.minleech = 0
+            if hasattr(curProvider, 'ratio'):
+                if curProvider.get_id('_ratio') in kwargs:
+                    ratio = str(kwargs.get(curProvider.get_id('_ratio'))).strip()
+                    print (ratio)
+                    if ratio in ('None', None, ''):
+                        curProvider.ratio = None
+                    else:
+                        curProvider.ratio = max(float(ratio), -1)
+                else:
+                    curProvider.ratio = None
 
-            if hasattr(curTorrentProvider, 'ratio'):
-                try:
-                    ratio = float(str(kwargs[curTorrentProvider.get_id() + '_ratio']).strip())
-                    curTorrentProvider.ratio = (ratio, -1)[ratio < 0]
-                except Exception:
-                    curTorrentProvider.ratio = None
+            if hasattr(curProvider, 'digest'):
+                curProvider.digest = str(kwargs.get(curProvider.get_id('_digest'), '')).strip() or None
 
-            if hasattr(curTorrentProvider, 'digest'):
-                try:
-                    curTorrentProvider.digest = str(kwargs[curTorrentProvider.get_id() + '_digest']).strip()
-                except Exception:
-                    curTorrentProvider.digest = None
+            if hasattr(curProvider, 'hash'):
+                curProvider.hash = str(kwargs.get(curProvider.get_id('_hash'), '')).strip() or None
 
-            if hasattr(curTorrentProvider, 'hash'):
-                try:
-                    curTorrentProvider.hash = str(kwargs[curTorrentProvider.get_id() + '_hash']).strip()
-                except Exception:
-                    curTorrentProvider.hash = None
+            if hasattr(curProvider, 'api_key'):
+                curProvider.api_key = str(kwargs.get(curProvider.get_id('_api_key'), '')).strip() or None
 
-            if hasattr(curTorrentProvider, 'api_key'):
-                try:
-                    curTorrentProvider.api_key = str(kwargs[curTorrentProvider.get_id() + '_api_key']).strip()
-                except Exception:
-                    curTorrentProvider.api_key = None
+            if hasattr(curProvider, 'username'):
+                curProvider.username = str(kwargs.get(curProvider.get_id('_username'), '')).strip() or None
 
-            if hasattr(curTorrentProvider, 'username'):
-                try:
-                    curTorrentProvider.username = str(kwargs[curTorrentProvider.get_id() + '_username']).strip()
-                except Exception:
-                    curTorrentProvider.username = None
+            if hasattr(curProvider, 'password'):
+                curProvider.password = filters.unhide(curProvider.password, str(kwargs.get(curProvider.get_id('_password'), '')).strip())
 
-            if hasattr(curTorrentProvider, 'password'):
-                try:
-                    curTorrentProvider.password = filters.unhide(curTorrentProvider.password, str(kwargs[curTorrentProvider.get_id() + '_password']).strip())
-                except Exception:
-                    curTorrentProvider.password = None
+            if hasattr(curProvider, 'passkey'):
+                curProvider.passkey = filters.unhide(curProvider.passkey, str(kwargs.get(curProvider.get_id('_passkey'), '')).strip())
 
-            if hasattr(curTorrentProvider, 'passkey'):
-                try:
-                    curTorrentProvider.passkey = filters.unhide(curTorrentProvider.passkey, str(kwargs[curTorrentProvider.get_id() + '_passkey']).strip())
-                except Exception:
-                    curTorrentProvider.passkey = None
+            if hasattr(curProvider, 'pin'):
+                curProvider.pin = filters.unhide(curProvider.pin, str(kwargs.get(curProvider.get_id('_pin'), '')).strip())
 
-            if hasattr(curTorrentProvider, 'pin'):
-                try:
-                    curTorrentProvider.pin = filters.unhide(curTorrentProvider.pin, str(kwargs[curTorrentProvider.get_id() + '_pin']).strip())
-                except Exception:
-                    curTorrentProvider.pin = None
+            if hasattr(curProvider, 'confirmed'):
+                curProvider.confirmed = config.checkbox_to_value(kwargs.get(curProvider.get_id('_confirmed')))
 
-            if hasattr(curTorrentProvider, 'confirmed'):
-                try:
-                    curTorrentProvider.confirmed = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_confirmed'])
-                except Exception:
-                    curTorrentProvider.confirmed = 0
+            if hasattr(curProvider, 'ranked'):
+                curProvider.ranked = config.checkbox_to_value(kwargs.get(curProvider.get_id('_ranked')))
 
-            if hasattr(curTorrentProvider, 'ranked'):
-                try:
-                    curTorrentProvider.ranked = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_ranked'])
-                except Exception:
-                    curTorrentProvider.ranked = 0
+            if hasattr(curProvider, 'engrelease'):
+                curProvider.engrelease = config.checkbox_to_value(kwargs.get(curProvider.get_id('_engrelease')))
 
-            if hasattr(curTorrentProvider, 'engrelease'):
-                try:
-                    curTorrentProvider.engrelease = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_engrelease'])
-                except Exception:
-                    curTorrentProvider.engrelease = 0
+            if hasattr(curProvider, 'onlyspasearch'):
+                curProvider.onlyspasearch = config.checkbox_to_value(kwargs.get(curProvider.get_id('_onlyspasearch')))
 
-            if hasattr(curTorrentProvider, 'onlyspasearch'):
-                try:
-                    curTorrentProvider.onlyspasearch = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_onlyspasearch'])
-                except Exception:
-                    curTorrentProvider.onlyspasearch = 0
+            if hasattr(curProvider, 'sorting'):
+                curProvider.sorting = str(kwargs.get(curProvider.get_id('_sorting'), 'seeders')).strip()
 
-            if hasattr(curTorrentProvider, 'sorting'):
-                try:
-                    curTorrentProvider.sorting = str(kwargs[curTorrentProvider.get_id() + '_sorting']).strip()
-                except Exception:
-                    curTorrentProvider.sorting = 'seeders'
+            if hasattr(curProvider, 'freeleech'):
+                curProvider.freeleech = config.checkbox_to_value(kwargs.get(curProvider.get_id('_freeleech')))
 
-            if hasattr(curTorrentProvider, 'freeleech'):
-                try:
-                    curTorrentProvider.freeleech = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_freeleech'])
-                except Exception:
-                    curTorrentProvider.freeleech = 0
+            if hasattr(curProvider, 'search_mode'):
+                curProvider.search_mode = str(kwargs.get(curProvider.get_id('_search_mode'), 'eponly')).strip()
 
-            if hasattr(curTorrentProvider, 'search_mode'):
-                try:
-                    curTorrentProvider.search_mode = str(kwargs[curTorrentProvider.get_id() + '_search_mode']).strip()
-                except Exception:
-                    curTorrentProvider.search_mode = 'eponly'
+            if hasattr(curProvider, 'search_fallback'):
+                curProvider.search_fallback = config.checkbox_to_value(kwargs.get(curProvider.get_id('_search_fallback')))
 
-            if hasattr(curTorrentProvider, 'search_fallback'):
-                try:
-                    curTorrentProvider.search_fallback = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_search_fallback'])
-                except Exception:
-                    curTorrentProvider.search_fallback = 0  # these exceptions are catching unselected checkboxes
+            if hasattr(curProvider, 'enable_daily'):
+                curProvider.enable_daily = curProvider.can_daily and config.checkbox_to_value(kwargs.get(curProvider.get_id('_enable_daily')))
 
-            if hasattr(curTorrentProvider, 'enable_daily'):
-                try:
-                    curTorrentProvider.enable_daily = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_enable_daily'])
-                except Exception:
-                    curTorrentProvider.enable_daily = 0  # these exceptions are actually catching unselected checkboxes
+            if hasattr(curProvider, 'enable_backlog'):
+                curProvider.enable_backlog = curProvider.can_backlog and config.checkbox_to_value(kwargs.get(curProvider.get_id('_enable_backlog')))
 
-            if hasattr(curTorrentProvider, 'enable_backlog'):
-                try:
-                    curTorrentProvider.enable_backlog = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_enable_backlog'])
-                except Exception:
-                    curTorrentProvider.enable_backlog = 0  # these exceptions are actually catching unselected checkboxes
+            if hasattr(curProvider, 'cat'):
+                curProvider.cat = int(str(kwargs.get(curProvider.get_id('_cat'), 0)).strip())
 
-            if hasattr(curTorrentProvider, 'cat'):
-                try:
-                    curTorrentProvider.cat = int(str(kwargs[curTorrentProvider.get_id() + '_cat']).strip())
-                except Exception:
-                    curTorrentProvider.cat = 0
+            if hasattr(curProvider, 'subtitle'):
+                curProvider.subtitle = config.checkbox_to_value(kwargs.get(curProvider.get_id('_subtitle')))
 
-            if hasattr(curTorrentProvider, 'subtitle'):
-                try:
-                    curTorrentProvider.subtitle = config.checkbox_to_value(
-                        kwargs[curTorrentProvider.get_id() + '_subtitle'])
-                except Exception:
-                    curTorrentProvider.subtitle = 0
-
-            if curTorrentProvider.enable_cookies:
-                try:
-                    curTorrentProvider.cookies = str(kwargs['{id}_cookies'.format(id=curTorrentProvider.get_id())]).strip()
-                except Exception:
-                    pass  # I don't want to configure a default value here, as it can also be configured intially as a custom rss torrent provider
-
-        for curNzbProvider in [prov for prov in sickbeard.providers.sortedProviderList() if
-                               prov.provider_type == GenericProvider.NZB]:
-
-            if hasattr(curNzbProvider, 'api_key'):
-                try:
-                    curNzbProvider.api_key = str(kwargs[curNzbProvider.get_id() + '_api_key']).strip()
-                except Exception:
-                    curNzbProvider.api_key = None
-
-            if hasattr(curNzbProvider, 'username'):
-                try:
-                    curNzbProvider.username = str(kwargs[curNzbProvider.get_id() + '_username']).strip()
-                except Exception:
-                    curNzbProvider.username = None
-
-            if hasattr(curNzbProvider, 'search_mode'):
-                try:
-                    curNzbProvider.search_mode = str(kwargs[curNzbProvider.get_id() + '_search_mode']).strip()
-                except Exception:
-                    curNzbProvider.search_mode = 'eponly'
-
-            if hasattr(curNzbProvider, 'search_fallback'):
-                try:
-                    curNzbProvider.search_fallback = config.checkbox_to_value(
-                        kwargs[curNzbProvider.get_id() + '_search_fallback'])
-                except Exception:
-                    curNzbProvider.search_fallback = 0  # these exceptions are actually catching unselected checkboxes
-
-            if hasattr(curNzbProvider, 'enable_daily'):
-                try:
-                    curNzbProvider.enable_daily = config.checkbox_to_value(
-                        kwargs[curNzbProvider.get_id() + '_enable_daily'])
-                except Exception:
-                    curNzbProvider.enable_daily = 0  # these exceptions are actually catching unselected checkboxes
-
-            if hasattr(curNzbProvider, 'enable_backlog'):
-                try:
-                    curNzbProvider.enable_backlog = config.checkbox_to_value(
-                        kwargs[curNzbProvider.get_id() + '_enable_backlog'])
-                except Exception:
-                    curNzbProvider.enable_backlog = 0  # these exceptions are actually catching unselected checkboxes
+            if curProvider.enable_cookies:
+                curProvider.cookies = str(kwargs.get(curProvider.get_id('_cookies'))).strip()
 
         sickbeard.NEWZNAB_DATA = '!!!'.join([x.configStr() for x in sickbeard.newznabProviderList])
         sickbeard.PROVIDER_ORDER = enabled_provider_list + disabled_provider_list

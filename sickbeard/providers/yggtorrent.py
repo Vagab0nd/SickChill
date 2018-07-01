@@ -61,9 +61,6 @@ class YggTorrentProvider(TorrentProvider):  # pylint: disable=too-many-instance-
         self.cache = tvcache.TVCache(self, min_time=30)
 
     def login(self):
-        if any(dict_from_cookiejar(self.session.cookies).values()):
-            return True
-
         login_params = {
             'id': self.username,
             'pass': self.password,
@@ -72,10 +69,10 @@ class YggTorrentProvider(TorrentProvider):  # pylint: disable=too-many-instance-
         response = self.get_url(self.urls['login'], post_data=login_params, returns='response')
 
         # The login is now an AJAX call (401 : Bad credentials, 200 : Logged in, other : server failure)
-        if response.status_code == 401:
-            logger.log('Invalid username or password. Check your settings', logger.WARNING)
+        if not response or response.status_code != 200:
+            logger.log('Unable to connect to provider', logger.WARNING)
             return False
-        elif response.status_code == 200:
+        else:
             # It seems we are logged, let's verify that !
             response = self.get_url(self.url, returns='response')
 
@@ -85,16 +82,11 @@ class YggTorrentProvider(TorrentProvider):  # pylint: disable=too-many-instance-
             if 'logout' not in response.text:
                 logger.log('Invalid username or password. Check your settings', logger.WARNING)
                 return False
-        else:
-            logger.log('Unable to connect to provider', logger.WARNING)
-            return False
 
         return True
 
     def search(self, search_strings, age=0, ep_obj=None):  # pylint: disable=too-many-locals, too-many-branches
         results = []
-        if not self.login():
-            return results
 
         for mode in search_strings:
             items = []
@@ -128,6 +120,10 @@ class YggTorrentProvider(TorrentProvider):  # pylint: disable=too-many-instance-
                     data = self.get_url(self.urls['search'], params=search_params, returns='text')
                     if not data:
                         continue
+
+                    if 'logout' not in data:
+                        logger.log('Refreshing cookies', logger.DEBUG)
+                        self.login()
 
                     with BS4Parser(data, 'html5lib') as html:
                         torrent_table = html.find(class_='table')
