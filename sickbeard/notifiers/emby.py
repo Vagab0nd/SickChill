@@ -102,7 +102,7 @@ class Notifier(object):
             else:
                 query = ''
 
-            url = 'http://{0}/emby/openapi/Library/Series/Updated{1}'.format(sickbeard.EMBY_HOST, query)
+            url = 'http://{0}/emby/Library/Series/Updated{1}'.format(sickbeard.EMBY_HOST, query)
             values = {}
             data = urllib.parse.urlencode(values)
             try:
