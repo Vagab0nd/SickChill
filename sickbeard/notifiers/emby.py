@@ -48,7 +48,7 @@ class Notifier(object):
         if not emby_apikey:
             emby_apikey = sickbeard.EMBY_APIKEY
 
-        url = 'http://{0}/emby/openapi/Notifications/Admin'.format(host)
+        url = 'http://{0}/emby/Notifications/Admin'.format(host)
         values = {'Name': 'SickRage', 'Description': message, 'ImageUrl': sickbeard.LOGO_URL}
         data = json.dumps(values)
         try:
@@ -102,7 +102,7 @@ class Notifier(object):
             else:
                 query = ''
 
-            url = 'http://{0}/emby/openapi/Library/Series/Updated{1}'.format(sickbeard.EMBY_HOST, query)
+            url = 'http://{0}/emby/Library/Series/Updated{1}'.format(sickbeard.EMBY_HOST, query)
             values = {}
             data = urllib.parse.urlencode(values)
             try:
