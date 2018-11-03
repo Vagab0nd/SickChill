@@ -42,11 +42,10 @@ from mako.exceptions import RichTraceback
 from mako.lookup import TemplateLookup
 from mako.runtime import UNDEFINED
 from mako.template import Template as MakoTemplate
-from requests.compat import urljoin
+# noinspection PyUnresolvedReferences
+from requests.compat import unquote_plus, urljoin
 # noinspection PyUnresolvedReferences
 from six.moves import urllib
-# noinspection PyUnresolvedReferences
-from six.moves.urllib.parse import unquote_plus
 from tornado.concurrent import run_on_executor
 from tornado.escape import utf8, xhtml_escape, xhtml_unescape
 from tornado.gen import coroutine
@@ -4908,7 +4907,7 @@ class ConfigNotifications(Config):
             use_email=None, email_notify_onsnatch=None, email_notify_ondownload=None,
             email_notify_onsubtitledownload=None, email_host=None, email_port=25, email_from=None,
             email_tls=None, email_user=None, email_password=None, email_list=None, email_subject=None, email_show_list=None,
-            email_show=None, use_slack=False, slack_notify_snatch=None, slack_notify_download=None, slack_webhook=None,
+            email_show=None, use_slack=False, slack_notify_snatch=None, slack_notify_download=None, slack_notify_subtitledownload=None, slack_webhook=None,
             use_discord=False, discord_notify_snatch=None, discord_notify_download=None, discord_webhook=None, discord_name=None,
             discord_avatar_url=None, discord_tts=False):
 
@@ -5001,6 +5000,7 @@ class ConfigNotifications(Config):
         sickbeard.USE_SLACK = config.checkbox_to_value(use_slack)
         sickbeard.SLACK_NOTIFY_SNATCH = config.checkbox_to_value(slack_notify_snatch)
         sickbeard.SLACK_NOTIFY_DOWNLOAD = config.checkbox_to_value(slack_notify_download)
+        sickbeard.SLACK_NOTIFY_SUBTITLEDOWNLOAD = config.checkbox_to_value(slack_notify_subtitledownload)
         sickbeard.SLACK_WEBHOOK = slack_webhook
 
         sickbeard.USE_DISCORD = config.checkbox_to_value(use_discord)
