@@ -318,6 +318,7 @@ def validate_dir(process_path, release_name, failed, result):  # pylint: disable
             try:
                 NameParser().parse(found_file, cache_result=False)
             except (InvalidNameException, InvalidShowException) as e:
+                result.output += e
                 pass
             else:
                 return True
