@@ -2341,7 +2341,7 @@ var SICKCHILL = {
                     sortBy: getMeta('sickbeard.POSTER_SORTBY'),
                     sortAscending: getMeta('sickbeard.POSTER_SORTDIR'),
                     filter: function(itemElem) {
-                        const filters = getMeta('sickbeard.POST_FILTERBY');
+                        const filters = getMeta('sickbeard.POSTER_FILTERBY');
                         const status = $(itemElem).attr('data-status');
                         return filters && filters.indexOf(status) > - 1;
                     },
