@@ -588,6 +588,7 @@ TIMEZONE_DISPLAY = None
 THEME_NAME = None
 POSTER_SORTBY = None
 POSTER_SORTDIR = None
+POSTER_FILTERBY = None
 SICKCHILL_BACKGROUND = None
 SICKCHILL_BACKGROUND_PATH = None
 FANART_BACKGROUND = None
@@ -708,7 +709,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
             NEWZBIN_PASSWORD, GIT_PATH, MOVE_ASSOCIATED_FILES, DELETE_NON_ASSOCIATED_FILES, SYNC_FILES, POSTPONE_IF_SYNC_FILES, dailySearchScheduler, \
             NFO_RENAME, GUI_NAME, HOME_LAYOUT, HISTORY_LAYOUT, DISPLAY_SHOW_SPECIALS, COMING_EPS_LAYOUT, COMING_EPS_SORT, COMING_EPS_DISPLAY_PAUSED, \
             COMING_EPS_DISPLAY_SNATCHED, COMING_EPS_MISSED_RANGE, FUZZY_DATING, TRIM_ZERO, DATE_PRESET, TIME_PRESET, TIME_PRESET_W_SECONDS, THEME_NAME, \
-            POSTER_SORTBY, POSTER_SORTDIR, HISTORY_LIMIT, CREATE_MISSING_SHOW_DIRS, ADD_SHOWS_WO_DIR, USE_FREE_SPACE_CHECK, METADATA_WDTV, METADATA_TIVO, \
+            POSTER_SORTBY, POSTER_SORTDIR, POSTER_FILTERBY, HISTORY_LIMIT, CREATE_MISSING_SHOW_DIRS, ADD_SHOWS_WO_DIR, USE_FREE_SPACE_CHECK, METADATA_WDTV, METADATA_TIVO, \
             METADATA_MEDE8ER, IGNORE_WORDS, TRACKERS_LIST, IGNORED_SUBS_LIST, REQUIRE_WORDS, CALENDAR_UNPROTECTED, CALENDAR_ICONS, NO_RESTART, USE_SUBTITLES,\
             SUBTITLES_INCLUDE_SPECIALS, SUBTITLES_LANGUAGES, SUBTITLES_DIR, SUBTITLES_SERVICES_LIST, SUBTITLES_SERVICES_ENABLED, SUBTITLES_HISTORY, \
             SUBTITLES_FINDER_FREQUENCY, SUBTITLES_MULTI, SUBTITLES_KEEP_ONLY_WANTED, EMBEDDED_SUBTITLES_ALL, SUBTITLES_EXTRA_SCRIPTS, SUBTITLES_PERFECT_MATCH,\
@@ -1392,6 +1393,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         TIMEZONE_DISPLAY = check_setting_str(CFG, 'GUI', 'timezone_display', 'local')
         POSTER_SORTBY = check_setting_str(CFG, 'GUI', 'poster_sortby', 'name')
         POSTER_SORTDIR = check_setting_int(CFG, 'GUI', 'poster_sortdir', 1, min_val=0, max_val=1)
+        POSTER_FILTERBY = check_setting_int(CFG, 'GUI', 'poster_filterby', ['paused', 'continuing', 'ended'])
         DISPLAY_ALL_SEASONS = check_setting_bool(CFG, 'General', 'display_all_seasons', True)
 
         if check_section(CFG, 'Shares'):
@@ -2261,7 +2263,8 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
             'time_preset': TIME_PRESET_W_SECONDS,
             'timezone_display': TIMEZONE_DISPLAY,
             'poster_sortby': POSTER_SORTBY,
-            'poster_sortdir': POSTER_SORTDIR
+            'poster_sortdir': POSTER_SORTDIR,
+            'poster_filterby': POSTER_FILTERBY
         },
 
         'Subtitles': {

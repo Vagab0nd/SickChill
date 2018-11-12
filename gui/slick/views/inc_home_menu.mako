@@ -58,6 +58,23 @@
                     </select>
                 </label>
                 <label>
+                    <span class="show-option">${_('Status Filter')}:</span>
+                    <button id="popover" type="button" class="btn pull-right" data-original-title="" title="" aria-describedby="popover633648">Select statuses <b class="caret"></b></button>
+                    <div class="popover fade bottom in" role="tooltip" id="popover633648" style="top: 26px; left: 816.813px; display: block;">
+                        <div class="arrow" style="left: 50%;"></div>
+                        <h3 class="popover-title" style="display: none;"></h3>
+                        <div class="popover-content">
+                            <div id="popover-target">
+                                <span class="tablesorter-column-selector">
+                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Continuing" ${('', 'class="checked"')[sickbeard.POSTER_FILTERBY.indexOf('Continuing') > -1]}>${_('Continuing')}</label>
+                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Ended" ${('', 'class="checked"')[sickbeard.POSTER_FILTERBY.indexOf('Ended') > -1]}>${_('Ended')}</label>
+                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Paused" ${('', 'class="checked"')[sickbeard.POSTER_FILTERBY.indexOf('Paused') > -1]}>${_('Paused')}</label>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+                <label>
                     <span class="show-option">${_('Poster Size')}:</span>
                     <div style="width: 100px; display: inline-block; margin-left: 7px;" id="posterSizeSlider"></div>
                 </label>
