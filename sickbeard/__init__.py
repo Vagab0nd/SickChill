@@ -1393,7 +1393,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         TIMEZONE_DISPLAY = check_setting_str(CFG, 'GUI', 'timezone_display', 'local')
         POSTER_SORTBY = check_setting_str(CFG, 'GUI', 'poster_sortby', 'name')
         POSTER_SORTDIR = check_setting_int(CFG, 'GUI', 'poster_sortdir', 1, min_val=0, max_val=1)
-        POSTER_FILTERBY = check_setting_str(CFG, 'GUI', 'poster_filterby', ['paused', 'continuing', 'ended'])
+        POSTER_FILTERBY =  check_setting_str(CFG, 'GUI', 'poster_filterby', 'Paused,Continuing,Ended').split(',')
         DISPLAY_ALL_SEASONS = check_setting_bool(CFG, 'General', 'display_all_seasons', True)
 
         if check_section(CFG, 'Shares'):
@@ -2264,7 +2264,7 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
             'timezone_display': TIMEZONE_DISPLAY,
             'poster_sortby': POSTER_SORTBY,
             'poster_sortdir': POSTER_SORTDIR,
-            'poster_filterby': POSTER_FILTERBY
+            'poster_filterby': ','.join(POSTER_FILTERBY)
         },
 
         'Subtitles': {
