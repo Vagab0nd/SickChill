@@ -99,8 +99,14 @@
                             data_date = '5000000000.0'
                         elif display_status == 'Ended':
                             data_date = '5000000100.0'
+
+                    data_status = ''
+                    if display_status == 'Continuing' and curShow.paused:
+                        data_status = 'Paused'
+                    else:
+                        data_status = display_status
                 %>
-                <div class="show-container" id="show${curShow.indexerid}" data-name="${curShow.sort_name}" data-date="${data_date}" data-network="${curShow.network}" data-progress="${progressbar_percent}">
+                <div class="show-container" id="show${curShow.indexerid}" data-name="${curShow.sort_name}" data-status="${data_status}" data-date="${data_date}" data-network="${curShow.network}" data-progress="${progressbar_percent}">
                     <div class="show-image">
                         <a href="${srRoot}/home/displayShow?show=${curShow.indexerid}"><img alt="" class="show-image" src="" data-src="${srRoot}/showPoster/?show=${curShow.indexerid}&amp;which=poster_thumb" /></a>
                     </div>
@@ -111,7 +117,6 @@
                         <div class="show-title">
                             ${curShow.name}
                         </div>
-
                         <div class="show-date">
                             % if cur_airs_next:
                             <% ldatetime = sbdatetime.sbdatetime.convert_to_setting(network_timezones.parse_date_time(cur_airs_next, curShow.airs, curShow.network)) %>

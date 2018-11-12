@@ -2340,6 +2340,11 @@ var SICKCHILL = {
                     itemSelector: '.show-container',
                     sortBy: getMeta('sickbeard.POSTER_SORTBY'),
                     sortAscending: getMeta('sickbeard.POSTER_SORTDIR'),
+                    filter: function(itemElem) {
+                        const filters = getMeta('sickbeard.POST_FILTERBY');
+                        const status = $(itemElem).attr('data-status');
+                        return filters && filters.indexOf(status) > - 1;
+                    },
                     layoutMode: 'masonry',
                     masonry: {
                         isFitWidth: true
