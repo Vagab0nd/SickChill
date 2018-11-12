@@ -66,9 +66,9 @@
                         <div class="popover-content">
                             <div id="popover-target">
                                 <span class="tablesorter-column-selector">
-                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Continuing" ${('', 'class="checked"')[sickbeard.POSTER_FILTERBY.indexOf('Continuing') > -1]}>${_('Continuing')}</label>
-                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Ended" ${('', 'class="checked"')[sickbeard.POSTER_FILTERBY.indexOf('Ended') > -1]}>${_('Ended')}</label>
-                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Paused" ${('', 'class="checked"')[sickbeard.POSTER_FILTERBY.indexOf('Paused') > -1]}>${_('Paused')}</label>
+                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Continuing" ${('', 'class="checked"')['Continuing' in sickbeard.POSTER_FILTERBY]}>${_('Continuing')}</label>
+                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Ended" ${('', 'class="checked"')['Ended' in sickbeard.POSTER_FILTERBY]}>${_('Ended')}</label>
+                                    <label><input type="Continuing" value= data-sort="${srRoot}/changePosterFilterByStatus/?filter=Paused" ${('', 'class="checked"')['Paused' in sickbeard.POSTER_FILTERBY]}>${_('Paused')}</label>
                                 </span>
                             </div>
                         </div>
