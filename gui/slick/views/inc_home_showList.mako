@@ -102,9 +102,9 @@
 
                     data_status = ''
                     if display_status == 'Continuing' and curShow.paused:
-                        data_status = 'Paused'
+                        data_status = 'paused'
                     else:
-                        data_status = display_status
+                        data_status = display_status.lower()
                 %>
                 <div class="show-container" id="show${curShow.indexerid}" data-name="${curShow.sort_name}" data-status="${data_status}" data-date="${data_date}" data-network="${curShow.network}" data-progress="${progressbar_percent}">
                     <div class="show-image">

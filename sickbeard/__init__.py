@@ -588,7 +588,7 @@ TIMEZONE_DISPLAY = None
 THEME_NAME = None
 POSTER_SORTBY = None
 POSTER_SORTDIR = None
-POSTER_FILTERBY = None
+POSTER_FILTERBY = []
 SICKCHILL_BACKGROUND = None
 SICKCHILL_BACKGROUND_PATH = None
 FANART_BACKGROUND = None
@@ -1393,7 +1393,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         TIMEZONE_DISPLAY = check_setting_str(CFG, 'GUI', 'timezone_display', 'local')
         POSTER_SORTBY = check_setting_str(CFG, 'GUI', 'poster_sortby', 'name')
         POSTER_SORTDIR = check_setting_int(CFG, 'GUI', 'poster_sortdir', 1, min_val=0, max_val=1)
-        POSTER_FILTERBY =  check_setting_str(CFG, 'GUI', 'poster_filterby', 'Paused,Continuing,Ended').split(',')
+        POSTER_FILTERBY =  check_setting_str(CFG, 'GUI', 'poster_filterby', 'paused,continuing,ended').split(',')
         DISPLAY_ALL_SEASONS = check_setting_bool(CFG, 'General', 'display_all_seasons', True)
 
         if check_section(CFG, 'Shares'):
