@@ -61,7 +61,6 @@
         <meta data-var="sickbeard.HOME_LAYOUT" data-content="${sickbeard.HOME_LAYOUT}">
         <meta data-var="sickbeard.POSTER_SORTBY" data-content="${sickbeard.POSTER_SORTBY}">
         <meta data-var="sickbeard.POSTER_SORTDIR" data-content="${sickbeard.POSTER_SORTDIR}">
-        <meta data-var="sickbeard.POSTER_FILTERBY" data-content="${str(','.join(sickbeard.POSTER_FILTERBY))}">
         <meta data-var="sickbeard.ROOT_DIRS" data-content="${sickbeard.ROOT_DIRS}">
         <meta data-var="sickbeard.SORT_ARTICLE" data-content="${sickbeard.SORT_ARTICLE}">
         <meta data-var="sickbeard.TIME_PRESET" data-content="${sickbeard.TIME_PRESET}">
