@@ -440,6 +440,7 @@ class WebRoot(WebHandler):
         else:
             sickbeard.POSTER_FILTERBY.append(str(filter))
         sickbeard.save_config()
+        logger.log(str(','.join(POSTER_FILTERBY)))
 
     def setHistoryLayout(self, layout):
 
@@ -503,7 +504,7 @@ class WebRoot(WebHandler):
         return t.render(next_week=next_week1, today=today, results=results, layout=layout,
                         title=_('Schedule'), header=_('Schedule'), topmenu='schedule',
                         controller="schedule", action="index")
-
+     
 
 class CalendarHandler(BaseHandler):
     def get(self, *args, **kwargs):
