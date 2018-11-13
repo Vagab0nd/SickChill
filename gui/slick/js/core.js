@@ -2445,7 +2445,14 @@ var SICKCHILL = {
             });
 
             $('input[filter-by-status]').on('change', function () {
-                $.post($(this).find('input[value=' + $(this).val() + ']').attr('data-filter'));
+                $('.show-grid').isotope.filter({
+                    filter: function (itemElem) {
+                        const filters = getMeta('sickbeard.POSTER_FILTERBY');
+                        const status = $(this).attr('data-status');
+                        return filters && filters.indexOf(status) > - 1;
+                    }
+                });
+                $.post($(this).attr('data-filter'));
             });
 
             $('#popover').popover({
