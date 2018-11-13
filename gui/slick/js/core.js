@@ -2445,7 +2445,7 @@ var SICKCHILL = {
             });
 
             $('input[filter-by-status]').on('change', function () {
-                $('.show-grid').isotope.filter({
+                $('.show-grid').isotope({
                     filter: function (itemElem) {
                         const filters = getMeta('sickbeard.POSTER_FILTERBY');
                         const status = $(this).attr('data-status');
