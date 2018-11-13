@@ -433,6 +433,7 @@ class WebRoot(WebHandler):
     @staticmethod
     def changePosterFilterByStatus(filter):
 
+        logger.log(str(','.join(sickbeard.POSTER_FILTERBY)), logger.INFO)
         if filter not in ('paused', 'continuing', 'ended'):
             pass
         elif filter in sickbeard.POSTER_FILTERBY:
@@ -440,7 +441,7 @@ class WebRoot(WebHandler):
         else:
             sickbeard.POSTER_FILTERBY.append(str(filter))
         sickbeard.save_config()
-        logger.log(','.join(sickbeard.POSTER_FILTERBY))
+        logger.log(str(','.join(sickbeard.POSTER_FILTERBY)), logger.INFO)
 
     def setHistoryLayout(self, layout):
 
