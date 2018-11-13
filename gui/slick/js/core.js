@@ -2444,6 +2444,10 @@ var SICKCHILL = {
                 $.post($(this).find('option[value=' + $(this).val() + ']').attr('data-sort'));
             });
 
+            $('input[filter-by-status]').on('change', function () {
+                $.post($(this).find('input[value=' + $(this).val() + ']').attr('data-filter'));
+            });
+
             $('#popover').popover({
                 placement: 'bottom',
                 html: true, // Required if content has HTML
