@@ -440,7 +440,7 @@ class WebRoot(WebHandler):
         else:
             sickbeard.POSTER_FILTERBY.append(str(filter))
         sickbeard.save_config()
-        logger.log(str(','.join(POSTER_FILTERBY)))
+        logger.log(','.join(sickbeard.POSTER_FILTERBY))
 
     def setHistoryLayout(self, layout):
 
