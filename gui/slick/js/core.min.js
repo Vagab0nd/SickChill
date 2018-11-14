@@ -2457,7 +2457,7 @@ var SICKCHILL = {
                 $('.show-grid').isotope({
                     filter: function (itemElem) {
                         let filters = '';
-                        $('input[filter-by-status]').each(function (index) {
+                        $('.popover').find('input[filter-by-status]').each(function (index) {
                             if ($(this).is(':checked')) {
                                 filters = filters + ',' + $(this).val();
                             }

@@ -59,23 +59,23 @@
                 </label>
                 <label>
                     <span class="show-option">${_('Status Filter')}:</span>
-                    <button id="popover" type="button" class="btn pull-right" data-original-title="" title="" aria-describedby="popover633648">Select statuses <b class="caret"></b></button>
+                    <button id="popover" type="button" class="btn pull-right" data-original-title="" title="">Select statuses <b class="caret"></b></button>
                     <div id="popover-content" style="display: none">
                         <div role="tooltip" style="display: block;">
                             <div class="popover-content">
                                 <div id="popover-target">
-                                    <span class="tablesorter-column-selector">
+                                    <span>
                                         <label><input filter-by-status type="checkbox" value="continuing" data-filter="${srRoot}/changePosterFilterByStatus/?filter=continuing" ${('', 'checked="checked"')['continuing' in sickbeard.POSTER_FILTERBY]}>${_('Continuing')}</label>
                                         <label><input filter-by-status type="checkbox" value="ended" data-filter="${srRoot}/changePosterFilterByStatus/?filter=ended" ${('', 'checked="checked"')['ended' in sickbeard.POSTER_FILTERBY]}>${_('Ended')}</label>
                                         <label><input filter-by-status type="checkbox" value="paused" data-filter="${srRoot}/changePosterFilterByStatus/?filter=paused" ${('', 'checked="checked"')['paused' in sickbeard.POSTER_FILTERBY]}>${_('Paused')}</label>
                                     </span>
                                 </div>
                             </div>
-                        </div>
+                        </div>hjnui3
                     </div>
                 </label>
                 <label>
-                    <span class="show-option">${_('Poster Size')}:</span>
+                    <span class="show-option">${_('2er Size')}:</span>
                     <div style="width: 100px; display: inline-block; margin-left: 7px;" id="posterSizeSlider"></div>
                 </label>
             % endif
