@@ -60,16 +60,16 @@
                 <label>
                     <span class="show-option">${_('Status Filter')}:</span>
                     <button id="popover" type="button" class="btn pull-right" data-original-title="" title="" aria-describedby="popover633648">Select statuses <b class="caret"></b></button>
-                    <div class="popover fade bottom in" role="tooltip" id="popover633648" style="top: 26px; left: 816.813px; display: block;">
-                        <div class="arrow" style="left: 50%;"></div>
-                        <h3 class="popover-title" style="display: none;"></h3>
-                        <div class="popover-content">
-                            <div id="popover-target">
-                                <span class="tablesorter-column-selector">
-                                    <label><input filter-by-status type="checkbox" value="continuing" data-filter="${srRoot}/changePosterFilterByStatus/?filter=continuing" ${('', 'checked="checked"')['continuing' in sickbeard.POSTER_FILTERBY]}>${_('Continuing')}</label>
-                                    <label><input filter-by-status type="checkbox" value="ended" data-filter="${srRoot}/changePosterFilterByStatus/?filter=ended" ${('', 'checked="checked"')['ended' in sickbeard.POSTER_FILTERBY]}>${_('Ended')}</label>
-                                    <label><input filter-by-status type="checkbox" value="paused" data-filter="${srRoot}/changePosterFilterByStatus/?filter=paused" ${('', 'checked="checked"')['paused' in sickbeard.POSTER_FILTERBY]}>${_('Paused')}</label>
-                                </span>
+                    <div id="popover-content" style="display: none">
+                        <div role="tooltip" style="display: block;">
+                            <div class="popover-content">
+                                <div id="popover-target">
+                                    <span class="tablesorter-column-selector">
+                                        <label><input filter-by-status type="checkbox" value="continuing" data-filter="${srRoot}/changePosterFilterByStatus/?filter=continuing" ${('', 'checked="checked"')['continuing' in sickbeard.POSTER_FILTERBY]}>${_('Continuing')}</label>
+                                        <label><input filter-by-status type="checkbox" value="ended" data-filter="${srRoot}/changePosterFilterByStatus/?filter=ended" ${('', 'checked="checked"')['ended' in sickbeard.POSTER_FILTERBY]}>${_('Ended')}</label>
+                                        <label><input filter-by-status type="checkbox" value="paused" data-filter="${srRoot}/changePosterFilterByStatus/?filter=paused" ${('', 'checked="checked"')['paused' in sickbeard.POSTER_FILTERBY]}>${_('Paused')}</label>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
