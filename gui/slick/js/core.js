@@ -2447,7 +2447,13 @@ var SICKCHILL = {
             $('input[filter-by-status]').on('change', function () {
                 $('.show-grid').isotope({
                     filter: function (itemElem) {
-                        const filters = getMeta('sickbeard.POSTER_FILTERBY');
+                        const filters = '';
+                        $('input[filter-by-status]').each(function (index) {
+                            if ($(this).is(':checked')) {
+                                filters = filters + ',' + $(this).val();
+                            }
+                        });
+
                         const status = $(this).attr('data-status');
                         return filters && filters.indexOf(status) > - 1;
                     }
