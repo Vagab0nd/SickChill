@@ -2453,23 +2453,6 @@ var SICKCHILL = {
                 $.post($(this).find('option[value=' + $(this).val() + ']').attr('data-sort'));
             });
 
-            $('input[filter-by-status]').on('change', function () {
-                $('.show-grid').isotope({
-                    filter: function (itemElem) {
-                        let filters = '';
-                        $('.popover').find('input[filter-by-status]').each(function (index) {
-                            if ($(this).is(':checked')) {
-                                filters = filters + ',' + $(this).val();
-                            }
-                        });
-
-                        const status = $(this).attr('data-status');
-                        return filters && filters.indexOf(status) > - 1;
-                    }
-                });
-                $.post($(this).attr('data-filter'));
-            });
-
             $('#popover').popover({
                 placement: 'bottom',
                 html: true, // Required if content has HTML
