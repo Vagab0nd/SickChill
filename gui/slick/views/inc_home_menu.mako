@@ -75,7 +75,7 @@
                     </div>
                 </label>
                 <label>
-                    <span class="show-option">${_('2er Size')}:</span>
+                    <span class="show-option">${_('Poster Size')}:</span>
                     <div style="width: 100px; display: inline-block; margin-left: 7px;" id="posterSizeSlider"></div>
                 </label>
             % endif
