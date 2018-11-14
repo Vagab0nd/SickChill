@@ -439,6 +439,7 @@ class WebRoot(WebHandler):
             sickbeard.POSTER_FILTERBY.remove(str(filter))
         else:
             sickbeard.POSTER_FILTERBY.append(str(filter))
+
         sickbeard.save_config()
         logger.log(str(','.join(sickbeard.POSTER_FILTERBY)), logger.DEBUG)
 
