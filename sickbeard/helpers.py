@@ -192,7 +192,8 @@ def remove_non_release_groups(name):
         r'^\[ www\.TorrentDay\.com \] - ': 'searchre',
         r'\[NO-RAR\] - \[ www\.torrentday\.com \]$': 'searchre',
         r'^www\.Torrenting\.com\.-\.': 'searchre',
-        r'-Scrambled$': 'searchre'
+        r'-Scrambled$': 'searchre',
+        r'^Torrent9\.PH ---> ': 'searchre'
     }
 
     _name = name
@@ -390,14 +391,18 @@ def copyFile(srcFile, destFile):
     try:
         ek(shutil.copyfile, srcFile, destFile)
     except (SpecialFileError, Error) as error:
-        logger.log('{0}'.format(error), logger.WARNING)
+        # noinspection PyProtectedMember
+        if not shutil._samefile(srcFile, destFile):
+            logger.log('{0}'.format(error), logger.WARNING)
+            return
     except Exception as error:
         logger.log('{0}'.format(error), logger.ERROR)
-    else:
-        try:
-            ek(shutil.copymode, srcFile, destFile)
-        except OSError:
-            pass
+        return
+
+    try:
+        ek(shutil.copymode, srcFile, destFile)
+    except OSError:
+        pass
 
 
 def moveFile(srcFile, destFile):
