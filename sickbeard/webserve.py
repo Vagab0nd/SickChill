@@ -1006,6 +1006,14 @@ class Home(WebRoot):
             return _("Slack message failed")
 
     @staticmethod
+    def testMatrix():
+        result = notifiers.matrix_notifier.test_notify()
+        if result:
+            return _("Matrix message successful")
+        else:
+            return _("Matrix message failed")
+
+    @staticmethod
     def testDiscord():
         result = notifiers.discord_notifier.test_notify()
         if result:
@@ -4243,7 +4251,8 @@ class ConfigSearch(Config):
                    download_propers=None, check_propers_interval=None, allow_high_priority=None, sab_forced=None,
                    randomize_providers=None, use_failed_downloads=None, delete_failed=None,
                    torrent_dir=None, torrent_username=None, torrent_password=None, torrent_host=None,
-                   torrent_label=None, torrent_label_anime=None, torrent_path=None, torrent_verify_cert=None,
+                   torrent_label=None, torrent_label_anime=None, torrent_path=None, torrent_download_dir_deluge=None,
+                   torrent_complete_dir_deluge=None, torrent_verify_cert=None,
                    torrent_seed_time=None, torrent_paused=None, torrent_high_bandwidth=None,
                    torrent_rpcurl=None, torrent_auth_type=None, ignore_words=None, trackers_list=None, require_words=None, ignored_subs_list=None,
                    syno_dsm_host=None, syno_dsm_user=None, syno_dsm_pass=None, syno_dsm_path=None):
@@ -4311,6 +4320,8 @@ class ConfigSearch(Config):
         sickbeard.TORRENT_VERIFY_CERT = config.checkbox_to_value(torrent_verify_cert)
 
         sickbeard.TORRENT_PATH = torrent_path.rstrip('/\\')
+        sickbeard.TORRENT_DELUGE_DOWNLOAD_DIR = torrent_download_dir_deluge.rstrip('/\\')
+        sickbeard.TORRENT_DELUGE_COMPLETE_DIR = torrent_complete_dir_deluge.rstrip('/\\')
 
         sickbeard.TORRENT_SEED_TIME = torrent_seed_time
         sickbeard.TORRENT_PAUSED = config.checkbox_to_value(torrent_paused)
@@ -4908,10 +4919,12 @@ class ConfigNotifications(Config):
             use_pushbullet=None, pushbullet_notify_onsnatch=None, pushbullet_notify_ondownload=None,
             pushbullet_notify_onsubtitledownload=None, pushbullet_api=None, pushbullet_device=None,
             pushbullet_device_list=None, pushbullet_channel_list=None, pushbullet_channel=None,
-            use_email=None, email_notify_onsnatch=None, email_notify_ondownload=None,
+            use_email=None, email_notify_onsnatch=None, email_notify_ondownload=None, email_notify_onpostprocess=None,
             email_notify_onsubtitledownload=None, email_host=None, email_port=25, email_from=None,
             email_tls=None, email_user=None, email_password=None, email_list=None, email_subject=None, email_show_list=None,
-            email_show=None, use_slack=False, slack_notify_snatch=None, slack_notify_download=None, slack_notify_subtitledownload=None, slack_webhook=None,
+            email_show=None, use_slack=False, slack_notify_snatch=None, slack_notify_download=None, slack_notify_subtitledownload=None, slack_webhook=None, slack_icon_emoji=None,
+            use_matrix=False, matrix_notify_snatch=None, matrix_notify_download=None, matrix_notify_subtitledownload=None,
+            matrix_api_token=None, matrix_server=None, matrix_room=None,
             use_discord=False, discord_notify_snatch=None, discord_notify_download=None, discord_webhook=None, discord_name=None,
             discord_avatar_url=None, discord_tts=False):
 
@@ -5006,6 +5019,15 @@ class ConfigNotifications(Config):
         sickbeard.SLACK_NOTIFY_DOWNLOAD = config.checkbox_to_value(slack_notify_download)
         sickbeard.SLACK_NOTIFY_SUBTITLEDOWNLOAD = config.checkbox_to_value(slack_notify_subtitledownload)
         sickbeard.SLACK_WEBHOOK = slack_webhook
+        sickbeard.SLACK_ICON_EMOJI = slack_icon_emoji
+
+        sickbeard.USE_MATRIX = config.checkbox_to_value(use_matrix)
+        sickbeard.MATRIX_NOTIFY_SNATCH = config.checkbox_to_value(matrix_notify_snatch)
+        sickbeard.MATRIX_NOTIFY_DOWNLOAD = config.checkbox_to_value(matrix_notify_download)
+        sickbeard.MATRIX_NOTIFY_SUBTITLEDOWNLOAD = config.checkbox_to_value(matrix_notify_subtitledownload)
+        sickbeard.MATRIX_API_TOKEN = matrix_api_token
+        sickbeard.MATRIX_SERVER = matrix_server
+        sickbeard.MATRIX_ROOM = matrix_room
 
         sickbeard.USE_DISCORD = config.checkbox_to_value(use_discord)
         sickbeard.DISCORD_NOTIFY_SNATCH = config.checkbox_to_value(discord_notify_snatch)
@@ -5072,6 +5094,7 @@ class ConfigNotifications(Config):
         sickbeard.USE_EMAIL = config.checkbox_to_value(use_email)
         sickbeard.EMAIL_NOTIFY_ONSNATCH = config.checkbox_to_value(email_notify_onsnatch)
         sickbeard.EMAIL_NOTIFY_ONDOWNLOAD = config.checkbox_to_value(email_notify_ondownload)
+        sickbeard.EMAIL_NOTIFY_ONPOSTPROCESS = config.checkbox_to_value(email_notify_onpostprocess)
         sickbeard.EMAIL_NOTIFY_ONSUBTITLEDOWNLOAD = config.checkbox_to_value(email_notify_onsubtitledownload)
         sickbeard.EMAIL_HOST = config.clean_host(email_host)
         sickbeard.EMAIL_PORT = try_int(email_port, 25)
