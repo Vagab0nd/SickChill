@@ -277,6 +277,19 @@ class WebRoot(WebHandler):
         sickbeard.POSTER_SORTDIR = int(direction)
         sickbeard.save_config()
 
+    @staticmethod
+    def changePosterFilterByStatus(filter):
+
+        if filter not in ('paused', 'continuing', 'ended'):
+            pass
+        elif filter in sickbeard.POSTER_FILTERBY:
+            sickbeard.POSTER_FILTERBY.remove(str(filter))
+        else:
+            sickbeard.POSTER_FILTERBY.append(str(filter))
+
+        sickbeard.save_config()
+        logger.log(str(','.join(sickbeard.POSTER_FILTERBY)), logger.DEBUG)
+
     def setHistoryLayout(self, layout):
 
         if layout not in ('compact', 'detailed'):
