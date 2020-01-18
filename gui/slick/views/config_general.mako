@@ -8,9 +8,10 @@
     from sickbeard.filters import hide
     from sickbeard.sbdatetime import sbdatetime, date_presets, time_presets
     from sickbeard.helpers import anon_url, LOCALE_NAMES
+    import sickchill
 
     def lang_name(code):
-        return LOCALE_NAMES.get(code, {}).get("name", u"Unknown")
+        return LOCALE_NAMES.get(code, {}).get("name", "Unknown")
 %>
 
 <%block name="tabs">
@@ -43,7 +44,8 @@
                             <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
                                 <div class="row">
                                     <div class="col-md-12">
-                                        <select name="indexerDefaultLang" id="indexerDefaultLang" class="form-control form-control-inline input-sm input350 bfh-languages" data-language=${sickbeard.INDEXER_DEFAULT_LANGUAGE} data-available="${','.join(sickbeard.indexerApi().config['valid_languages'])}"></select>
+                                        <select name="indexerDefaultLang" id="indexerDefaultLang" class="form-control form-control-inline input-sm input350
+                                        bfh-languages" data-language="${sickbeard.INDEXER_DEFAULT_LANGUAGE}" data-available="${','.join(sickchill.indexer.languages())}"></select>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -191,8 +193,8 @@
                                     <div class="col-md-12">
                                         <select id="indexer_default" name="indexer_default" class="form-control input-sm input150">
                                             <option value="0" ${('', 'selected="selected"')[sickbeard.INDEXER_DEFAULT == 0]}>${_('All Indexers')}</option>
-                                            % for indexer in sickbeard.indexerApi().indexers:
-                                                <option value="${indexer}" ${('', 'selected="selected"')[sickbeard.INDEXER_DEFAULT == indexer]}>${sickbeard.indexerApi().indexers[indexer]}</option>
+                                            % for indexer, instance in sickchill.indexer:
+                                                <option value="${indexer}" ${('', 'selected="selected"')[sickbeard.INDEXER_DEFAULT == indexer]}>${instance.name}</option>
                                             % endfor
                                         </select>
                                     </div>
@@ -478,6 +480,27 @@
                             <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
                                 <input type="checkbox" name="display_all_seasons" id="display_all_seasons" ${('', 'checked="checked"')[bool(sickbeard.DISPLAY_ALL_SEASONS)]}>
                                 <label for="display_all_seasons">${_('on the show summary page')}</label>
+                            </div>
+                        </div>
+
+                        <div class="field-pair row">
+                            <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
+                                <label class="component-title">${_('Days to wait before updating ended shows')}</label>
+                            </div>
+                            <div class="col-lg-9 col-md-8 col-sm-7 col-xs-12 component-desc">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <input class="form-control input-sm input75" type="number" name="ended_shows_update_interval" id="ended_shows_update_interval" min="-1" max="365"
+                                               value="${sickbeard.ENDED_SHOWS_UPDATE_INTERVAL}">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <label for="ended_shows_update_interval">
+                                            ${_('Ended shows will only be updated after this many days have passed, if there is an update for the show')}
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

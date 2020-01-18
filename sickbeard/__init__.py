@@ -16,10 +16,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with SickChill. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=too-many-lines
 
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 
+# Stdlib Imports
 import datetime
 import gettext
 import os
@@ -30,26 +30,29 @@ import socket
 import sys
 from threading import Lock
 
+# Third Party Imports
 import rarfile
 import requests
 from configobj import ConfigObj
 from tornado.locale import load_gettext_translations
 
-from sickbeard import (auto_postprocessor, dailysearcher, db, helpers, logger, metadata, naming, post_processing_queue, properFinder, providers,
-                       scene_exceptions, scheduler, search_queue, searchBacklog, show_queue, showUpdater, subtitles, traktChecker, versionChecker)
-from sickbeard.common import ARCHIVED, IGNORED, MULTI_EP_STRINGS, SD, SKIPPED, WANTED
-from sickbeard.config import check_section, check_setting_bool, check_setting_float, check_setting_int, check_setting_str, ConfigMigrator
-from sickbeard.databases import cache_db, failed_db, mainDB
-from sickbeard.indexers import indexer_api
-from sickbeard.indexers.indexer_exceptions import (indexer_attributenotfound, indexer_episodenotfound, indexer_error, indexer_exception, indexer_seasonnotfound,
-                                                   indexer_showincomplete, indexer_shownotfound, indexer_userabort)
-from sickbeard.numdict import NumDict
-from sickbeard.providers.newznab import NewznabProvider
-from sickbeard.providers.rsstorrent import TorrentRssProvider
+# First Party Imports
+import sickchill
+from sickchill import show_updater
 from sickchill.helper import setup_github
 from sickchill.helper.encoding import ek
 from sickchill.helper.exceptions import ex
 from sickchill.system.Shutdown import Shutdown
+
+# Local Folder Imports
+from . import (auto_postprocessor, clients, dailysearcher, db, helpers, logger, metadata, naming, post_processing_queue, properFinder, providers,
+               scene_exceptions, scheduler, search_queue, searchBacklog, show_queue, subtitles, traktChecker, versionChecker)
+from .common import ARCHIVED, IGNORED, MULTI_EP_STRINGS, SD, SKIPPED, WANTED
+from .config import check_section, check_setting_bool, check_setting_float, check_setting_int, check_setting_str, ConfigMigrator
+from .databases import cache_db, failed_db, mainDB
+from .numdict import NumDict
+from .providers.newznab import NewznabProvider
+from .providers.rsstorrent import TorrentRssProvider
 
 gettext.install('messages', unicode=1, codeset='UTF-8', names=["ngettext"])
 
@@ -64,9 +67,8 @@ dynamic_strings = (
     _('Talk-Show'), _('Science-Fiction')
 )
 
-
+# noinspection PyUnresolvedReferences
 requests.packages.urllib3.disable_warnings()
-indexerApi = indexer_api.indexerApi
 
 PID = None
 
@@ -223,7 +225,7 @@ STATUS_DEFAULT = None
 STATUS_DEFAULT_AFTER = None
 SEASON_FOLDERS_DEFAULT = False
 SUBTITLES_DEFAULT = False
-INDEXER_DEFAULT = None
+INDEXER_DEFAULT = 1
 INDEXER_TIMEOUT = None
 SCENE_DEFAULT = False
 ANIME_DEFAULT = False
@@ -631,6 +633,7 @@ TRACKERS_LIST += "udp://glotorrents.pw:6969/announce,udp://tracker.openbittorren
 TRACKERS_LIST += "udp://9.rarbg.to:2710/announce"
 
 REQUIRE_WORDS = ""
+PREFER_WORDS = ""
 IGNORED_SUBS_LIST = "dk,fin,heb,kor,nor,nordic,pl,swe"
 SYNC_FILES = "!sync,lftp-pget-status,bts,!qb,!qB"
 
@@ -670,15 +673,17 @@ UNPACK_DIR = ''
 UNRAR_TOOL = rarfile.UNRAR_TOOL
 ALT_UNRAR_TOOL = rarfile.ALT_TOOL
 
+ENDED_SHOWS_UPDATE_INTERVAL = 7
+
 
 def get_backlog_cycle_time():
     cycletime = DAILYSEARCH_FREQUENCY * 2 + 7
     return max([cycletime, 320])
 
 
-def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+def initialize(consoleLogging=True):
     with INIT_LOCK:
-        # pylint: disable=global-statement
+
         global BRANCH, GIT_RESET, GIT_REMOTE, GIT_REMOTE_URL, CUR_COMMIT_HASH, CUR_COMMIT_BRANCH, ACTUAL_LOG_DIR, LOG_DIR, LOG_NR, LOG_SIZE, WEB_PORT, WEB_LOG,\
             ENCRYPTION_VERSION, ENCRYPTION_SECRET, WEB_ROOT, WEB_USERNAME, WEB_PASSWORD, WEB_HOST, WEB_IPV6, WEB_COOKIE_SECRET, WEB_USE_GZIP, API_KEY,\
             ENABLE_HTTPS, HTTPS_CERT, HTTPS_KEY, HANDLE_REVERSE_PROXY, USE_NZBS, USE_TORRENTS, NZB_METHOD, NZB_DIR, DOWNLOAD_PROPERS, RANDOMIZE_PROVIDERS, \
@@ -728,7 +733,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
             NFO_RENAME, GUI_NAME, HOME_LAYOUT, HISTORY_LAYOUT, DISPLAY_SHOW_SPECIALS, COMING_EPS_LAYOUT, COMING_EPS_SORT, COMING_EPS_DISPLAY_PAUSED, \
             COMING_EPS_DISPLAY_SNATCHED, COMING_EPS_MISSED_RANGE, FUZZY_DATING, TRIM_ZERO, DATE_PRESET, TIME_PRESET, TIME_PRESET_W_SECONDS, THEME_NAME, \
             POSTER_SORTBY, POSTER_SORTDIR, POSTER_FILTERBY, HISTORY_LIMIT, CREATE_MISSING_SHOW_DIRS, ADD_SHOWS_WO_DIR, USE_FREE_SPACE_CHECK, METADATA_WDTV, METADATA_TIVO, \
-            METADATA_MEDE8ER, IGNORE_WORDS, TRACKERS_LIST, IGNORED_SUBS_LIST, REQUIRE_WORDS, CALENDAR_UNPROTECTED, CALENDAR_ICONS, NO_RESTART, USE_SUBTITLES,\
+            METADATA_MEDE8ER, IGNORE_WORDS, TRACKERS_LIST, IGNORED_SUBS_LIST, REQUIRE_WORDS, PREFER_WORDS, CALENDAR_UNPROTECTED, CALENDAR_ICONS, NO_RESTART, USE_SUBTITLES,\
             SUBTITLES_INCLUDE_SPECIALS, SUBTITLES_LANGUAGES, SUBTITLES_DIR, SUBTITLES_SERVICES_LIST, SUBTITLES_SERVICES_ENABLED, SUBTITLES_HISTORY, \
             SUBTITLES_FINDER_FREQUENCY, SUBTITLES_MULTI, SUBTITLES_KEEP_ONLY_WANTED, EMBEDDED_SUBTITLES_ALL, SUBTITLES_EXTRA_SCRIPTS, SUBTITLES_PERFECT_MATCH,\
             subtitlesFinderScheduler, SUBTITLES_HEARING_IMPAIRED, ADDIC7ED_USER, ADDIC7ED_PASS, ITASA_USER, ITASA_PASS, LEGENDASTV_USER, LEGENDASTV_PASS, \
@@ -739,7 +744,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
             NEWS_LATEST, SOCKET_TIMEOUT, SYNOLOGY_DSM_HOST, SYNOLOGY_DSM_USERNAME, SYNOLOGY_DSM_PASSWORD, SYNOLOGY_DSM_PATH, GUI_LANG, SICKCHILL_BACKGROUND, \
             SICKCHILL_BACKGROUND_PATH, FANART_BACKGROUND, FANART_BACKGROUND_OPACITY, CUSTOM_CSS, CUSTOM_CSS_PATH, USE_SLACK, SLACK_NOTIFY_SNATCH, \
             SLACK_NOTIFY_DOWNLOAD, SLACK_NOTIFY_SUBTITLEDOWNLOAD, SLACK_WEBHOOK, SLACK_ICON_EMOJI, USE_DISCORD, DISCORD_NOTIFY_SNATCH, DISCORD_NOTIFY_DOWNLOAD, DISCORD_WEBHOOK,\
-            USE_MATRIX, MATRIX_NOTIFY_SNATCH, MATRIX_NOTIFY_DOWNLOAD, MATRIX_NOTIFY_SUBTITLEDOWNLOAD, MATRIX_API_TOKEN, MATRIX_SERVER, MATRIX_ROOM
+            USE_MATRIX, MATRIX_NOTIFY_SNATCH, MATRIX_NOTIFY_DOWNLOAD, MATRIX_NOTIFY_SUBTITLEDOWNLOAD, MATRIX_API_TOKEN, MATRIX_SERVER, MATRIX_ROOM, ENDED_SHOWS_UPDATE_INTERVAL
 
         if __INITIALIZED__:
             return False
@@ -920,7 +925,6 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
 
         SSL_VERIFY = check_setting_bool(CFG, 'General', 'ssl_verify', True)
 
-        INDEXER_DEFAULT_LANGUAGE = check_setting_str(CFG, 'General', 'indexerDefaultLang', 'en')
         EP_DEFAULT_DELETED_STATUS = check_setting_int(CFG, 'General', 'ep_default_deleted_status', ARCHIVED)
         if EP_DEFAULT_DELETED_STATUS not in (SKIPPED, ARCHIVED, IGNORED):
             EP_DEFAULT_DELETED_STATUS = ARCHIVED
@@ -934,12 +938,18 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         CPU_PRESET = check_setting_str(CFG, 'General', 'cpu_preset', 'NORMAL')
 
         ANON_REDIRECT = check_setting_str(CFG, 'General', 'anon_redirect', 'http://dereferer.org/?')
-        PROXY_SETTING = check_setting_str(CFG, 'General', 'proxy_setting')
-        PROXY_INDEXERS = check_setting_bool(CFG, 'General', 'proxy_indexers', True)
-
         # attempt to help prevent users from breaking links by using a bad url
         if not ANON_REDIRECT.endswith('?'):
             ANON_REDIRECT = ''
+
+        PROXY_SETTING = check_setting_str(CFG, 'General', 'proxy_setting')
+        PROXY_INDEXERS = check_setting_bool(CFG, 'General', 'proxy_indexers', True)
+
+        INDEXER_DEFAULT_LANGUAGE = check_setting_str(CFG, 'General', 'indexerDefaultLang', 'en')
+        INDEXER_DEFAULT = check_setting_int(CFG, 'General', 'indexer_default', min_val=1, max_val=2, def_val=1)
+        INDEXER_TIMEOUT = check_setting_int(CFG, 'General', 'indexer_timeout', 20, min_val=0)
+
+        sickchill.indexer = sickchill.ShowIndexer()
 
         TRASH_REMOVE_SHOW = check_setting_bool(CFG, 'General', 'trash_remove_show')
         TRASH_ROTATE_LOGS = check_setting_bool(CFG, 'General', 'trash_rotate_logs')
@@ -975,8 +985,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         AUTO_UPDATE = check_setting_bool(CFG, 'General', 'auto_update')
         NOTIFY_ON_UPDATE = check_setting_bool(CFG, 'General', 'notify_on_update', True)
         SEASON_FOLDERS_DEFAULT = check_setting_bool(CFG, 'General', 'season_folders_default', True)
-        INDEXER_DEFAULT = check_setting_int(CFG, 'General', 'indexer_default', min_val=min(indexerApi().indexers), max_val=max(indexerApi().indexers))
-        INDEXER_TIMEOUT = check_setting_int(CFG, 'General', 'indexer_timeout', 20, min_val=0)
+
         ANIME_DEFAULT = check_setting_bool(CFG, 'General', 'anime_default')
         SCENE_DEFAULT = check_setting_bool(CFG, 'General', 'scene_default')
 
@@ -1004,9 +1013,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
             NZB_METHOD = 'blackhole'
 
         TORRENT_METHOD = check_setting_str(CFG, 'General', 'torrent_method', 'blackhole')
-        if TORRENT_METHOD not in (
-            'blackhole', 'utorrent', 'transmission', 'deluge', 'deluged', 'download_station', 'rtorrent', 'qbittorrent', 'mlnet', 'putio'
-        ):
+        if TORRENT_METHOD not in clients.getClientListDict(True):
             TORRENT_METHOD = 'blackhole'
 
         DOWNLOAD_PROPERS = check_setting_bool(CFG, 'General', 'download_propers', True)
@@ -1287,9 +1294,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         TRAKT_USE_RECOMMENDED = check_setting_bool(CFG, 'Trakt', 'trakt_use_recommended')
         TRAKT_SYNC = check_setting_bool(CFG, 'Trakt', 'trakt_sync')
         TRAKT_SYNC_REMOVE = check_setting_bool(CFG, 'Trakt', 'trakt_sync_remove')
-        TRAKT_DEFAULT_INDEXER = check_setting_int(
-            CFG, 'Trakt', 'trakt_default_indexer', 1, min_val=min(indexerApi().indexers), max_val=max(indexerApi().indexers)
-        )
+        TRAKT_DEFAULT_INDEXER = check_setting_int(CFG, 'Trakt', 'trakt_default_indexer', 1, min_val=1, max_val=2)
         TRAKT_TIMEOUT = check_setting_int(CFG, 'Trakt', 'trakt_timeout', 30, min_val=0)
         TRAKT_BLACKLIST_NAME = check_setting_str(CFG, 'Trakt', 'trakt_blacklist_name')
 
@@ -1380,6 +1385,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         IGNORE_WORDS = check_setting_str(CFG, 'General', 'ignore_words', IGNORE_WORDS)
         TRACKERS_LIST = check_setting_str(CFG, 'General', 'trackers_list', TRACKERS_LIST)
         REQUIRE_WORDS = check_setting_str(CFG, 'General', 'require_words', REQUIRE_WORDS)
+        PREFER_WORDS = check_setting_str(CFG, 'General', 'prefer_words', PREFER_WORDS)
         IGNORED_SUBS_LIST = check_setting_str(CFG, 'General', 'ignored_subs_list', IGNORED_SUBS_LIST)
 
         CALENDAR_UNPROTECTED = check_setting_bool(CFG, 'General', 'calendar_unprotected')
@@ -1427,6 +1433,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         POSTER_SORTDIR = check_setting_int(CFG, 'GUI', 'poster_sortdir', 1, min_val=0, max_val=1)
         POSTER_FILTERBY =  check_setting_str(CFG, 'GUI', 'poster_filterby', 'paused,continuing,ended').split(',')
         DISPLAY_ALL_SEASONS = check_setting_bool(CFG, 'General', 'display_all_seasons', True)
+        ENDED_SHOWS_UPDATE_INTERVAL = check_setting_int(CFG, 'General', 'ended_shows_update_interval', 7)
 
         if check_section(CFG, 'Shares'):
             WINDOWS_SHARES.update(CFG['Shares'])
@@ -1555,7 +1562,7 @@ def initialize(consoleLogging=True):  # pylint: disable=too-many-locals, too-man
         )
 
         showUpdateScheduler = scheduler.Scheduler(
-            showUpdater.ShowUpdater(),
+            show_updater.ShowUpdater(),
             run_delay=datetime.timedelta(seconds=20),
             cycleTime=datetime.timedelta(hours=1),
             start_time=datetime.time(hour=SHOWUPDATE_HOUR),
@@ -1752,7 +1759,7 @@ def saveAll():
     save_config()
 
 
-def save_config():  # pylint: disable=too-many-statements, too-many-branches
+def save_config():
     new_config = ConfigObj(CONFIG_FILE, encoding='UTF-8')
 
     # For passwords you must include the word `password` in the item_name and add `helpers.encrypt(ITEM_NAME, ENCRYPTION_VERSION)` in save_config()
@@ -1945,12 +1952,14 @@ def save_config():  # pylint: disable=too-many-statements, too-many-branches
             'ignore_words': IGNORE_WORDS,
             'trackers_list': TRACKERS_LIST,
             'require_words': REQUIRE_WORDS,
+            'prefer_words': PREFER_WORDS,
             'ignored_subs_list': IGNORED_SUBS_LIST,
             'calendar_unprotected': int(CALENDAR_UNPROTECTED),
             'calendar_icons': int(CALENDAR_ICONS),
             'no_restart': int(NO_RESTART),
             'developer': int(DEVELOPER),
             'display_all_seasons': int(DISPLAY_ALL_SEASONS),
+            'ended_shows_update_interval': int(ENDED_SHOWS_UPDATE_INTERVAL),
             'news_last_read': NEWS_LAST_READ,
         },
 

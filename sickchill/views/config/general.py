@@ -16,16 +16,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with SickChill. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=abstract-method,too-many-lines, R
+from __future__ import absolute_import, print_function, unicode_literals
 
-from __future__ import print_function, unicode_literals
-
+# Stdlib Imports
 import gettext
 import os
 
-from index import Config
+# Third Party Imports
 from tornado.web import addslash
 
+# First Party Imports
 import sickbeard
 from sickbeard import config, filters, helpers, logger, ui
 from sickbeard.common import Quality, WANTED
@@ -34,11 +34,8 @@ from sickchill.helper.encoding import ek
 from sickchill.views.common import PageTemplate
 from sickchill.views.routes import Route
 
-try:
-    import json
-except ImportError:
-    # noinspection PyPackageRequirements,PyUnresolvedReferences
-    import simplejson as json
+# Local Folder Imports
+from .index import Config
 
 
 @Route('/config/general(/?.*)', name='config:general')
@@ -92,7 +89,7 @@ class ConfigGeneral(Config):
 
         ui.notifications.message(_('Saved Defaults'), _('Your "add show" defaults have been set to your current selections.'))
 
-    def saveGeneral(  # pylint: disable=unused-argument
+    def saveGeneral(
             self, log_dir=None, log_nr=5, log_size=1, web_port=None, notify_on_login=None, web_log=None, encryption_version=None, web_ipv6=None,
             trash_remove_show=None, trash_rotate_logs=None, update_frequency=None, skip_removed_files=None,
             indexerDefaultLang='en', ep_default_deleted_status=None, launch_browser=None, showupdate_hour=3, web_username=None,
@@ -105,7 +102,7 @@ class ConfigGeneral(Config):
             indexer_timeout=None, download_url=None, rootDir=None, theme_name=None, default_page=None, fanart_background=None, fanart_background_opacity=None,
             sickchill_background=None, sickchill_background_path=None, custom_css=None, custom_css_path=None,
             git_reset=None, git_auth_type=0, git_username=None, git_password=None, git_token=None,
-            display_all_seasons=None, gui_language=None, ignore_broken_symlinks=None):
+            display_all_seasons=None, gui_language=None, ignore_broken_symlinks=None, ended_shows_update_interval=None):
 
         results = []
 
@@ -222,6 +219,8 @@ class ConfigGeneral(Config):
         sickbeard.FANART_BACKGROUND_OPACITY = fanart_background_opacity
         sickbeard.CUSTOM_CSS = config.checkbox_to_value(custom_css)
         config.change_custom_css(custom_css_path)
+
+        sickbeard.ENDED_SHOWS_UPDATE_INTERVAL = int(ended_shows_update_interval)
 
         sickbeard.DEFAULT_PAGE = default_page
 

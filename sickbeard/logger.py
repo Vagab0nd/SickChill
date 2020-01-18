@@ -22,8 +22,9 @@
 Custom Logger for SickChill
 """
 
-from __future__ import print_function, unicode_literals
+from __future__ import absolute_import, print_function, unicode_literals
 
+# Stdlib Imports
 import io
 import locale
 import logging
@@ -36,19 +37,20 @@ import threading
 import traceback
 from logging import NullHandler
 
+# Third Party Imports
 import six
 from github import InputFileContent
 from github.GithubException import RateLimitExceededException, TwoFactorException
-# noinspection PyUnresolvedReferences
 from requests.compat import quote
 
+# First Party Imports
 import sickbeard
-from sickbeard import classes
 from sickchill.helper.common import dateTimeFormat
 from sickchill.helper.encoding import ek, ss
 from sickchill.helper.exceptions import ex
 
-# pylint: disable=line-too-long
+# Local Folder Imports
+from . import classes
 
 # log levels
 ERROR = logging.ERROR
@@ -65,7 +67,7 @@ LOGGING_LEVELS = {
     'DB': DB,
 }
 
-censored_items = {}  # pylint: disable=invalid-name
+censored_items = {}
 
 
 class CensoredFormatter(logging.Formatter, object):
@@ -102,14 +104,18 @@ class CensoredFormatter(logging.Formatter, object):
         censored.sort(key=len, reverse=True)
 
         for item in censored:
-            msg = msg.replace(item, len(item) * '*')
+            try:
+                # passwords that include ++ for example will error. Cannot escape or it wont match at all.
+                msg = re.sub(r'\b({item})\b'.format(item=item), '*' * 8, msg)
+            except re.error:
+                msg = msg.replace(item, '*' * 8)
 
         # Needed because Newznab apikey isn't stored as key=value in a section.
-        msg = re.sub(r'([&?]r|[&?]apikey|[&?]api_key)(?:=|%3D)[^&]*([&\w]?)', r'\1=**********\2', msg, re.I)
+        msg = re.sub(r'([&?]r|[&?]apikey|[&?]jackett_apikey|[&?]api_key)(?:=|%3D)[^&]*([&\w]?)', r'\1=**********\2', msg, re.I)
         return msg
 
 
-class Logger(object):  # pylint: disable=too-many-instance-attributes
+class Logger(object):
     """
     Logger to create log entries
     """
@@ -262,7 +268,7 @@ class Logger(object):  # pylint: disable=too-many-instance-attributes
         else:
             sys.exit(1)
 
-    def submit_errors(self):  # pylint: disable=too-many-branches,too-many-locals
+    def submit_errors(self):
 
         submitter_result = ''
         issue_id = None
@@ -275,11 +281,11 @@ class Logger(object):  # pylint: disable=too-many-instance-attributes
             return submitter_result, issue_id
 
         try:
-            from sickbeard.versionChecker import CheckVersion
+            from .versionChecker import CheckVersion
             checkversion = CheckVersion()
             checkversion.check_for_new_version()
             commits_behind = checkversion.updater.get_num_commits_behind()
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             submitter_result = 'Could not check if your SickChill is updated, unable to submit issue ticket to GitHub!'
             return submitter_result, issue_id
 
@@ -319,7 +325,7 @@ class Logger(object):  # pylint: disable=too-many-instance-attributes
                     if len(title_error) > 1000:
                         title_error = title_error[0:1000]
 
-                except Exception as err_msg:  # pylint: disable=broad-except
+                except Exception as err_msg:
                     self.log('Unable to get error title : {0}'.format(ex(err_msg)), ERROR)
                     title_error = 'UNKNOWN'
 
@@ -339,7 +345,7 @@ class Logger(object):  # pylint: disable=too-many-instance-attributes
 
                 try:
                     locale_name = locale.getdefaultlocale()[1]
-                except Exception:  # pylint: disable=broad-except
+                except Exception:
                     locale_name = 'unknown'
 
                 if gist and gist != 'No ERROR found':
@@ -417,7 +423,7 @@ class Logger(object):  # pylint: disable=too-many-instance-attributes
             submitter_result = ('Your Github account requires Two-Factor Authentication, '
                                 'please change your auth method in the config')
             issue_id = None
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             self.log(traceback.format_exc(), ERROR)
             submitter_result = 'Exception generated in issue submitter, please check the log'
             issue_id = None
@@ -427,7 +433,6 @@ class Logger(object):  # pylint: disable=too-many-instance-attributes
         return submitter_result, issue_id
 
 
-# pylint: disable=too-few-public-methods
 class Wrapper(object):
     instance = Logger()
 
@@ -441,7 +446,7 @@ class Wrapper(object):
             return getattr(self.instance, name)
 
 
-_globals = sys.modules[__name__] = Wrapper(sys.modules[__name__])  # pylint: disable=invalid-name
+_globals = sys.modules[__name__] = Wrapper(sys.modules[__name__])
 
 
 def init_logging(*args, **kwargs):
