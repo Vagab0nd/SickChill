@@ -111,7 +111,7 @@
                     else:
                         data_status = display_status.lower()
                 %>
-                <div class="show-container" id="show${curShow.indexerid}" data-name="${curShow.sort_name}" data-date="${data_date}" data-network="${curShow.network}" data-progress="${progressbar_percent}" data-status="${curShow.status}">
+                <div class="show-container" id="show${curShow.indexerid}" data-name="${curShow.sort_name}" data-date="${data_date}" data-network="${curShow.network}" data-progress="${progressbar_percent}" data-status="${data_status}">
                     <div class="show-image">
                         <a href="${srRoot}/home/displayShow?show=${curShow.indexerid}">
                             <img alt="" class="show-image" src="${static_url("images/poster.png")}" data-src="${static_url(curShow.show_image_url('poster_thumb'))}" />
