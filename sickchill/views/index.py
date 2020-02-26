@@ -19,6 +19,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 # Stdlib Imports
+import base64
 import datetime
 import os
 import time
@@ -42,10 +43,6 @@ from tornado.web import authenticated, HTTPError, RequestHandler
 import sickbeard
 from sickbeard import db, helpers, logger, network_timezones, ui
 from sickbeard.common import ek
-from sickchill.media.ShowBanner import ShowBanner
-from sickchill.media.ShowFanArt import ShowFanArt
-from sickchill.media.ShowNetworkLogo import ShowNetworkLogo
-from sickchill.media.ShowPoster import ShowPoster
 from sickchill.show.ComingEpisodes import ComingEpisodes
 from sickchill.views.routes import Route
 
@@ -133,10 +130,21 @@ class BaseHandler(RequestHandler):
         self.set_header(b"Location", urljoin(utf8(self.request.uri), utf8(url)))
 
     def get_current_user(self):
-        if not isinstance(self, UI) and sickbeard.WEB_USERNAME and sickbeard.WEB_PASSWORD:
+        if isinstance(self, UI):
+            return True
+
+        if sickbeard.WEB_USERNAME and sickbeard.WEB_PASSWORD:
+            auth_header = self.request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Basic '):
+                auth_decoded = base64.decodestring(auth_header[6:])
+                username, password = auth_decoded.split(':', 2)
+                if username == sickbeard.WEB_USERNAME and password == sickbeard.WEB_PASSWORD:
+                    return True
+                return False
+
             return self.get_secure_cookie('sickchill_user')
         else:
-            return True
+            return helpers.is_ip_private(self.request.remote_ip)
 
     def get_user_locale(self):
         return sickbeard.GUI_LANG or None
@@ -147,7 +155,7 @@ class WebHandler(BaseHandler):
         super(WebHandler, self).__init__(*args, **kwargs)
         self.io_loop = IOLoop.current()
 
-    executor = ThreadPoolExecutor(cpu_count())
+        self.executor = ThreadPoolExecutor(cpu_count(), thread_name_prefix='WEBSERVER-' + self.__class__.__name__.upper())
 
     @authenticated
     @coroutine
@@ -232,35 +240,6 @@ class WebRoot(WebHandler):
         t = PageTemplate(rh=self, filename='apiBuilder.mako')
         return t.render(title=_('API Builder'), header=_('API Builder'), shows=shows, episodes=episodes, apikey=apikey,
                         commands=function_mapper)
-
-    def showPoster(self, show=None, which=None):
-
-        media_format = ('normal', 'thumb')[which in ('banner_thumb', 'poster_thumb', 'small')]
-
-        if which[0:6] == 'banner':
-            media = ShowBanner(show, media_format)
-        elif which[0:6] == 'fanart':
-            media = ShowFanArt(show, media_format)
-        elif which[0:6] == 'poster':
-            media = ShowPoster(show, media_format)
-        elif which[0:7] == 'network':
-            media = ShowNetworkLogo(show, media_format)
-        else:
-            media = None
-
-        if media:
-            abspath = media.get_static_media_path()
-            stat_result = os.stat(abspath)
-            modified = datetime.datetime.fromtimestamp(int(stat_result.st_mtime))
-
-            self.set_header(b'Last-Modified', modified)
-            self.set_header(b'Content-Type', media.get_media_type())
-            self.set_header(b'Accept-Ranges', 'bytes')
-            self.set_header(b'Cache-Control', 'public, max-age=86400')
-
-            return media.get_media()
-
-        return None
 
     def setHomeLayout(self, layout):
 

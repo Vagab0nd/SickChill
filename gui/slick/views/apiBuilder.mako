@@ -277,7 +277,7 @@
             else:
                 # noinspection PyUnusedLocal
                 parameter_list = parameters['optionalParameters']
-        <%
+        %>
         % for parameter in parameter_list:
             <%
                 parameter_help = parameter_list[parameter]

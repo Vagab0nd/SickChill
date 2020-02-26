@@ -53,7 +53,7 @@ class YggTorrentProvider(TorrentProvider):
 
         # URLs
         self.custom_url = None
-        self.url = 'https://www2.yggtorrent.ws/'
+        self.url = 'https://www2.yggtorrent.se/'
         self.urls = {
             'login': urljoin(self.url, 'user/login'),
             'search': urljoin(self.url, 'engine/search')
@@ -93,7 +93,7 @@ class YggTorrentProvider(TorrentProvider):
         self.update_urls(self.custom_url, True)
 
         response = self.get_url(self.urls['login'], post_data=login_params, returns='response')
-        if self.url not in response.url:
+        if response and self.url not in response.url:
             new_url = response.url.split('user/login')[0]
             logger.log('Changing base url from {} to {}'.format(self.url, new_url), logger.DEBUG)
             if not self.update_urls(new_url):
@@ -119,6 +119,8 @@ class YggTorrentProvider(TorrentProvider):
         return True
 
     def search(self, search_strings, age=0, ep_obj=None):
+        self.login()
+
         results = []
 
         for mode in search_strings:

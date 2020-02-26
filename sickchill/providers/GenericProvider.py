@@ -70,8 +70,8 @@ class GenericProvider(object):
             'http://torrentproject.se/torrent/{torrent_hash}.torrent',
             'http://thetorrent.org/torrent/{torrent_hash}.torrent',
             'http://btdig.com/torrent/{torrent_hash}.torrent',
-            # 'http://torrage.com/torrent/{torrent_hash}.torrent',
-            'http://itorrents.org/torrent/{torrent_hash}.torrent',
+            ('https://t.torrage.info/download?h={torrent_hash}', 'https://torrage.info/torrent.php?h={torrent_hash}'),
+            'https://itorrents.org/torrent/{torrent_hash}.torrent?title={torrent_name}'
         ]
         self.cache = TVCache(self)
         self.enable_backlog = False
@@ -97,7 +97,6 @@ class GenericProvider(object):
 
         self.ability_status = self.PROVIDER_OK
 
-
         shuffle(self.bt_cache_urls)
 
     def download_result(self, result):
@@ -110,9 +109,15 @@ class GenericProvider(object):
             if 'NO_DOWNLOAD_NAME' in url:
                 continue
 
+            if isinstance(url, tuple):
+                referer = url[1]
+                url = url[0]
+            else:
+                referer = '/'.join(url.split('/')[:3]) + '/'
+
             if url.startswith('http'):
                 self.headers.update({
-                    'Referer': '/'.join(url.split('/')[:3]) + '/'
+                    'Referer': referer
                 })
 
             logger.log('Downloading a result from {0} at {1}'.format(self.name, url))
@@ -537,6 +542,9 @@ class GenericProvider(object):
             return '', ''
 
         filename = ''
+
+        result.url = result.url.replace('http://itorrents.org', 'https://itorrents.org')
+
         urls = [result.url]
         if result.url.startswith('magnet'):
             torrent_hash = self.hash_from_magnet(result.url)
@@ -548,7 +556,21 @@ class GenericProvider(object):
             except Exception:
                 torrent_name = 'NO_DOWNLOAD_NAME'
 
-            urls = [x.format(torrent_hash=torrent_hash, torrent_name=torrent_name) for x in self.bt_cache_urls]
+            urls = []
+            for cache_url in self.bt_cache_urls:
+                if isinstance(cache_url, tuple):
+                    urls.append(
+                        (cache_url[0].format(torrent_hash=torrent_hash, torrent_name=torrent_name),
+                         cache_url[1].format(torrent_hash=torrent_hash, torrent_name=torrent_name)))
+                else:
+                    urls.append(cache_url.format(torrent_hash=torrent_hash, torrent_name=torrent_name))
+
+        if 'torrage.info/torrent.php' in result.url:
+            torrent_hash = result.url.split('=')[1]
+            urls = [(
+                'https://t.torrage.info/download?h={torrent_hash}'.format(torrent_hash=torrent_hash),
+                'https://torrage.info/torrent.php?h={torrent_hash}'.format(torrent_hash=torrent_hash)
+            )]
 
         filename = ek(join, self._get_storage_dir(), sanitize_filename(result.name) + '.' + self.provider_type)
 

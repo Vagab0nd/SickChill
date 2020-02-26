@@ -98,6 +98,7 @@ if socket.getaddrinfo.__module__ in ('socket', '_socket'):
 
 # Patches urllib3 default ciphers to match those of cfscrape
 # noinspection PyUnresolvedReferences
+# TODO: Not sure if this is needed anymore
 urllib3.util.ssl_.DEFAULT_CIPHERS = cfscrape.DEFAULT_CIPHERS
 
 # Override original shutil function to increase its speed by increasing its buffer to 10MB (optimal)
@@ -1250,9 +1251,9 @@ def touchFile(fname, atime=None):
 
 def make_session(use_cfscrape=True):
     if use_cfscrape and sys.version_info < (2, 7, 9):
-        session = cloudscraper.create_scraper()
-    else:
         session = cfscrape.create_scraper()
+    else:
+        session = cloudscraper.create_scraper()
 
     session.headers.update({'User-Agent': USER_AGENT, 'Accept-Encoding': 'gzip,deflate'})
 
@@ -1716,7 +1717,7 @@ def is_ip_private(ip):
     priv_24 = re.compile(r"^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
     priv_20 = re.compile(r"^192\.168\.\d{1,3}.\d{1,3}$")
     priv_16 = re.compile(r"^172.(1[6-9]|2[0-9]|3[0-1]).[0-9]{1,3}.[0-9]{1,3}$")
-    return priv_lo.match(ip) or priv_24.match(ip) or priv_20.match(ip) or priv_16.match(ip)
+    return priv_lo.match(ip) or priv_24.match(ip) or priv_20.match(ip) or priv_16.match(ip) or (ip == '0.0.0.0')
 
 
 def recursive_listdir(path):
