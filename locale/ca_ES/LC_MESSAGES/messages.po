@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  sickchill\n"
 "Report-Msgid-Bugs-To: miigotu@gmail.com\n"
-"POT-Creation-Date: 2020-02-26 02:23+0000\n"
+"POT-Creation-Date: 2020-03-15 10:01+0000\n"
 "PO-Revision-Date: 2018-10-10 07:46+0000\n"
 "Last-Translator: miigotu <miigotu@gmail.com>\n"
 "Language: ca_ES\n"
@@ -128,15 +128,15 @@ msgstr "Musical"
 msgid "Talk-Show"
 msgstr "Entrevistes"
 
-#: sickbeard/__init__.py:667
+#: sickbeard/__init__.py:670
 msgid "Ignore (do not process contents)"
 msgstr ""
 
-#: sickbeard/__init__.py:668
+#: sickbeard/__init__.py:671
 msgid "Unpack (process contents)"
 msgstr ""
 
-#: sickbeard/__init__.py:669
+#: sickbeard/__init__.py:672
 msgid "Treat as video (process archive as-is)"
 msgstr ""
 
@@ -315,259 +315,259 @@ msgstr ""
 msgid "Control dict to upsert cannot have values of None!"
 msgstr ""
 
-#: sickbeard/helpers.py:96
+#: sickbeard/helpers.py:97
 msgid "Patching socket to IPv4 only"
 msgstr ""
 
-#: sickbeard/helpers.py:252
+#: sickbeard/helpers.py:254
 msgid "Invalid filename. Filename must be a string. {0}"
 msgstr ""
 
-#: sickbeard/helpers.py:406
+#: sickbeard/helpers.py:408
 msgid "Failed to create hardlink of {0} at {1}. Error: {2}. Copying instead"
 msgstr ""
 
-#: sickbeard/helpers.py:443
+#: sickbeard/helpers.py:445
 msgid "Failed to create symlink of {0} at {1}. Error: {2}. Copying instead"
 msgstr ""
 
-#: sickbeard/helpers.py:454
+#: sickbeard/helpers.py:456
 msgid "Checking if the path {0} already exists"
 msgstr ""
 
-#: sickbeard/helpers.py:460 sickbeard/helpers.py:480
+#: sickbeard/helpers.py:462 sickbeard/helpers.py:482
 msgid "Folder {0} didn't exist, creating it"
 msgstr ""
 
-#: sickbeard/helpers.py:463 sickbeard/helpers.py:487
+#: sickbeard/helpers.py:465 sickbeard/helpers.py:489
 msgid "Failed creating {0} : {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:528
+#: sickbeard/helpers.py:530
 msgid "Renaming file from {0} to {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:531
+#: sickbeard/helpers.py:533
 msgid "Failed renaming {0} to {1} : {2}"
 msgstr ""
 
-#: sickbeard/helpers.py:551
+#: sickbeard/helpers.py:553
 msgid "Trying to clean any empty folders under "
 msgstr ""
 
-#: sickbeard/helpers.py:561
+#: sickbeard/helpers.py:563
 msgid "Deleting empty folder: "
 msgstr ""
 
-#: sickbeard/helpers.py:567
+#: sickbeard/helpers.py:569
 msgid "Unable to delete {0}. Error: {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:603
+#: sickbeard/helpers.py:605
 msgid "No parent path provided in {location} unable to get permissions from it"
 msgstr ""
 
-#: sickbeard/helpers.py:626
+#: sickbeard/helpers.py:628
 msgid "Not running as root or owner of {location}, not trying to set permissions"
 msgstr ""
 
-#: sickbeard/helpers.py:632
+#: sickbeard/helpers.py:634
 msgid "Failed to set permission for {0} to {1:o}, parent directory has {2:o}"
 msgstr ""
 
-#: sickbeard/helpers.py:664
+#: sickbeard/helpers.py:666
 msgid "Not running as root or owner of {}, not trying to set the set-group-ID"
 msgstr ""
 
-#: sickbeard/helpers.py:669
+#: sickbeard/helpers.py:671
 msgid "Respecting the set-group-ID bit on the parent directory for {0}"
 msgstr ""
 
-#: sickbeard/helpers.py:714
+#: sickbeard/helpers.py:716
 msgid "Found absolute number {absolute} for show {show} {ep}"
 msgstr ""
 
-#: sickbeard/helpers.py:718
+#: sickbeard/helpers.py:720
 msgid "No entries for absolute number for show {show} {ep}"
 msgstr ""
 
-#: sickbeard/helpers.py:800
+#: sickbeard/helpers.py:802
 msgid "pyopenssl module missing, please install for https access"
 msgstr ""
 
-#: sickbeard/helpers.py:824
+#: sickbeard/helpers.py:826
 msgid "Error creating SSL key and certificate"
 msgstr ""
 
-#: sickbeard/helpers.py:845
+#: sickbeard/helpers.py:847
 msgid "Not creating backup, {0} doesn't exist"
 msgstr ""
 
-#: sickbeard/helpers.py:849
+#: sickbeard/helpers.py:851
 msgid "Trying to back up {0} to {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:851
+#: sickbeard/helpers.py:853
 msgid "Backup done"
 msgstr ""
 
-#: sickbeard/helpers.py:854
+#: sickbeard/helpers.py:856
 msgid "Error while trying to back up {0} to {1} : {2}"
 msgstr ""
 
-#: sickbeard/helpers.py:857
+#: sickbeard/helpers.py:859
 msgid "Trying again."
 msgstr ""
 
-#: sickbeard/helpers.py:860
+#: sickbeard/helpers.py:862
 msgid "Unable to back up {0} to {1} please do it manually."
 msgstr ""
 
-#: sickbeard/helpers.py:881 sickbeard/helpers.py:896
+#: sickbeard/helpers.py:883 sickbeard/helpers.py:898
 msgid "Not restoring, {0} doesn't exist"
 msgstr ""
 
-#: sickbeard/helpers.py:885
+#: sickbeard/helpers.py:887
 msgid "Trying to backup {0} to {1}.r{2} before restoring backup"
 msgstr ""
 
-#: sickbeard/helpers.py:890
+#: sickbeard/helpers.py:892
 msgid ""
 "Error while trying to backup DB file {0} before proceeding with restore: "
 "{1}"
 msgstr ""
 
-#: sickbeard/helpers.py:900
+#: sickbeard/helpers.py:902
 msgid "Trying to restore file {0} to {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:902
+#: sickbeard/helpers.py:904
 msgid "Restore done"
 msgstr ""
 
-#: sickbeard/helpers.py:905
+#: sickbeard/helpers.py:907
 msgid "Error while trying to restore file {0}. Error: {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:908
+#: sickbeard/helpers.py:910
 msgid "Trying again. Attempt #: {0}"
 msgstr ""
 
-#: sickbeard/helpers.py:911
+#: sickbeard/helpers.py:913
 msgid "Unable to restore file {0} to {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:1048
+#: sickbeard/helpers.py:1050
 msgid "Error when attempting to find show: {0} in SickChill. Error: {1} "
 msgstr ""
 
-#: sickbeard/helpers.py:1105
+#: sickbeard/helpers.py:1107
 msgid "Usage of anidb disabled. Skiping"
 msgstr ""
 
-#: sickbeard/helpers.py:1109
+#: sickbeard/helpers.py:1111
 msgid "anidb username and/or password are not set. Aborting anidb lookup."
 msgstr ""
 
-#: sickbeard/helpers.py:1114
+#: sickbeard/helpers.py:1116
 msgid "anidb: {0} "
 msgstr ""
 
-#: sickbeard/helpers.py:1119 sickbeard/helpers.py:1128
+#: sickbeard/helpers.py:1121 sickbeard/helpers.py:1130
 msgid "anidb exception msg: {0} "
 msgstr ""
 
-#: sickbeard/helpers.py:1149 sickbeard/helpers.py:1202
+#: sickbeard/helpers.py:1151 sickbeard/helpers.py:1204
 msgid "Zip creation error: {0} "
 msgstr ""
 
-#: sickbeard/helpers.py:1181
+#: sickbeard/helpers.py:1183
 msgid "Zip extraction error: {0} "
 msgstr ""
 
-#: sickbeard/helpers.py:1231
+#: sickbeard/helpers.py:1233
 msgid "Zip extraction error: {0}"
 msgstr ""
 
-#: sickbeard/helpers.py:1271
+#: sickbeard/helpers.py:1273
 msgid "Using global proxy: {}"
 msgstr ""
 
-#: sickbeard/helpers.py:1352
+#: sickbeard/helpers.py:1354
 msgid "Requested a json response but response was not json, check the url: {0}"
 msgstr ""
 
-#: sickbeard/helpers.py:1391
+#: sickbeard/helpers.py:1393
 msgid ""
 "Problem downloading file, setting permissions or writing file to {0} - "
 "ERROR: {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:1405
+#: sickbeard/helpers.py:1407
 msgid "Request failed: {0} ({1})"
 msgstr ""
 
-#: sickbeard/helpers.py:1410
+#: sickbeard/helpers.py:1412
 msgid ""
 "SSL Error requesting url: '{0}' You have {1}, try upgrading OpenSSL to "
 "1.0.1e+"
 msgstr ""
 
-#: sickbeard/helpers.py:1412
+#: sickbeard/helpers.py:1414
 msgid ""
 "SSL Error requesting url: '{0}' Try disabling Cert Verification on the "
 "advanced tab of /config/general"
 msgstr ""
 
-#: sickbeard/helpers.py:1452
+#: sickbeard/helpers.py:1454
 msgid "url is {0}"
 msgstr ""
 
-#: sickbeard/helpers.py:1479
+#: sickbeard/helpers.py:1481
 msgid "Unable to get size for file {0} because the link to the file is not valid"
 msgstr ""
 
-#: sickbeard/helpers.py:1485
+#: sickbeard/helpers.py:1487
 msgid "Unable to get size for file {0} Error: {1}"
 msgstr ""
 
-#: sickbeard/helpers.py:1492
+#: sickbeard/helpers.py:1494
 msgid "Generating New API key"
 msgstr ""
 
-#: sickbeard/helpers.py:1549
+#: sickbeard/helpers.py:1551
 msgid "Trying to determine free space on the destination drive"
 msgstr ""
 
-#: sickbeard/helpers.py:1552
+#: sickbeard/helpers.py:1554
 msgid "A path to a file is required for the source. {0} is not a file."
 msgstr ""
 
-#: sickbeard/helpers.py:1556
+#: sickbeard/helpers.py:1558
 msgid ""
 "A path is required for the destination. Check that the root dir and show "
 "locations are correct for {0} (I got '{1}')"
 msgstr ""
 
-#: sickbeard/helpers.py:1566
+#: sickbeard/helpers.py:1568
 msgid ""
 "Process method is 'move' and src and destination are on the same device, "
 "skipping free space check"
 msgstr ""
 
-#: sickbeard/helpers.py:1572
+#: sickbeard/helpers.py:1574
 msgid "Unable to determine free space, so I will assume there is enough."
 msgstr ""
 
-#: sickbeard/helpers.py:1573 sickbeard/helpers.py:1606
+#: sickbeard/helpers.py:1575 sickbeard/helpers.py:1608
 msgid "Error: {error}"
 msgstr ""
 
-#: sickbeard/helpers.py:1591
+#: sickbeard/helpers.py:1593
 msgid "Not enough free space: Needed: {0} bytes ( {1} ), found: {2} bytes ( {3} )"
 msgstr ""
 
-#: sickbeard/helpers.py:1605
+#: sickbeard/helpers.py:1607
 msgid "Unable to determine free space"
 msgstr ""
 
@@ -940,10 +940,6 @@ msgstr ""
 
 #: gui/slick/js/browser.js:6
 msgid "Choose Directory"
-msgstr ""
-
-#: gui/slick/js/core.js:413
-msgid "Select log file folder location"
 msgstr ""
 
 #: gui/slick/js/core.js:414
@@ -1757,7 +1753,7 @@ msgid "Shows"
 msgstr ""
 
 #: gui/slick/views/config_general.mako:78 gui/slick/views/layouts/main.mako:163
-#: sickchill/views/index.py:328
+#: sickchill/views/index.py:353
 msgid "Schedule"
 msgstr "Planificar"
 
@@ -5846,7 +5842,7 @@ msgstr ""
 msgid "Download"
 msgstr ""
 
-#: gui/slick/views/displayShow.mako:444 gui/slick/views/displayShow.mako:666
+#: gui/slick/views/displayShow.mako:444 gui/slick/views/displayShow.mako:670
 msgid "Play"
 msgstr ""
 
@@ -5913,7 +5909,7 @@ msgid "Select Kodi Player"
 msgstr ""
 
 # | msgid "Romance"
-#: gui/slick/views/displayShow.mako:667
+#: gui/slick/views/displayShow.mako:671
 #, fuzzy
 msgid "Cancel"
 msgstr "Romanç"
@@ -7091,11 +7087,11 @@ msgstr ""
 msgid "Now"
 msgstr ""
 
-#: sickchill/show_updater.py:71
+#: sickchill/show_updater.py:75
 msgid "No last update time from the cache, so we do a full update for all shows"
 msgstr ""
 
-#: sickchill/show_updater.py:93
+#: sickchill/show_updater.py:97
 msgid "Automatic update failed: {0}"
 msgstr ""
 
@@ -7722,39 +7718,39 @@ msgstr ""
 msgid "No subtitles downloaded"
 msgstr ""
 
-#: sickchill/views/index.py:84
+#: sickchill/views/index.py:93
 msgid "Oops: 404 Not Found"
 msgstr ""
 
-#: sickchill/views/index.py:86
+#: sickchill/views/index.py:95
 msgid "Wrong API key used"
 msgstr ""
 
-#: sickchill/views/index.py:238
+#: sickchill/views/index.py:263
 msgid "API Key not generated"
 msgstr ""
 
-#: sickchill/views/index.py:241
+#: sickchill/views/index.py:266
 msgid "API Builder"
 msgstr ""
 
-#: sickchill/views/index.py:352
+#: sickchill/views/index.py:377
 msgid "Test 1"
 msgstr "Prova 1"
 
-#: sickchill/views/index.py:352
+#: sickchill/views/index.py:377
 msgid "This is test number 1"
 msgstr "Aquesta és la prova número 1"
 
-#: sickchill/views/index.py:353
+#: sickchill/views/index.py:378
 msgid "Test 2"
 msgstr "Prova 2"
 
-#: sickchill/views/index.py:353
+#: sickchill/views/index.py:378
 msgid "This is test number 2"
 msgstr "Aquesta és la prova número 2"
 
-#: sickchill/views/index.py:378
+#: sickchill/views/index.py:403
 msgid ""
 "You're using the {branch} branch. Please use 'master' unless specifically"
 " asked"

@@ -28,6 +28,7 @@ import ctypes
 import datetime
 import hashlib
 import io
+import ipaddress
 import operator
 import os
 import platform
@@ -204,7 +205,8 @@ def remove_non_release_groups(name):
         r'\[NO-RAR\] - \[ www\.torrentday\.com \]$': 'searchre',
         r'^www\.Torrenting\.com\.-\.': 'searchre',
         r'-Scrambled$': 'searchre',
-        r'^Torrent9\.PH ---> ': 'searchre'
+        r'^Torrent9\.PH ---> ': 'searchre',
+        r'-xpost$': 'searchre'
     }
 
     _name = name
@@ -1713,11 +1715,7 @@ def tvdbid_from_remote_id(indexer_id, indexer):  # pylint:disable=too-many-retur
 
 
 def is_ip_private(ip):
-    priv_lo = re.compile(r"^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-    priv_24 = re.compile(r"^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-    priv_20 = re.compile(r"^192\.168\.\d{1,3}.\d{1,3}$")
-    priv_16 = re.compile(r"^172.(1[6-9]|2[0-9]|3[0-1]).[0-9]{1,3}.[0-9]{1,3}$")
-    return priv_lo.match(ip) or priv_24.match(ip) or priv_20.match(ip) or priv_16.match(ip) or (ip == '0.0.0.0')
+    return ipaddress.ip_address(ip.decode()).is_private
 
 
 def recursive_listdir(path):
