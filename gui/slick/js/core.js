@@ -2429,6 +2429,31 @@ const SICKCHILL = {
                 $('#popover').popover({
                     placement: 'bottom',
                     html: true, // Required if content has HTML
+                    content: function () {
+                        return $('#popover-content').html();
+                    }
+                }).on('shown.bs.popover', function () {
+                    $('input[filter-by-status]').on('change', function () {
+                        $('.show-grid').isotope({
+                            filter: function (itemElem) {
+                                let filters = '';
+                                $('.popover').find('input[filter-by-status]').each(function (index) {
+                                    if ($(this).is(':checked')) {
+                                        filters = filters + ',' + $(this).val();
+                                    }
+                                });
+
+                                const status = $(this).attr('data-status');
+                                return filters && filters.indexOf(status) > - 1;
+                            }
+                        });
+                        $.post($(this).attr('data-filter'));
+                    });
+                });
+
+                $('#popover').popover({
+                    placement: 'bottom',
+                    html: true, // Required if content has HTML
                     content: '<div id="popover-target"></div>'
                 }).on('shown.bs.popover', function () { // Bootstrap popover event triggered when the popover opens
                     // call this function to copy the column selection code into the popover
@@ -2532,22 +2557,6 @@ const SICKCHILL = {
                 if (metaToBool('sickbeard.ANIME_SPLIT_HOME')) {
                     $.tablesorter.columnSelector.attachTo($('#showListTableAnime'), '#popover-target');
                 }
-                $('input[filter-by-status]').on('change', function () {
-                    $('.show-grid').isotope({
-                        filter: function (itemElem) {
-                            let filters = '';
-                            $('.popover').find('input[filter-by-status]').each(function (index) {
-                                if ($(this).is(':checked')) {
-                                    filters = filters + ',' + $(this).val();
-                                }
-                            });
-
-                            const status = $(this).attr('data-status');
-                            return filters && filters.indexOf(status) > - 1;
-                        }
-                    });
-                    $.post($(this).attr('data-filter'));
-                });
             });
         },
         displayShow() {
