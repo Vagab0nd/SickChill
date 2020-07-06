@@ -61,11 +61,14 @@ if 'subscenter' not in provider_manager.names():
     provider_manager.register('subscenter = sickchill.providers.subtitle.subscenter:SubsCenterProvider')
 if 'subtitulamos' not in provider_manager.names():
     provider_manager.register('subtitulamos = sickchill.providers.subtitle.subtitulamos:SubtitulamosProvider')
+if 'bsplayer' not in provider_manager.names():
+    provider_manager.register('bsplayer = sickchill.providers.subtitle.bsplayer:BSPlayerProvider')
 
 subliminal.region.configure('dogpile.cache.memory')
 
 PROVIDER_URLS = {
     'addic7ed': 'http://www.addic7ed.com',
+    'bsplayer': 'http://bsplayer-subtitles.com',
     'itasa': 'http://www.italiansubs.net/',
     'legendastv': 'http://www.legendas.tv',
     'napiprojekt': 'http://www.napiprojekt.pl',
@@ -360,6 +363,7 @@ def get_video(video_path, subtitles_path=None, subtitles=True, embedded_subtitle
 
         subliminal.refine(video, embedded_subtitles=embedded_subtitles)
     except Exception as error:
+        logger.log(traceback.format_exc())
         logger.log('Exception: {0}'.format(error), logger.DEBUG)
         return None
 
@@ -579,7 +583,9 @@ def refine_video(video, episode):
         'series_imdb_id': 'show.imdbid',
         'size': 'file_size',
         'title': 'name',
-        'year': 'show.startyear'
+        'year': 'show.startyear',
+        'series_tvdb_id': 'show.indexerid',
+        'tvdb_id': 'indexerid'
     }
 
     def get_attr_value(obj, name):
@@ -593,20 +599,23 @@ def refine_video(video, episode):
         return value
 
     for name in metadata_mapping:
-        if not getattr(video, name) and get_attr_value(episode, metadata_mapping[name]):
-            setattr(video, name, get_attr_value(episode, metadata_mapping[name]))
-        elif episode.show.subtitles_sr_metadata and get_attr_value(episode, metadata_mapping[name]):
-            setattr(video, name, get_attr_value(episode, metadata_mapping[name]))
+        try:
+            if not getattr(video, name) and get_attr_value(episode, metadata_mapping[name]):
+                setattr(video, name, get_attr_value(episode, metadata_mapping[name]))
+            elif episode.show.subtitles_sr_metadata and get_attr_value(episode, metadata_mapping[name]):
+                setattr(video, name, get_attr_value(episode, metadata_mapping[name]))
+        except AttributeError:
+            logger.log('Unable to set {}.{} from episode.{} attribute'.format(type(video), name, metadata_mapping[name]), logger.DEBUG)
 
     # Set quality from metadata
     status, quality = Quality.splitCompositeStatus(episode.status)
-    if not video.format or episode.show.subtitles_sr_metadata:
+    if not video.source or episode.show.subtitles_sr_metadata:
         if quality & Quality.ANYHDTV:
-            video.format = Quality.combinedQualityStrings.get(Quality.ANYHDTV)
+            video.source = Quality.combinedQualityStrings.get(Quality.ANYHDTV)
         elif quality & Quality.ANYWEBDL:
-            video.format = Quality.combinedQualityStrings.get(Quality.ANYWEBDL)
+            video.source = Quality.combinedQualityStrings.get(Quality.ANYWEBDL)
         elif quality & Quality.ANYBLURAY:
-            video.format = Quality.combinedQualityStrings.get(Quality.ANYBLURAY)
+            video.source = Quality.combinedQualityStrings.get(Quality.ANYBLURAY)
 
     if not video.resolution or episode.show.subtitles_sr_metadata:
         if quality & (Quality.HDTV | Quality.HDWEBDL | Quality.HDBLURAY):

@@ -791,6 +791,10 @@ div.buttontext p {
     background-position: -76px 0;
 }
 
+add-list-icon-addtvdb {
+    background-position: 0px 0;
+}
+
 .add-list-icon-addexistingshow {
     background-position: -113px 0;
 }
@@ -2038,6 +2042,12 @@ div.metadataDiv .disabled {
 
 .icon-notifiers-matrix {
     background: url("../images/Matrix_Web.png");
+    background-size: 32px;
+    background-color: white;
+}
+
+.icon-notifiers-rocketchat {
+    background: url("../images/RocketChat.png");
     background-size: 32px;
     background-color: white;
 }

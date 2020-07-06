@@ -32,6 +32,7 @@ import traceback
 
 # First Party Imports
 import sickbeard
+from sickchill.helper import glob
 from sickchill.helper.encoding import ek
 from sickchill.helper.exceptions import ex
 
@@ -112,7 +113,6 @@ class CheckVersion(object):
         if not backupDir:
             return False
 
-        from sickchill.helper import glob
         # noinspection PyUnresolvedReferences
         files = glob.glob(ek(os.path.join, glob.escape(backupDir), '*.zip'))
         if not files:
@@ -213,8 +213,13 @@ class CheckVersion(object):
             cur_hash = str(self.updater.get_newest_commit_hash())
             assert len(cur_hash) == 40, "Commit hash wrong length: {0} hash: {1}".format(len(cur_hash), cur_hash)
 
-            check_url = "http://raw.githubusercontent.com/{0}/{1}/{2}/sickbeard/databases/mainDB.py".format(sickbeard.GIT_ORG, sickbeard.GIT_REPO, cur_hash)
-            response = helpers.getURL(check_url, session=self.session, returns='text')
+            response = None
+            check_url = "https://raw.githubusercontent.com/{0}/{1}/{2}/sickbeard/databases/mainDB.py"
+            for attempt in (cur_hash, "master"):
+                response = helpers.getURL(check_url.format(sickbeard.GIT_ORG, sickbeard.GIT_REPO, attempt), session=self.session, returns='text')
+                if response:
+                    break
+
             assert response, "Empty response from {0}".format(check_url)
 
             match = re.search(r"MAX_DB_VERSION\s=\s(?P<version>\d{2,3})", response)
@@ -343,12 +348,24 @@ class UpdateManager(object):
     def get_update_url():
         return sickbeard.WEB_ROOT + "/home/update/?pid=" + str(sickbeard.PID)
 
+    @staticmethod
+    def remove_pyc(path):
+        path_parts = [sickbeard.PROG_DIR, path, '*.pyc']
+        for f in glob.iglob(ek(os.path.join, *path_parts)):
+            ek(os.remove, f)
+
+        path_parts.insert(-1, '**')
+        for f in glob.iglob(ek(os.path.join, *path_parts)):
+            ek(os.remove, f)
+
 
 class GitUpdateManager(UpdateManager):
     def __init__(self):
         self._git_path = self._find_working_git()
 
         self.branch = sickbeard.BRANCH = self._find_installed_branch()
+
+        self.check_detached_head()
 
         self._cur_commit_hash = None
         self._newest_commit_hash = None
@@ -423,7 +440,7 @@ class GitUpdateManager(UpdateManager):
         return None
 
     @staticmethod
-    def _run_git(git_path, args, log_errors=True):
+    def _run_git(git_path, args, log_errors=False):
 
         output = err = exit_status = None
 
@@ -498,6 +515,15 @@ class GitUpdateManager(UpdateManager):
                 return branch
         return ""
 
+    def check_detached_head(self):
+        # stdout, stderr_, exit_status = self._run_git(self._git_path, 'branch --show-current')
+        # if exit_status == 0 and not stdout:
+        if helpers.is_docker() and not self.branch:
+            logger.log('We found you in a detached state that prevents updates. Fixing')
+            stdout_, stderr_, exit_status = self._run_git(self._git_path, 'checkout -f master')
+            if exit_status == 0:
+                self.branch = sickbeard.BRANCH = 'master'
+
     def _check_github_for_update(self):
         """
         Uses git commands to check if there is a newer version that the provided
@@ -561,7 +587,7 @@ class GitUpdateManager(UpdateManager):
 
         elif self._num_commits_behind > 0:
 
-            base_url = 'http://github.com/' + sickbeard.GIT_ORG + '/' + sickbeard.GIT_REPO
+            base_url = 'https://github.com/' + sickbeard.GIT_ORG + '/' + sickbeard.GIT_REPO
             if self._newest_commit_hash:
                 url = base_url + '/compare/' + self._cur_commit_hash + '...' + self._newest_commit_hash
             else:
@@ -621,6 +647,7 @@ class GitUpdateManager(UpdateManager):
 
         if exit_status == 0:
             self._find_installed_version()
+            self.clean_libs()
 
             # Notify update successful
             notifiers.notify_git_update(sickbeard.CUR_COMMIT_HASH or "")
@@ -636,6 +663,17 @@ class GitUpdateManager(UpdateManager):
         stdout_, stderr_, exit_status = self._run_git(self._git_path, 'clean -df ""')  # @UnusedVariable
         if exit_status == 0:
             return True
+
+    def clean_libs(self):
+        """
+        Calls git clean to remove all untracked files in the lib dir before restart. Returns a bool depending
+        on the call's success.
+        """
+        stdout_, stderr_, exit_status = self._run_git(self._git_path, 'clean -df lib')  # @UnusedVariable
+        if exit_status == 0:
+            return True
+
+        self.remove_pyc('lib')
 
     def reset(self):
         """
@@ -764,7 +802,7 @@ class SourceUpdateManager(UpdateManager):
                             '&mdash; <a href="{update_url}">Update Now</a>').format(update_url=self.get_update_url())
 
         elif self._num_commits_behind > 0:
-            base_url = 'http://github.com/' + sickbeard.GIT_ORG + '/' + sickbeard.GIT_REPO
+            base_url = 'https://github.com/' + sickbeard.GIT_ORG + '/' + sickbeard.GIT_REPO
             if self._newest_commit_hash:
                 url = base_url + '/compare/' + self._cur_commit_hash + '...' + self._newest_commit_hash
             else:
@@ -786,7 +824,7 @@ class SourceUpdateManager(UpdateManager):
         Downloads the latest source tarball from github and installs it over the existing version.
         """
 
-        tar_download_url = 'http://github.com/' + sickbeard.GIT_ORG + '/' + sickbeard.GIT_REPO + '/tarball/' + self.branch
+        tar_download_url = 'https://github.com/' + sickbeard.GIT_ORG + '/' + sickbeard.GIT_REPO + '/tarball/' + self.branch
 
         try:
             # prepare the update dir
@@ -851,9 +889,31 @@ class SourceUpdateManager(UpdateManager):
             logger.log("Traceback: " + traceback.format_exc(), logger.DEBUG)
             return False
 
+        self.clean_libs()
+
         # Notify update successful
         notifiers.notify_git_update(sickbeard.CUR_COMMIT_HASH or "")
         return True
+
+    def clean_libs(self):
+        lib_path = ek(os.path.join, sickbeard.PROG_DIR, 'lib')
+
+        def removeEmptyFolders(path):
+            if not ek(os.path.isdir, path):
+                return
+
+            files = ek(os.listdir, path)
+            for f in files:
+                full_path = ek(os.path.join, path, f)
+                if ek(os.path.isdir, full_path):
+                    removeEmptyFolders(full_path)
+
+            files = ek(os.listdir, path)
+            if len(files) == 0 and path != lib_path:
+                ek(os.rmdir, path)
+
+        self.remove_pyc('lib')
+        removeEmptyFolders(lib_path)
 
     @staticmethod
     def list_remote_branches():

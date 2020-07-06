@@ -1,11 +1,11 @@
 <%inherit file="/layouts/main.mako"/>
 <%!
-    from sickbeard.helpers import is_ip_private
+    from sickbeard.helpers import is_ip_local
     import sickbeard
 %>
 <%block name="content">
     <div class="row">
-        % if not (is_ip_private(remote_ip) or (sickbeard.WEB_PASSWORD and sickbeard.WEB_USERNAME)):
+        % if not (is_ip_local(remote_ip) or (sickbeard.WEB_PASSWORD and sickbeard.WEB_USERNAME)):
             <% sickbeard.logger.log('Remote access was attempted by {}'.format(remote_ip), sickbeard.logger.WARNING) %>
             <div class="nicetry col-md-10">
                 <div class="row">
@@ -17,9 +17,11 @@
                     <div class="col-md-12">
                         <p>
                             If you are the owner of this server, your SickChill installation is exposed to the internet without a password.
-                            You will need access to the local network where this machine is to set the password through the interface. Otherwise, you will need to
-                            stop SickChill and edit the config.ini manually before starting SickChill back up. This may seem like an inconvenience, but your logins
-                            and file system being exposed is much more inconvenient.
+                            You will need access to the local network where this machine is to set the password through the interface.
+                            Otherwise, you will need to stop SickChill and edit web_user and web_pass in the config.ini manually before
+                            starting SickChill back up.
+
+                            This may seem like an inconvenience, but your logins and file system being exposed is much more inconvenient.
                         </p>
                         <p>
                             Your IP: ${remote_ip}

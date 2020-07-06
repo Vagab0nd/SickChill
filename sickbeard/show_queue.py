@@ -27,7 +27,6 @@ from collections import namedtuple
 # Third Party Imports
 import dateutil
 import six
-from imdb import _exceptions as imdb_exceptions
 from trakt import TraktAPI
 
 # First Party Imports
@@ -127,7 +126,7 @@ class ShowQueue(generic_queue.GenericQueue):
         if self.is_being_refreshed(show) and not force:
             raise CantRefreshShowException('This show is already being refreshed, not refreshing again.')
 
-        if (self.is_being_updated(show) or self.is_in_update_queue(show)) and not force:
+        if self.is_being_updated(show) or self.is_in_update_queue(show):
             logger.log(
                 'A refresh was attempted but there is already an update queued or in progress. Updates do a refresh at the end so I\'m skipping this request.',
                 logger.DEBUG)
@@ -467,13 +466,7 @@ class QueueItemAdd(ShowQueueItem):
             self._finish_early()
             return
 
-        logger.log(_('Retrieving show info from IMDb'), logger.DEBUG)
-        try:
-            self.show.loadIMDbInfo()
-        except imdb_exceptions.IMDbError as error:
-            logger.log(_('Something wrong on IMDb api: {0}').format(error), logger.WARNING)
-        except Exception as error:
-            logger.log('Error loading IMDb info: {0}'.format(error), logger.ERROR)
+        self.show.loadIMDbInfo()
 
         try:
             self.show.saveToDB()
@@ -656,14 +649,7 @@ class QueueItemUpdate(ShowQueueItem):
             self.finish()
             return
 
-        logger.log('Retrieving show info from IMDb', logger.DEBUG)
-        try:
-            self.show.loadIMDbInfo()
-        except imdb_exceptions.IMDbError as error:
-            logger.log('Something wrong on IMDb api: {0}'.format(error), logger.WARNING)
-        except Exception as error:
-            logger.log('Error loading IMDb info: {0}'.format(error), logger.ERROR)
-            logger.log(traceback.format_exc(), logger.DEBUG)
+        self.show.loadIMDbInfo()
 
         # have to save show before reading episodes from db
         try:
@@ -684,7 +670,7 @@ class QueueItemUpdate(ShowQueueItem):
                        (self.show.idxr.name, error), logger.ERROR)
             IndexerEpList = None
 
-        if IndexerEpList is not None:
+        if IndexerEpList:
             for curSeason in IndexerEpList:
                 for curEpisode in IndexerEpList[curSeason]:
                     curEp = self.show.getEpisode(curSeason, curEpisode)
@@ -713,7 +699,8 @@ class QueueItemUpdate(ShowQueueItem):
 
         logger.log('Finished update of {0}'.format(self.show.name), logger.DEBUG)
 
-        sickbeard.showQueueScheduler.action.refresh_show(self.show, self.force)
+        # sickbeard.showQueueScheduler.action.refresh_show(self.show, self.force)
+        QueueItemRefresh(self.show, self.force).run()
         super(QueueItemUpdate, self).finish()
         self.finish()
 
@@ -756,7 +743,7 @@ class QueueItemRemove(ShowQueueItem):
             # nmj_notifier kicks off its library update when the notify_download is issued (inside notifiers)
 
             # do the library update for Synology Indexer
-            notifiers.synoindex_notifier.addFolder(self.show.location)
+            notifiers.synoindex_notifier.addFolder(self.show._location)
 
             # do the library update for pyTivo
             notifiers.pytivo_notifier.update_library(self.show)

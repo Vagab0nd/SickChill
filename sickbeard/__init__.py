@@ -46,7 +46,7 @@ from sickchill.helper.exceptions import ex
 from sickchill.system.Shutdown import Shutdown
 
 # Local Folder Imports
-from . import (auto_postprocessor, clients, dailysearcher, db, helpers, image_cache, logger, metadata, naming, post_processing_queue, properFinder, providers,
+from . import (clients, dailysearcher, db, helpers, image_cache, logger, metadata, naming, notifications_queue, post_processing_queue, properFinder, providers,
                scene_exceptions, scheduler, search_queue, searchBacklog, show_queue, subtitles, traktChecker, versionChecker)
 from .common import ARCHIVED, IGNORED, MULTI_EP_STRINGS, SD, SKIPPED, WANTED
 from .config import check_section, check_setting_bool, check_setting_float, check_setting_int, check_setting_str, ConfigMigrator
@@ -102,6 +102,9 @@ CLIENT_WEB_URLS = {'torrent': '', 'newznab': ''}
 DAEMON = None
 NO_RESIZE = False
 
+TVDB_USER = None
+TVDB_USER_KEY = None
+
 # system events
 events = None
 
@@ -120,6 +123,7 @@ autoPostProcessorScheduler = None
 postProcessorTaskScheduler = None
 subtitlesFinderScheduler = None
 traktCheckerScheduler = None
+notificationsTaskScheduler = None
 
 showList = []
 
@@ -145,8 +149,8 @@ GIT_TOKEN = None
 GIT_PATH = None
 DEVELOPER = False
 
-NEWS_URL = 'http://sickchill.github.io/sickchill-news/news.md'
-LOGO_URL = 'http://sickchill.github.io/images/ico/favicon-64.png'
+NEWS_URL = 'https://sickchill.github.io/sickchill-news/news.md'
+LOGO_URL = 'https://sickchill.github.io/images/ico/favicon-64.png'
 
 NEWS_LAST_READ = None
 NEWS_LATEST = None
@@ -163,12 +167,12 @@ LOG_SIZE = 10.0
 SOCKET_TIMEOUT = None
 
 WEB_PORT = None
-WEB_LOG = None
+WEB_LOG = False
 WEB_ROOT = None
 WEB_USERNAME = None
 WEB_PASSWORD = None
 WEB_HOST = None
-WEB_IPV6 = None
+WEB_IPV6 = False
 WEB_COOKIE_SECRET = None
 WEB_USE_GZIP = True
 
@@ -337,8 +341,7 @@ TORRENT_USERNAME = None
 TORRENT_PASSWORD = None
 TORRENT_HOST = ''
 TORRENT_PATH = ''
-TORRENT_DELUGE_DOWNLOAD_DIR = ''
-TORRENT_DELUGE_COMPLETE_DIR = ''
+TORRENT_PATH_INCOMPLETE = ''
 TORRENT_SEED_TIME = None
 TORRENT_PAUSED = False
 TORRENT_HIGH_BANDWIDTH = False
@@ -494,6 +497,13 @@ SLACK_NOTIFY_DOWNLOAD = None
 SLACK_NOTIFY_SUBTITLEDOWNLOAD = None
 SLACK_WEBHOOK = None
 SLACK_ICON_EMOJI = None
+
+USE_ROCKETCHAT = False
+ROCKETCHAT_NOTIFY_SNATCH = None
+ROCKETCHAT_NOTIFY_DOWNLOAD = None
+ROCKETCHAT_NOTIFY_SUBTITLEDOWNLOAD = None
+ROCKETCHAT_WEBHOOK = None
+ROCKETCHAT_ICON_EMOJI = None
 
 USE_MATRIX = False
 MATRIX_NOTIFY_SNATCH = None
@@ -695,7 +705,7 @@ def initialize(consoleLogging=True):
             CHECK_PROPERS_INTERVAL, ALLOW_HIGH_PRIORITY, SAB_FORCED, TORRENT_METHOD, NOTIFY_ON_LOGIN, SAB_USERNAME, SAB_PASSWORD, SAB_APIKEY, SAB_CATEGORY, \
             SAB_CATEGORY_BACKLOG, SAB_CATEGORY_ANIME, SAB_CATEGORY_ANIME_BACKLOG, SAB_HOST,  NZBGET_USERNAME, NZBGET_PASSWORD, NZBGET_CATEGORY, \
             NZBGET_CATEGORY_BACKLOG, NZBGET_CATEGORY_ANIME, NZBGET_CATEGORY_ANIME_BACKLOG, NZBGET_PRIORITY, NZBGET_HOST, NZBGET_USE_HTTPS,\
-            backlogSearchScheduler, TORRENT_USERNAME, TORRENT_PASSWORD, TORRENT_HOST, TORRENT_PATH, TORRENT_DELUGE_DOWNLOAD_DIR, TORRENT_DELUGE_COMPLETE_DIR,\
+            backlogSearchScheduler, TORRENT_USERNAME, TORRENT_PASSWORD, TORRENT_HOST, TORRENT_PATH, TORRENT_PATH_INCOMPLETE,\
             TORRENT_SEED_TIME, TORRENT_PAUSED, TORRENT_HIGH_BANDWIDTH,\
             TORRENT_LABEL, TORRENT_LABEL_ANIME, TORRENT_VERIFY_CERT, TORRENT_RPCURL, TORRENT_AUTH_TYPE, USE_KODI, KODI_ALWAYS_ON, KODI_NOTIFY_ONSNATCH, \
             KODI_NOTIFY_ONDOWNLOAD, KODI_NOTIFY_ONSUBTITLEDOWNLOAD, KODI_UPDATE_FULL, KODI_UPDATE_ONLYFIRST, KODI_UPDATE_LIBRARY, KODI_HOST, KODI_USERNAME, \
@@ -749,8 +759,9 @@ def initialize(consoleLogging=True):
             NEWS_LATEST, SOCKET_TIMEOUT, SYNOLOGY_DSM_HOST, SYNOLOGY_DSM_USERNAME, SYNOLOGY_DSM_PASSWORD, SYNOLOGY_DSM_PATH, GUI_LANG, SICKCHILL_BACKGROUND, \
             SICKCHILL_BACKGROUND_PATH, FANART_BACKGROUND, FANART_BACKGROUND_OPACITY, CUSTOM_CSS, CUSTOM_CSS_PATH, USE_SLACK, SLACK_NOTIFY_SNATCH, \
             SLACK_NOTIFY_DOWNLOAD, SLACK_NOTIFY_SUBTITLEDOWNLOAD, SLACK_WEBHOOK, SLACK_ICON_EMOJI, USE_DISCORD, DISCORD_NOTIFY_SNATCH, DISCORD_NOTIFY_DOWNLOAD, DISCORD_WEBHOOK,\
+            USE_ROCKETCHAT, ROCKETCHAT_NOTIFY_SNATCH, ROCKETCHAT_NOTIFY_DOWNLOAD, ROCKETCHAT_NOTIFY_SUBTITLEDOWNLOAD, ROCKETCHAT_WEBHOOK, ROCKETCHAT_ICON_EMOJI, \
             USE_MATRIX, MATRIX_NOTIFY_SNATCH, MATRIX_NOTIFY_DOWNLOAD, MATRIX_NOTIFY_SUBTITLEDOWNLOAD, MATRIX_API_TOKEN, MATRIX_SERVER, MATRIX_ROOM, \
-            ENDED_SHOWS_UPDATE_INTERVAL, IMAGE_CACHE, CF_AUTH_DOMAIN, CF_POLICY_AUD
+            ENDED_SHOWS_UPDATE_INTERVAL, IMAGE_CACHE, CF_AUTH_DOMAIN, CF_POLICY_AUD, TVDB_USER, TVDB_USER_KEY, notificationsTaskScheduler
 
         if __INITIALIZED__:
             return False
@@ -778,6 +789,7 @@ def initialize(consoleLogging=True):
         check_section(CFG, 'Subtitles')
         check_section(CFG, 'pyTivo')
         check_section(CFG, 'Slack')
+        check_section(CFG, 'RocketChat')
         check_section(CFG, 'Discord')
 
         # Need to be before any passwords
@@ -961,6 +973,9 @@ def initialize(consoleLogging=True):
 
         sickchill.indexer = sickchill.ShowIndexer()
 
+        TVDB_USER = check_setting_str(CFG, 'General', 'tvdb_user')
+        TVDB_USER_KEY = check_setting_str(CFG, 'General', 'tvdb_user_key', censor_log=True)
+
         TRASH_REMOVE_SHOW = check_setting_bool(CFG, 'General', 'trash_remove_show')
         TRASH_ROTATE_LOGS = check_setting_bool(CFG, 'General', 'trash_rotate_logs')
 
@@ -1130,8 +1145,16 @@ def initialize(consoleLogging=True):
         TORRENT_PASSWORD = check_setting_str(CFG, 'TORRENT', 'torrent_password', censor_log=True)
         TORRENT_HOST = check_setting_str(CFG, 'TORRENT', 'torrent_host')
         TORRENT_PATH = check_setting_str(CFG, 'TORRENT', 'torrent_path')
-        TORRENT_DELUGE_DOWNLOAD_DIR = check_setting_str(CFG, 'TORRENT', 'torrent_download_dir_deluge')
-        TORRENT_DELUGE_COMPLETE_DIR = check_setting_str(CFG, 'TORRENT', 'torrent_complete_dir_deluge')
+        TORRENT_PATH_INCOMPLETE = check_setting_str(CFG, 'TORRENT', 'torrent_path_incomplete')
+
+        # Fix duplicated options
+        if TORRENT_METHOD.startswith('deluge'):
+            deluge_download_dir = check_setting_str(CFG, 'TORRENT', 'torrent_download_dir_deluge')
+            deluge_complete_dir = check_setting_str(CFG, 'TORRENT', 'torrent_complete_dir_deluge')
+            TORRENT_PATH = deluge_complete_dir or TORRENT_PATH
+            if deluge_download_dir and not TORRENT_PATH_INCOMPLETE:
+                TORRENT_PATH_INCOMPLETE = deluge_download_dir
+
         TORRENT_SEED_TIME = check_setting_int(CFG, 'TORRENT', 'torrent_seed_time', min_val=-1)
         TORRENT_PAUSED = check_setting_bool(CFG, 'TORRENT', 'torrent_paused')
         TORRENT_HIGH_BANDWIDTH = check_setting_bool(CFG, 'TORRENT', 'torrent_high_bandwidth')
@@ -1278,6 +1301,13 @@ def initialize(consoleLogging=True):
         SLACK_NOTIFY_SUBTITLEDOWNLOAD = check_setting_bool(CFG, 'Slack', 'slack_notify_subtitledownload')
         SLACK_WEBHOOK = check_setting_str(CFG, 'Slack', 'slack_webhook')
         SLACK_ICON_EMOJI = check_setting_str(CFG, 'Slack', 'slack_icon_emoji')
+
+        USE_ROCKETCHAT = check_setting_bool(CFG, 'RocketChat', 'use_rocketchat')
+        ROCKETCHAT_NOTIFY_SNATCH = check_setting_bool(CFG, 'RocketChat', 'rocketchat_notify_snatch')
+        ROCKETCHAT_NOTIFY_DOWNLOAD = check_setting_bool(CFG, 'RocketChat', 'rocketchat_notify_download')
+        ROCKETCHAT_NOTIFY_SUBTITLEDOWNLOAD = check_setting_bool(CFG, 'RocketChat', 'rocketchat_notify_subtitledownload')
+        ROCKETCHAT_WEBHOOK = check_setting_str(CFG, 'RocketChat', 'rocketchat_webhook')
+        ROCKETCHAT_ICON_EMOJI = check_setting_str(CFG, 'RocketChat', 'rocketchat_icon_emoji')
 
         USE_MATRIX = check_setting_bool(CFG, 'Matrix', 'use_matrix')
         MATRIX_NOTIFY_SNATCH = check_setting_bool(CFG, 'Matrix', 'matrix_notify_snatch')
@@ -1632,7 +1662,7 @@ def initialize(consoleLogging=True):
         )
 
         autoPostProcessorScheduler = scheduler.Scheduler(
-            auto_postprocessor.PostProcessor(),
+            post_processing_queue.PostProcessor(),
             run_delay=datetime.timedelta(minutes=5),
             cycleTime=datetime.timedelta(minutes=AUTOPOSTPROCESSOR_FREQUENCY),
             threadName="POSTPROCESSOR",
@@ -1653,6 +1683,14 @@ def initialize(consoleLogging=True):
             cycleTime=datetime.timedelta(hours=SUBTITLES_FINDER_FREQUENCY),
             threadName="FINDSUBTITLES",
             silent=not USE_SUBTITLES
+        )
+
+        # notifications
+        notificationsTaskScheduler = scheduler.Scheduler(
+            notifications_queue.NotificationsQueue(),
+            run_delay=datetime.timedelta(seconds=5),
+            cycleTime=datetime.timedelta(seconds=5),
+            threadName="NOTIFICATIONS",
         )
 
         __INITIALIZED__['0'] = True
@@ -1708,6 +1746,8 @@ def start():
             traktCheckerScheduler.enable = USE_TRAKT
             traktCheckerScheduler.start()
 
+            notificationsTaskScheduler.enable = True
+            notificationsTaskScheduler.start()
             started['0'] = True
 
 
@@ -1728,6 +1768,7 @@ def halt():
                 traktCheckerScheduler,
                 properFinderScheduler,
                 subtitlesFinderScheduler,
+                notificationsTaskScheduler,
                 events
             ]
 
@@ -1862,6 +1903,8 @@ def save_config():
             'localhost_ip': LOCALHOST_IP,
             'cpu_preset': CPU_PRESET,
             'anon_redirect': ANON_REDIRECT,
+            'tvdb_user': TVDB_USER,
+            'tvdb_user_key': TVDB_USER_KEY,
             'api_key': API_KEY,
             'debug': int(DEBUG),
             'dbdebug': int(DBDEBUG),
@@ -2028,8 +2071,7 @@ def save_config():
             'torrent_password': helpers.encrypt(TORRENT_PASSWORD, ENCRYPTION_VERSION),
             'torrent_host': TORRENT_HOST,
             'torrent_path': TORRENT_PATH,
-            'torrent_download_dir_deluge': TORRENT_DELUGE_DOWNLOAD_DIR,
-            'torrent_complete_dir_deluge': TORRENT_DELUGE_COMPLETE_DIR,
+            'torrent_path_incomplete': TORRENT_PATH_INCOMPLETE,
             'torrent_seed_time': int(TORRENT_SEED_TIME),
             'torrent_paused': int(TORRENT_PAUSED),
             'torrent_high_bandwidth': int(TORRENT_HIGH_BANDWIDTH),
@@ -2210,6 +2252,15 @@ def save_config():
             'slack_notify_subtitledownload': int(SLACK_NOTIFY_SUBTITLEDOWNLOAD),
             'slack_webhook': SLACK_WEBHOOK,
             'slack_icon_emoji': SLACK_ICON_EMOJI
+        },
+
+        'RocketChat': {
+            'use_rocketchat': int(USE_ROCKETCHAT),
+            'rocketchat_notify_snatch': int(ROCKETCHAT_NOTIFY_SNATCH),
+            'rocketchat_notify_download': int(ROCKETCHAT_NOTIFY_DOWNLOAD),
+            'rocketchat_notify_subtitledownload': int(ROCKETCHAT_NOTIFY_SUBTITLEDOWNLOAD),
+            'rocketchat_webhook': ROCKETCHAT_WEBHOOK,
+            'rocketchat_icon_emoji': ROCKETCHAT_ICON_EMOJI
         },
 
         'Matrix': {

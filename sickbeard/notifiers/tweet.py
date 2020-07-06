@@ -21,6 +21,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 # Third Party Imports
+import six
 import twitter
 from requests.exceptions import RequestException
 from requests_oauthlib import OAuth1Session
@@ -104,7 +105,7 @@ class Notifier(object):
                                       resource_owner_secret=sickbeard.TWITTER_PASSWORD)
 
         try:
-            access_token = oauth_session.fetch_access_token(self.ACCESS_TOKEN_URL, verifier=unicode(key))
+            access_token = oauth_session.fetch_access_token(self.ACCESS_TOKEN_URL, verifier=six.text_type(key))
         except Exception as err:
             logger.log('The request for a token with did not succeed: {}'.format(err), logger.ERROR)
             return False

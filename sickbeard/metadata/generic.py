@@ -26,10 +26,10 @@ import os
 import re
 
 # Third Party Imports
-import fanart as fanart_module
+import fanart
 import six
+import tmdbsimple
 from fanart.core import Request as fanartRequest
-from tmdb_api.tmdb_api import TMDB
 
 # First Party Imports
 import sickbeard
@@ -256,13 +256,6 @@ class GenericMetadata(object):
             return self.write_show_file(show_obj)
         return False
 
-    def create_episode_metadata(self, ep_obj):
-        if self.episode_metadata and ep_obj and not self._has_episode_metadata(ep_obj):
-            logger.log("Metadata provider " + self.name + " creating episode metadata for " + ep_obj.pretty_name(),
-                       logger.DEBUG)
-            return self.write_ep_file(ep_obj)
-        return False
-
     def update_show_indexer_metadata(self, show_obj):
         if self.show_metadata and show_obj and self._has_show_metadata(show_obj):
             logger.log(
@@ -297,6 +290,64 @@ class GenericMetadata(object):
                 logger.log(
                     "Unable to write file to " + nfo_file_path + " - are you sure the folder is writable? " + ex(e),
                     logger.ERROR)
+
+    def create_episode_metadata(self, ep_obj):
+        if self.episode_metadata and ep_obj and not self._has_episode_metadata(ep_obj):
+            logger.log("Metadata provider " + self.name + " creating episode metadata for " + ep_obj.pretty_name(),
+                       logger.DEBUG)
+            return self.write_ep_file(ep_obj)
+        return False
+
+    def update_episode_metadata(self, ep_obj):
+        if self.episode_metadata and ep_obj and self._has_episode_metadata(ep_obj):
+            logger.log("Metadata provider " + self.name + " updating episode indexer info metadata file for " + ep_obj.pretty_name(), logger.DEBUG)
+            nfo_file_path = self.get_episode_file_path(ep_obj)
+            assert isinstance(nfo_file_path, six.text_type)
+
+            attribute_map = {
+                'title': 'name',
+                'aired': 'airdate',
+                'season': 'season',
+                'episode': 'episode',
+                'showtitle': 'show.name',
+                'runtime': 'show.runtime',
+                'plot': 'description'
+            }
+            try:
+                with io.open(nfo_file_path, 'rb') as xmlFileObj:
+                    episodeXML = etree.ElementTree(file=xmlFileObj)
+
+                changed = False
+                for attribute in attribute_map:
+                    try:
+                        if not hasattr(ep_obj, attribute_map[attribute]):
+                            continue
+
+                        node = episodeXML.find(attribute)
+                        if node is None or node.text == str(getattr(ep_obj, attribute_map[attribute])):
+                            continue
+
+                        node.text = str(getattr(ep_obj, attribute_map[attribute]))
+                        changed = True
+                    except AttributeError:
+                        pass
+
+                if not changed:
+                    return True
+
+                root = episodeXML.getroot()
+
+                # Make it purdy
+                helpers.indentXML(root)
+
+                episodeXML.write(nfo_file_path, encoding='UTF-8')
+                helpers.chmodAsParent(nfo_file_path)
+
+                return True
+            except IOError as error:
+                logger.log("Unable to write file to {} - are you sure the folder is writable? {}".format(nfo_file_path, ex(error)), logger.WARNING)
+            except etree.ParseError as error:
+                logger.log("Error parsing existing nfo file at {} - {}".format(nfo_file_path, ex(error)), logger.WARNING)
 
     def create_fanart(self, show_obj):
         if self.fanart and show_obj and not self._has_fanart(show_obj):
@@ -501,8 +552,10 @@ class GenericMetadata(object):
 
         fanart_url = sickchill.indexer.series_fanart_url(show_obj)
         if not fanart_url:
-            logger.log("Fanart url not found for show {}, skipping this image".format(show_obj.name), logger.DEBUG)
-            return False
+            fanart_url = self._retrieve_show_image_urls_from_fanart(show_obj, 'fanart')
+            if not fanart_url:
+                logger.log("Fanart url not found for show {}, skipping this image".format(show_obj.name), logger.DEBUG)
+                return False
 
         fanart_data = metadata_helpers.getShowImage(fanart_url)
         if not fanart_data:
@@ -527,8 +580,10 @@ class GenericMetadata(object):
 
         poster_url = sickchill.indexer.series_poster_url(show_obj)
         if not poster_url:
-            logger.log("Poster url not found for show {}, skipping this image".format(show_obj.name), logger.DEBUG)
-            return False
+            poster_url = self._retrieve_show_image_urls_from_fanart(show_obj, 'poster')
+            if not poster_url:
+                logger.log("Poster url not found for show {}, skipping this image".format(show_obj.name), logger.DEBUG)
+                return False
 
         poster_data = metadata_helpers.getShowImage(poster_url)
         if not poster_data:
@@ -552,8 +607,10 @@ class GenericMetadata(object):
 
         banner_url = sickchill.indexer.series_banner_url(show_obj)
         if not banner_url:
-            logger.log("Banner url not found for show {}, skipping this image".format(show_obj.name), logger.DEBUG)
-            return False
+            banner_url = self._retrieve_show_image_urls_from_fanart(show_obj, 'banner')
+            if not banner_url:
+                logger.log("Banner url not found for show {}, skipping this image".format(show_obj.name), logger.DEBUG)
+                return False
 
         banner_data = metadata_helpers.getShowImage(banner_url)
         if not banner_data:
@@ -571,8 +628,10 @@ class GenericMetadata(object):
 
         season_poster_url = sickchill.indexer.season_poster_url(show_obj, season)
         if not season_poster_url:
-            logger.log("Season poster url not found for season {}, skipping this season".format(season), logger.DEBUG)
-            return False
+            season_poster_url = self._retrieve_show_image_urls_from_fanart(show_obj, 'season_poster', season=season)
+            if not season_poster_url:
+                logger.log("Season poster url not found for season {}, skipping this season".format(season), logger.DEBUG)
+                return False
 
         season_poster_file_path = self.get_season_poster_path(show_obj, season)
         if not season_poster_file_path:
@@ -595,8 +654,10 @@ class GenericMetadata(object):
         """
         season_banner_url = sickchill.indexer.season_banner_url(show_obj, season)
         if not season_banner_url:
-            logger.log("Url for season banner {} came back blank, skipping this season".format(season), logger.DEBUG)
-            return False
+            season_banner_url = self._retrieve_show_image_urls_from_fanart(show_obj, 'season_banner', season=season)
+            if not season_banner_url:
+                logger.log("Url for season banner {} came back blank, skipping this season".format(season), logger.DEBUG)
+                return False
 
         season_banner_file_path = self.get_season_banner_path(show_obj, season)
         if not season_banner_file_path:
@@ -613,8 +674,10 @@ class GenericMetadata(object):
     def save_season_all_poster(self, show_obj):
         poster_url = sickchill.indexer.series_poster_url(show_obj)
         if not poster_url:
-            logger.log("Url for season all poster came back blank, skipping this season", logger.DEBUG)
-            return False
+            poster_url = self._retrieve_show_image_urls_from_fanart(show_obj, 'season_poster', season=0)
+            if not poster_url:
+                logger.log("Url for season all poster came back blank, skipping this season", logger.DEBUG)
+                return False
 
         season_poster_file_path = self.get_season_all_poster_path(show_obj)
         if not season_poster_file_path:
@@ -631,8 +694,10 @@ class GenericMetadata(object):
     def save_season_all_banner(self, show_obj):
         banner_url = sickchill.indexer.series_banner_url(show_obj)
         if not banner_url:
-            logger.log("Url for season all banner came back blank, skipping this season", logger.DEBUG)
-            return False
+            banner_url = self._retrieve_show_image_urls_from_fanart(show_obj, 'season_banner', season=0)
+            if not banner_url:
+                logger.log("Url for season all banner came back blank, skipping this season", logger.DEBUG)
+                return False
 
         season_banner_file_path = self.get_season_all_banner_path(show_obj)
         if not season_banner_file_path:
@@ -766,7 +831,7 @@ class GenericMetadata(object):
 
         return indexer_id, name, indexer
 
-    def _retrieve_show_images_from_tmdb(self, show, img_type):
+    def _retrieve_show_image_urls_from_tmdb(self, show, img_type):
         types = {'poster': 'poster_path',
                  'banner': None,
                  'fanart': 'backdrop_path',
@@ -774,8 +839,8 @@ class GenericMetadata(object):
                  'banner_thumb': None}
 
         # get TMDB configuration info
-        tmdb = TMDB(sickbeard.TMDB_API_KEY)
-        config = tmdb.Configuration()
+        tmdbsimple.API_KEY = sickbeard.TMDB_API_KEY
+        config = tmdbsimple.Configuration()
         response = config.info()
         base_url = response['images']['base_url']
         sizes = response['images']['poster_sizes']
@@ -786,9 +851,9 @@ class GenericMetadata(object):
         max_size = max(sizes, key=size_str_to_int)
 
         try:
-            search = tmdb.Search()
+            search = tmdbsimple.Search()
             for show_name in allPossibleShowNames(show):
-                for result in search.collection({'query': show_name})['results'] + search.tv({'query': show_name})['results']:
+                for result in search.collection(query=show_name)['results'] + search.tv(query=show_name)['results']:
                     if types[img_type] and getattr(result, types[img_type]):
                         return "{0}{1}{2}".format(base_url, max_size, result[types[img_type]])
 
@@ -797,31 +862,39 @@ class GenericMetadata(object):
 
         logger.log("Could not find any " + img_type + " images on TMDB for " + show.name, logger.INFO)
 
-    def _retrieve_show_images_from_fanart(self, show, img_type, thumb=False):
+    def _retrieve_show_image_urls_from_fanart(self, show, img_type, thumb=False, season=None):
         types = {
-            'poster': fanart_module.TYPE.TV.POSTER,
-            'banner': fanart_module.TYPE.TV.BANNER,
-            'poster_thumb': fanart_module.TYPE.TV.POSTER,
-            'banner_thumb': fanart_module.TYPE.TV.BANNER,
-            'fanart': fanart_module.TYPE.TV.BACKGROUND,
+            'poster': fanart.TYPE.TV.POSTER,
+            'banner': fanart.TYPE.TV.BANNER,
+            'poster_thumb': fanart.TYPE.TV.POSTER,
+            'banner_thumb': fanart.TYPE.TV.BANNER,
+            'fanart': fanart.TYPE.TV.BACKGROUND,
+            'season_poster': fanart.TYPE.TV.SEASONPOSTER,
+            'season_banner': fanart.TYPE.TV.SEASONBANNER,
         }
 
         try:
-            request = fanartRequest(
-                apikey=sickbeard.FANART_API_KEY,
-                id=show.indexerid,
-                ws=fanart_module.WS.TV,
-                type=types[img_type],
-                sort=fanart_module.SORT.POPULAR,
-                limit=fanart_module.LIMIT.ONE,
-            )
+            if img_type in types:
+                request = fanartRequest(
+                    apikey=sickbeard.FANART_API_KEY,
+                    id=show.indexerid,
+                    ws=fanart.WS.TV,
+                    type=types[img_type],
+                    sort=fanart.SORT.POPULAR,
+                    limit=(fanart.LIMIT.ONE, fanart.LIMIT.ALL)[season is not None],
+                )
 
-            resp = request.response()
-            url = resp[types[img_type]][0]['url']
-            if thumb:
-                url = re.sub('/fanart/', '/preview/', url)
-            return url
-        except Exception:
+                resp = request.response()
+                results = resp[types[img_type]]
+                if season:
+                    results = filter(lambda x: try_int(x['season'], default_value=None) == season, results)
+
+                url = results[0]['url']
+                if thumb:
+                    url = re.sub('/fanart/', '/preview/', url)
+                return url
+        except Exception as e:
+            print(e)
             pass
 
         logger.log("Could not find any " + img_type + " images on Fanart.tv for " + show.name, logger.INFO)

@@ -87,8 +87,12 @@ class ApiHandler(RequestHandler):
     def __init__(self, *args, **kwargs):
         super(ApiHandler, self).__init__(*args, **kwargs)
 
-    # def set_default_headers(self):
-    #     self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    def set_default_headers(self):
+        self.set_header("Content-Type", "application/json")
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "content-type")
+        self.set_header('Access-Control-Allow-Methods', 'GET')
+        # self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
 
     def get(self, *args, **kwargs):
         kwargs = self.request.arguments
@@ -1388,6 +1392,7 @@ class CMDPostProcess(ApiCall):
     def __init__(self, args, kwargs):
         super(CMDPostProcess, self).__init__(args, kwargs)
         self.path, args = self.check_params(args, kwargs, "path", None, False, "string", [])
+        self.release_name, args = self.check_params(args, kwargs, "release_name", None, False, "string", [])
         self.force_replace, args = self.check_params(args, kwargs, "force_replace", False, False, "bool", [])
         self.force_next, args = self.check_params(args, kwargs, "force_next", False, False, "bool", [])
         self.return_data, args = self.check_params(args, kwargs, "return_data", False, False, "bool", [])
@@ -1410,7 +1415,7 @@ class CMDPostProcess(ApiCall):
             self.type = 'manual'
 
         data = sickbeard.postProcessorTaskScheduler.action.add_item(
-            self.path, method=self.process_method, force=self.force_replace,
+            self.path, self.release_name, method=self.process_method, force=self.force_replace,
             is_priority=self.is_priority, failed=self.failed, delete=self.delete,
             mode=self.type, force_next=self.force_next
         )
@@ -1418,7 +1423,7 @@ class CMDPostProcess(ApiCall):
         if not self.return_data:
             data = ""
 
-        return _responds(RESULT_SUCCESS, data=data, msg="Started post-process for {0}".format(self.path))
+        return _responds(RESULT_SUCCESS, data=data, msg="Started post-process for {0}".format(self.release_name or self.path))
 
 
 # noinspection PyAbstractClass
@@ -1737,7 +1742,7 @@ class CMDSickBeardSearchIndexers(ApiCall):
                 for result in indexer_results:
                     # Skip it if it's in our show list already, and we only want new shows
                     # noinspection PyUnresolvedReferences
-                    in_show_list = sickbeard.tv.Show.find(sickbeard.showList, int(result.id))
+                    in_show_list = sickbeard.tv.Show.find(sickbeard.showList, int(result['id']))
                     if in_show_list and self.only_new:
                         continue
 

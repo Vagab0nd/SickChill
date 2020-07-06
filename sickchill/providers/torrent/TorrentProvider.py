@@ -22,8 +22,8 @@ from __future__ import absolute_import, print_function, unicode_literals
 from datetime import datetime
 
 # Third Party Imports
-from feedparser.util import FeedParserDict
-from hachoir_parser import createParser
+from feedparser import FeedParserDict
+from rtorrent9.lib.torrentparser import TorrentParser
 
 # First Party Imports
 import sickbeard
@@ -129,23 +129,11 @@ class TorrentProvider(GenericProvider):
 
         return title, download_url
 
-    def _verify_download(self, file_name=None):
+    def _verify_download(self, file_name):
         try:
-            parser = createParser(file_name)
-
-            if parser:
-
-                # Access to a protected member of a client class
-                mime_type = parser._getMimeType()
-
-                try:
-                    parser.stream._input.close()
-                except Exception:
-                    pass
-
-                if mime_type == 'application/x-bittorrent':
-                    return True
-        except Exception as e:
+            tp = TorrentParser(file_name)
+            return tp.info_hash is not None
+        except AssertionError as e:
             logger.log('Failed to validate torrent file: {0}'.format(ex(e)), logger.DEBUG)
 
         logger.log('Result is not a valid torrent file', logger.DEBUG)

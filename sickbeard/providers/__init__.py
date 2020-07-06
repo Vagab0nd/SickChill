@@ -26,19 +26,23 @@ from random import shuffle
 
 # First Party Imports
 import sickbeard
-from sickbeard.providers import (abnormal, alpharatio, archetorrent, binsearch, bitcannon, bjshare, btn, cpasbien, danishbits, demonoid, elitetorrent, filelist,
-                                 gftracker, gimmepeers, hd4free, hdbits, hdspace, hdtorrents, hdtorrents_it, horriblesubs, hounddawgs, ilcorsaronero,
+from sickbeard.providers import (abnormal, alpharatio, archetorrent, binsearch, bitcannon, bjshare, btn, cpasbien, danishbits, demonoid, elitetorrent, eztv,
+                                 filelist, gftracker, gimmepeers, hd4free, hdbits, hdspace, hdtorrents, hdtorrents_it, horriblesubs, hounddawgs, ilcorsaronero,
                                  immortalseed, iptorrents, kat, limetorrents, magnetdl, morethantv, ncore, nebulance, newpct, norbits, nyaa, omgwtfnzbs,
                                  pretome, rarbg, scc, scenetime, shazbat, skytorrents, speedcd, thepiratebay, tntvillage, tokyotoshokan, torrent9, torrentbytes,
                                  torrentday, torrentleech, torrentproject, torrentz, tvchaosuk, xthor, yggtorrent)
 
 __all__ = [
     'abnormal', 'alpharatio', 'archetorrent', 'binsearch', 'bitcannon', 'bjshare', 'btn', 'cpasbien', 'danishbits', 'demonoid',
-    'elitetorrent', 'filelist', 'gftracker', 'gimmepeers', 'hd4free', 'hdbits', 'hdspace', 'hdtorrents', 'hdtorrents_it',
+    'elitetorrent', 'eztv', 'filelist', 'gftracker', 'gimmepeers', 'hd4free', 'hdbits', 'hdspace', 'hdtorrents', 'hdtorrents_it',
     'horriblesubs', 'hounddawgs', 'ilcorsaronero', 'immortalseed', 'iptorrents', 'kat', 'limetorrents', 'magnetdl', 'morethantv',
     'ncore', 'nebulance', 'newpct', 'norbits', 'nyaa', 'omgwtfnzbs', 'pretome', 'rarbg', 'scc', 'scenetime',
     'shazbat', 'skytorrents', 'speedcd', 'thepiratebay', 'tntvillage', 'tokyotoshokan', 'torrent9',
     'torrentbytes', 'torrentday', 'torrentleech', 'torrentproject', 'torrentz', 'tvchaosuk', 'xthor', 'yggtorrent'
+]
+
+broken_providers = [
+    'torrentz', 'yggtorrent'
 ]
 
 
@@ -70,7 +74,7 @@ def sortedProviderList(randomize=False):
 
 
 def makeProviderList():
-    return [x.provider for x in (getProviderModule(y) for y in __all__) if x]
+    return [x.provider for x in (getProviderModule(y) for y in __all__ if y not in broken_providers) if x]
 
 
 def getProviderModule(name):

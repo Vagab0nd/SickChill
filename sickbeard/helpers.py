@@ -53,16 +53,19 @@ import bencode
 import certifi
 import cfscrape
 import cloudscraper
+import ifaddr
 import rarfile
 import requests
 import six
 import urllib3
 from cachecontrol import CacheControl
+from cloudscraper.exceptions import CloudflareException
 from requests.compat import urljoin
 from requests.utils import urlparse
 # noinspection PyUnresolvedReferences
 from six.moves import urllib
 from tornado._locale_data import LOCALE_NAMES
+from unidecode import unidecode
 
 # First Party Imports
 import sickbeard
@@ -74,7 +77,8 @@ from sickchill.show.Show import Show
 
 # Local Folder Imports
 from . import classes, db, logger
-from .common import USER_AGENT
+
+# from .common import USER_AGENT
 
 # Add some missing languages
 LOCALE_NAMES.update({
@@ -238,6 +242,10 @@ def is_media_file(filename):
 
         # ignore RARBG release intro
         if re.search(r'^RARBG\.(\w+\.)?(mp4|avi|txt)$', filename, re.I):
+            return False
+
+        # ignore Kodi tvshow trailers
+        if filename == 'tvshow-trailer.mp4':
             return False
 
         # ignore MAC OS's retarded "resource fork" files
@@ -799,6 +807,7 @@ def create_https_certificates(ssl_cert, ssl_key):
         from OpenSSL import crypto
         from certgen import createKeyPair, createCertRequest, createCertificate, TYPE_RSA
     except Exception:
+        logger.log(traceback.format_exc())
         logger.log(_("pyopenssl module missing, please install for https access"), logger.WARNING)
         return False
 
@@ -818,14 +827,16 @@ def create_https_certificates(ssl_cert, ssl_key):
     # Save the key and certificate to disk
     # noinspection PyBroadException
     try:
-
         # Module has no member
         io.open(ssl_key, 'wb').write(crypto.dump_privatekey(crypto.FILETYPE_PEM, pkey))
         io.open(ssl_cert, 'wb').write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
-    except Exception:
-        logger.log(_("Error creating SSL key and certificate"), logger.ERROR)
+    except Exception as error:
+        logger.log(traceback.format_exc())
+        logger.log(_("Error creating SSL key and certificate {error}").format(error.message), logger.WARNING)
         return False
 
+    logger.log(_('Created https key: {ssl_key}').format(ssl_key=ssl_key))
+    logger.log(_('Created https cert: {ssl_cert}').format(ssl_cert=ssl_cert))
     return True
 
 
@@ -1048,6 +1059,7 @@ def get_show(name, tryIndexers=False):
             sickbeard.name_cache.addNameToCache(name, showObj.indexerid)
     except Exception as error:
         logger.log(_("Error when attempting to find show: {0} in SickChill. Error: {1} ").format(name, error), logger.DEBUG)
+        logger.log(traceback.format_exc(), logger.DEBUG)
 
     return showObj
 
@@ -1251,13 +1263,27 @@ def touchFile(fname, atime=None):
     return False
 
 
+def make_indexer_session(use_cfscrape=True):
+    session = make_session(use_cfscrape)
+    session.verify = (False, certifi.where())[sickbeard.SSL_VERIFY]
+    if sickbeard.PROXY_SETTING and sickbeard.PROXY_INDEXERS:
+        logger.log(_("Using global proxy: {}").format(sickbeard.PROXY_SETTING), logger.DEBUG)
+        parsed_url = urlparse(sickbeard.PROXY_SETTING)
+        address = sickbeard.PROXY_SETTING if parsed_url.scheme else 'http://' + sickbeard.PROXY_SETTING
+        session.proxies = {
+            "http": address,
+            "https": address,
+        }
+    return session
+
+
 def make_session(use_cfscrape=True):
     if use_cfscrape and sys.version_info < (2, 7, 9):
         session = cfscrape.create_scraper()
     else:
         session = cloudscraper.create_scraper()
 
-    session.headers.update({'User-Agent': USER_AGENT, 'Accept-Encoding': 'gzip,deflate'})
+    # session.headers.update({'User-Agent': USER_AGENT, 'Accept-Encoding': 'gzip,deflate'})
 
     return CacheControl(sess=session, cache_etags=True)
 
@@ -1446,6 +1472,8 @@ def handle_requests_exception(requests_exception):
     except requests.exceptions.StreamConsumedError as error:
         logger.log(default.format(error, type(error.__class__.__name__)))
     except requests.exceptions.URLRequired as error:
+        logger.log(default.format(error, type(error.__class__.__name__)))
+    except CloudflareException as error:
         logger.log(default.format(error, type(error.__class__.__name__)))
     except (TypeError, ValueError) as error:
         level = get_level(error)
@@ -1714,8 +1742,21 @@ def tvdbid_from_remote_id(indexer_id, indexer):  # pylint:disable=too-many-retur
         return tvdb_id
 
 
-def is_ip_private(ip):
-    return ipaddress.ip_address(ip.decode()).is_private
+def is_ip_local(ip):
+    request_ip = ipaddress.ip_address(ip.decode())
+    if request_ip.is_private:
+        return True
+
+    for adapter in ifaddr.get_adapters():
+        for aip in adapter.ips:
+            if isinstance(aip.ip, tuple):
+                network = ipaddress.IPv6Network("%s/%s" % (aip.ip[0], aip.network_prefix), strict=False)
+            else:
+                network = ipaddress.IPv4Network("%s/%s" % (aip.ip, aip.network_prefix), strict=False)
+
+            if request_ip in network:
+                return True
+    return False
 
 
 def recursive_listdir(path):
@@ -1756,7 +1797,7 @@ def remove_site_message(key=None, tag=None):
 def sortable_name(name):
     if not sickbeard.SORT_ARTICLE:
         name = re.sub(r'(?:The|A|An)\s', '', name, flags=re.I)
-    return name.lower()
+    return unidecode(name.lower())
 
 
 def manage_torrents_url(reset=False):
@@ -1802,3 +1843,11 @@ def bdecode(x, allow_extra_data=False):
     if not allow_extra_data and l != len(x):
         raise bencode.BTL.BTFailure("invalid bencoded value (data after valid prefix)")
     return r
+
+
+def is_docker():
+    path = '/proc/self/cgroup'
+    return (
+        os.path.exists('/.dockerenv') or
+        os.path.isfile(path) and any('docker' in line for line in open(path))
+    )

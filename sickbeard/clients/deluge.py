@@ -23,18 +23,23 @@ from __future__ import absolute_import, print_function, unicode_literals
 import json
 from base64 import b64encode
 
+# Third Party Imports
+from requests.compat import urljoin
+
 # First Party Imports
 import sickbeard
 from sickbeard import logger
 from sickbeard.clients.generic import GenericClient
 
+# Local Folder Imports
+from .__deluge_base import DelugeBase
 
-class Client(GenericClient):
+
+class Client(GenericClient, DelugeBase):
     def __init__(self, host=None, username=None, password=None):
-
         super(Client, self).__init__('Deluge', host, username, password)
 
-        self.url = self.host + 'json'
+        self.url = urljoin(self.host, 'json')
         self.session.headers.update({'Content-Type': 'application/json'})
 
     def _get_auth(self):
@@ -45,7 +50,8 @@ class Client(GenericClient):
 
         try:
             self.response = self.session.post(self.url, data=post_data.encode('utf-8'), verify=sickbeard.TORRENT_VERIFY_CERT)
-        except Exception:
+        except Exception as e:
+            logger.log(e.message)
             return None
 
         self.auth = self.response.json()["result"]
@@ -101,10 +107,9 @@ class Client(GenericClient):
         return self.auth
 
     def _add_torrent_uri(self, result):
-
         post_data = json.dumps({"method": "core.add_torrent_magnet",
-                                "params": [result.url, {}],
-                                "id": 2})
+                                    "params": [result.url, self.make_options(result)],
+                                    "id": 2})
 
         self._request(method='post', data=post_data)
 
@@ -113,10 +118,9 @@ class Client(GenericClient):
         return self.response.json()['result']
 
     def _add_torrent_file(self, result):
-
         post_data = json.dumps({"method": "core.add_torrent_file",
-                                "params": [result.name + '.torrent', b64encode(result.content), {}],
-                                "id": 2})
+                        "params": [result.name + '.torrent', b64encode(result.content), self.make_options(result)],
+                        "id": 2})
 
         self._request(method='post', data=post_data)
 
@@ -165,58 +169,3 @@ class Client(GenericClient):
                 return False
 
         return not self.response.json()['error']
-
-    def _set_torrent_ratio(self, result):
-
-        ratio = None
-        if result.ratio:
-            ratio = result.ratio
-
-        if ratio:
-            post_data = json.dumps({"method": "core.set_torrent_stop_at_ratio",
-                                    "params": [result.hash, True],
-                                    "id": 5})
-
-            self._request(method='post', data=post_data)
-
-            post_data = json.dumps({"method": "core.set_torrent_stop_ratio",
-                                    "params": [result.hash, float(ratio)],
-                                    "id": 6})
-
-            self._request(method='post', data=post_data)
-
-            return not self.response.json()['error']
-
-        return True
-
-    def _set_torrent_path(self, result):
-
-        if sickbeard.TORRENT_PATH:
-            post_data = json.dumps({"method": "core.set_torrent_move_completed",
-                                    "params": [result.hash, True],
-                                    "id": 7})
-
-            self._request(method='post', data=post_data)
-
-            post_data = json.dumps({"method": "core.set_torrent_move_completed_path",
-                                    "params": [result.hash, sickbeard.TORRENT_PATH],
-                                    "id": 8})
-
-            self._request(method='post', data=post_data)
-
-            return not self.response.json()['error']
-
-        return True
-
-    def _set_torrent_pause(self, result):
-
-        if sickbeard.TORRENT_PAUSED:
-            post_data = json.dumps({"method": "core.pause_torrent",
-                                    "params": [[result.hash]],
-                                    "id": 9})
-
-            self._request(method='post', data=post_data)
-
-            return not self.response.json()['error']
-
-        return True

@@ -252,7 +252,7 @@ def load_config_file(filepath):
         try:
             import yaml
             with open(filepath) as config_file_data:
-                return yaml.load(config_file_data)
+                return yaml.load(config_file_data, yaml.SafeLoader)
         except ImportError:  # pragma: no cover
             raise ConfigurationException('Configuration file extension is not supported. '
                                          'PyYAML should be installed to support "%s" file' % (
@@ -261,7 +261,7 @@ def load_config_file(filepath):
     try:
         # Try to load input as JSON
         return json.loads(filepath)
-    except:
+    except:  # pylint: disable=bare-except
         pass
 
     raise ConfigurationException('Configuration file extension is not supported for "%s" file.' % (filepath,))
