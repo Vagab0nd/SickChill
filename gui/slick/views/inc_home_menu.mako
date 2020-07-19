@@ -60,7 +60,7 @@
                 </label>
                 <label>
                     <span class="show-option">${_('Status Filter')}:</span>
-                    <button id="popover" type="button" class="btn pull-right" data-original-title="" style="margin-top:7px;" title="">Select statuses <b class="caret"></b></button>
+                    <button id="popover-status" type="button" class="btn pull-right" data-original-title="" style="margin-top:7px;" title="">Select statuses <b class="caret"></b></button>
                     <div id="popover-content" style="display: none">
                         <div role="tooltip" style="display: block;">
                             <div class="popover-content">

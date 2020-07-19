@@ -54,7 +54,7 @@ function addSiteMessage(level, tag, message) {
     level = level || 'danger';
     tag = tag || '';
     message = message || '';
-    $.post(srRoot + '/ui/set_site_message', {level, tag, message}, siteMessages => {
+    $.post(srRoot + '/ui/set_site_message', { level, tag, message }, siteMessages => {
         const messagesDiv = $('#site-messages');
         if (messagesDiv !== undefined) {
             messagesDiv.empty();
@@ -71,7 +71,7 @@ function addSiteMessage(level, tag, message) {
     $('#site-messages').on('click', '.site-message-dismiss', function () {
         const messageID = $(this).data('id');
         $('#site-message-' + messageID).hide();
-        $.post(srRoot + '/ui/dismiss-site-message', {index: messageID});
+        $.post(srRoot + '/ui/dismiss-site-message', { index: messageID });
     });
 }
 
@@ -419,8 +419,8 @@ const SICKCHILL = {
         },
         index() {
             // $('#log_dir').fileBrowser({title: _('Select log file folder location')});
-            $('#sickchill_background_path').fileBrowser({title: _('Select Background Image'), key: 'sickchill_background_path', includeFiles: 1, fileTypes: ['images']});
-            $('#custom_css_path').fileBrowser({title: _('Select CSS file'), key: 'custom_css_path', includeFiles: 1, fileTypes: ['css']});
+            $('#sickchill_background_path').fileBrowser({ title: _('Select Background Image'), key: 'sickchill_background_path', includeFiles: 1, fileTypes: ['images'] });
+            $('#custom_css_path').fileBrowser({ title: _('Select CSS file'), key: 'custom_css_path', includeFiles: 1, fileTypes: ['css'] });
 
             // List remote branches available for checkout
             const branchVersion = $('#branchVersion');
@@ -440,7 +440,7 @@ const SICKCHILL = {
                     branchVersionLabel.html(_('select branch to use (restart required)'));
                 } else {
                     branchCheckout.prop('disabled', true);
-                    branchVersionLabel.html(_('error: No branches found.')).css({color: '#FF0000'});
+                    branchVersionLabel.html(_('error: No branches found.')).css({ color: '#FF0000' });
                 }
             });
         },
@@ -449,7 +449,7 @@ const SICKCHILL = {
                 $('#Backup').attr('disabled', true);
                 $('#Backup-result').html(loading);
                 const backupDir = $('#backupDir').val();
-                $.get(srRoot + '/config/backuprestore/backup', {backupDir})
+                $.get(srRoot + '/config/backuprestore/backup', { backupDir })
                     .done(data => {
                         $('#Backup-result').html(data);
                         $('#Backup').attr('disabled', false);
@@ -459,15 +459,15 @@ const SICKCHILL = {
                 $('#Restore').attr('disabled', true);
                 $('#Restore-result').html(loading);
                 const backupFile = $('#backupFile').val();
-                $.post(srRoot + '/config/backuprestore/restore', {backupFile})
+                $.post(srRoot + '/config/backuprestore/restore', { backupFile })
                     .done(data => {
                         $('#Restore-result').html(data);
                         $('#Restore').attr('disabled', false);
                     });
             });
 
-            $('#backupDir').fileBrowser({title: _('Select backup folder to save to'), key: 'backupPath'});
-            $('#backupFile').fileBrowser({title: _('Select backup files to restore'), key: 'backupFile', includeFiles: 1});
+            $('#backupDir').fileBrowser({ title: _('Select backup folder to save to'), key: 'backupPath' });
+            $('#backupFile').fileBrowser({ title: _('Select backup files to restore'), key: 'backupFile', includeFiles: 1 });
             $('#config-components').tabs();
         },
         notifications() {
@@ -761,7 +761,7 @@ const SICKCHILL = {
                 $('#testNMJ-result').html(loading);
                 nmj.host = $('#nmj_host').val();
 
-                $.post(srRoot + '/home/settingsNMJ', {host: nmj.host}, data => {
+                $.post(srRoot + '/home/settingsNMJ', { host: nmj.host }, data => {
                     if (data === null) {
                         $('#nmj_database').removeAttr('readonly');
                         $('#nmj_mount').removeAttr('readonly');
@@ -1301,8 +1301,8 @@ const SICKCHILL = {
         },
         postProcessing() {
             $('#config-components').tabs();
-            $('#tv_download_dir').fileBrowser({title: _('Select TV Download Directory')});
-            $('#unpack_dir').fileBrowser({title: _('Select Unpack Directory')});
+            $('#tv_download_dir').fileBrowser({ title: _('Select TV Download Directory') });
+            $('#unpack_dir').fileBrowser({ title: _('Select Unpack Directory') });
 
             // http://stackoverflow.com/questions/2219924/idiomatic-jquery-delayed-event-only-after-a-short-pause-in-typing-e-g-timew
             const typewatch = (function () {
@@ -1834,10 +1834,10 @@ const SICKCHILL = {
         },
         search() {
             $('#config-components').tabs();
-            $('#nzb_dir').fileBrowser({title: _('Select .nzb black hole/watch location')});
-            $('#torrent_dir').fileBrowser({title: _('Select torrent black hole/watch location')});
-            $('#torrent_path').fileBrowser({title: _('Select torrent download location')});
-            $('#torrent_path_incomplete').fileBrowser({title: _('Select torrent incomplete download location')});
+            $('#nzb_dir').fileBrowser({ title: _('Select .nzb black hole/watch location') });
+            $('#torrent_dir').fileBrowser({ title: _('Select torrent black hole/watch location') });
+            $('#torrent_path').fileBrowser({ title: _('Select torrent download location') });
+            $('#torrent_path_incomplete').fileBrowser({ title: _('Select torrent incomplete download location') });
 
             $.fn.nzbMethodHandler = function () {
                 const selectedProvider = $('#nzb_method :selected').val();
@@ -1966,7 +1966,7 @@ const SICKCHILL = {
                     } else if (selectedProvider.toLowerCase() === 'rtorrent' || selectedProvider.toLowerCase() === 'rtorrent9') {
                         client = 'rTorrent';
                         $('#host_desc_torrent').html(_('URL to your rTorrent client (e.g. scgi://localhost:5000 <br> ' +
-                                                        'or https://localhost/rutorrent/plugins/httprpc/action.php)'));
+                            'or https://localhost/rutorrent/plugins/httprpc/action.php)'));
                         $('#torrent_verify_cert_option').show();
                         $('#torrent_auth_type_option').show();
                     } else if (selectedProvider.toLowerCase() === 'qbittorrent' || selectedProvider.toLowerCase() === 'new_qbittorrent') {
@@ -2258,7 +2258,7 @@ const SICKCHILL = {
             $('.progressbar').each(function () {
                 const percentage = $(this).data('progress-percentage');
                 const classToAdd = Math.max(20, percentage - (percentage % 20));
-                $(this).progressbar({value: percentage});
+                $(this).progressbar({ value: percentage });
                 if ($(this).data('progress-text')) {
                     $(this).append('<div class="progressbarText" title="' + $(this).data('progress-tip') + '">' + $(this).data('progress-text') + '</div>');
                 }
@@ -2309,13 +2309,13 @@ const SICKCHILL = {
                 },
                 widgets: ['saveSort', 'zebra', 'stickyHeaders', 'filter', 'columnSelector'],
                 headers: {
-                    0: {sorter: 'realISODate'},
-                    1: {sorter: 'realISODate'},
-                    2: {sorter: 'loadingNames'},
-                    4: {sorter: 'quality'},
-                    5: {sorter: 'digit'},
-                    6: {sorter: 'digit'},
-                    7: {filter: 'parsed'}
+                    0: { sorter: 'realISODate' },
+                    1: { sorter: 'realISODate' },
+                    2: { sorter: 'loadingNames' },
+                    4: { sorter: 'quality' },
+                    5: { sorter: 'digit' },
+                    6: { sorter: 'digit' },
+                    7: { filter: 'parsed' }
                 },
                 widgetOptions: {
                     filter_columnFilters: true, // eslint-disable-line camelcase
@@ -2395,13 +2395,13 @@ const SICKCHILL = {
                     itemSelector: '.show-container',
                     sortBy: sort,
                     sortAscending: getMeta('sickbeard.POSTER_SORTDIR'),
-                    filter: function(itemElem) {
+                    filter: function (itemElem) {
                         let filterByStatus = getMeta('sickbeard.POSTER_FILTERBY');
-                        if (filterByStatus && filterByStatus.indexOf('continuing')) {
+                        if (filterByStatus && filterByStatus.indexOf('continuing') > -1) {
                             filterByStatus = filterByStatus + ',upcoming';
                         }
                         const filters = filterByStatus;
-                        const status = $(this).attr('data-status');
+                        const status = $(this).attr('data-status').toLowerCase();
                         return filters && filters.indexOf(status) > - 1;
                     },
                     layoutMode: 'masonry',
@@ -2426,7 +2426,7 @@ const SICKCHILL = {
                     }
                 });
 
-                $('#popover').popover({
+                $('#popover-status').popover({
                     placement: 'bottom',
                     html: true, // Required if content has HTML
                     content: function () {
@@ -2443,11 +2443,12 @@ const SICKCHILL = {
                                     }
                                 });
 
-                                const status = $(this).attr('data-status');
+                                const status = $(this).attr('data-status').toLowerCase();
                                 return filters && filters.indexOf(status) > - 1;
                             }
                         });
-                        $.post($(this).attr('data-filter'));
+                        let a =
+                            $.post($(this).attr('data-filter'));
                     });
                 });
 
@@ -2537,12 +2538,12 @@ const SICKCHILL = {
             });
 
             $('#postersort').on('change', function () {
-                $('.show-grid').isotope({sortBy: $(this).val() === 'date' ? ['status', 'date', 'name'] : $(this).val()});
+                $('.show-grid').isotope({ sortBy: $(this).val() === 'date' ? ['status', 'date', 'name'] : $(this).val() });
                 $.post($(this).find('option:selected').data('sort'));
             });
 
             $('#postersortdirection').on('change', function () {
-                $('.show-grid').isotope({sortAscending: ($(this).val() === 'true')});
+                $('.show-grid').isotope({ sortAscending: ($(this).val() === 'true') });
                 $.post($(this).find('option:selected').data('sort'));
             });
 
@@ -2576,7 +2577,7 @@ const SICKCHILL = {
                 }
             });
 
-            $('.displayShowTable').ajaxEpSearch({colorRow: true});
+            $('.displayShowTable').ajaxEpSearch({ colorRow: true });
 
             function enableLink(link) {
                 link.on('click.disabled', false);
@@ -2605,7 +2606,7 @@ const SICKCHILL = {
                     const img = selectedEpisode.children('img');
                     img.hide();
 
-                    selectedEpisode.append($('<span/>').attr({class: 'loading-spinner16', title: 'Playing'}));
+                    selectedEpisode.append($('<span/>').attr({ class: 'loading-spinner16', title: 'Playing' }));
                     const icon = selectedEpisode.children('span');
 
                     const host = $('#kodi-play-host').val();
@@ -2648,7 +2649,7 @@ const SICKCHILL = {
                         subtitlesTd.empty();
                         $.each(subtitles, (index, language) => {
                             if (language !== '') {
-                                subtitlesTd.append($('<img/>').attr({src: srRoot + '/images/subtitles/flags/' + language + '.png', alt: language, width: 16, height: 11}));
+                                subtitlesTd.append($('<img/>').attr({ src: srRoot + '/images/subtitles/flags/' + language + '.png', alt: language, width: 16, height: 11 }));
                             }
                         });
                         icon.prop('class', 'displayshow-icon-sub');
@@ -2677,7 +2678,7 @@ const SICKCHILL = {
                     const img = selectedEpisode.children('img');
                     img.hide();
 
-                    selectedEpisode.append($('<span/>').attr({class: 'loading-spinner16', title: 'Searching'}));
+                    selectedEpisode.append($('<span/>').attr({ class: 'loading-spinner16', title: 'Searching' }));
                     const icon = selectedEpisode.children('span');
 
                     $.getJSON(selectedEpisode.prop('href'), data => {
@@ -2702,7 +2703,7 @@ const SICKCHILL = {
                 const id = $('#seasonJump option:selected').val();
                 if (id && id !== 'jump') {
                     const season = $('#seasonJump option:selected').data('season');
-                    $('html,body').animate({scrollTop: $('[name ="' + id.slice(1) + '"]').offset().top - 50}, 'slow');
+                    $('html,body').animate({ scrollTop: $('[name ="' + id.slice(1) + '"]').offset().top - 50 }, 'slow');
                     $('#collapseSeason-' + season).collapse('show');
                     location.hash = id;
                 }
@@ -2900,31 +2901,31 @@ const SICKCHILL = {
                     forAbsolute,
                     sceneAbsolute
                 },
-                data => {
-                    // Set the values we get back
-                    if (data.sceneAbsolute === null) {
-                        $('#sceneAbsolute_' + showId + '_' + forAbsolute).val('');
-                    } else {
-                        $('#sceneAbsolute_' + showId + '_' + forAbsolute).val(data.sceneAbsolute);
-                    }
-
-                    if (!data.success) {
-                        if (data.errorMessage) {
-                            notifyModal(data.errorMessage);
+                    data => {
+                        // Set the values we get back
+                        if (data.sceneAbsolute === null) {
+                            $('#sceneAbsolute_' + showId + '_' + forAbsolute).val('');
                         } else {
-                            notifyModal('Update failed.');
+                            $('#sceneAbsolute_' + showId + '_' + forAbsolute).val(data.sceneAbsolute);
                         }
-                    }
-                });
+
+                        if (!data.success) {
+                            if (data.errorMessage) {
+                                notifyModal(data.errorMessage);
+                            } else {
+                                notifyModal('Update failed.');
+                            }
+                        }
+                    });
             }
 
             function setInputValidInvalid(valid, element) {
                 if (valid) {
-                    $(element).css({'background-color': '#90EE90', color: '#FFF', 'font-weight': 'bold'}); // Green
+                    $(element).css({ 'background-color': '#90EE90', color: '#FFF', 'font-weight': 'bold' }); // Green
                     return true;
                 }
 
-                $(element).css({'background-color': '#FF0000', color: '#FFF!important', 'font-weight': 'bold'}); // Red
+                $(element).css({ 'background-color': '#FF0000', color: '#FFF!important', 'font-weight': 'bold' }); // Red
                 return false;
             }
 
@@ -2973,11 +2974,11 @@ const SICKCHILL = {
             });
 
             $('.addQTip').each(function () {
-                $(this).css({cursor: 'help', 'text-shadow': '0px 0px 0.5px #666'});
+                $(this).css({ cursor: 'help', 'text-shadow': '0px 0px 0.5px #666' });
                 $(this).qtip({
-                    show: {solo: true},
-                    position: {viewport: $(window), my: 'left center', adjust: {y: -10, x: 2}},
-                    style: {tip: {corner: true, method: 'polygon'}, classes: 'qtip-rounded qtip-shadow ui-tooltip-sb'}
+                    show: { solo: true },
+                    position: { viewport: $(window), my: 'left center', adjust: { y: -10, x: 2 } },
+                    style: { tip: { corner: true, method: 'polygon' }, classes: 'qtip-rounded qtip-shadow ui-tooltip-sb' }
                 });
             });
             $.fn.generateStars = function () {
@@ -2993,7 +2994,7 @@ const SICKCHILL = {
                 html: true, // Required if content has HTML
                 content: '<div id="popover-target"></div>'
             })
-            // Bootstrap popover event triggered when the popover opens
+                // Bootstrap popover event triggered when the popover opens
                 .on('shown.bs.popover', () => {
                     $('.displayShowTable').each((index, item) => {
                         $.tablesorter.columnSelector.attachTo(item, '#popover-target');
@@ -3016,7 +3017,7 @@ const SICKCHILL = {
             });
         },
         editShow() {
-            $('#location').fileBrowser({title: _('Select Show Location')});
+            $('#location').fileBrowser({ title: _('Select Show Location') });
 
             SICKCHILL.common.QualityChooser.init();
 
@@ -3107,8 +3108,8 @@ const SICKCHILL = {
                     }
                 },
                 headers: {
-                    5: {sorter: 'digit'},
-                    6: {sorter: 'digit'}
+                    5: { sorter: 'digit' },
+                    6: { sorter: 'digit' }
                 }
             });
             $('#queueStatusTable').tablesorter({
@@ -3231,24 +3232,24 @@ const SICKCHILL = {
                 },
                 widgets: ['zebra', 'filter', 'columnSelector'],
                 headers: {
-                    0: {sorter: false, filter: false},
-                    1: {sorter: 'loadingNames'},
-                    2: {sorter: 'network'},
-                    3: {sorter: 'quality'},
-                    4: {sorter: 'sports'},
-                    5: {sorter: 'scene'},
-                    6: {sorter: 'anime'},
-                    7: {sorter: 'flatfold'},
-                    8: {sorter: 'paused'},
-                    9: {sorter: 'subtitle'},
-                    10: {sorter: 'default_ep_status'},
-                    11: {sorter: 'status'},
-                    12: {sorter: false},
-                    13: {sorter: false},
-                    14: {sorter: false},
-                    15: {sorter: false},
-                    16: {sorter: false},
-                    17: {sorter: false}
+                    0: { sorter: false, filter: false },
+                    1: { sorter: 'loadingNames' },
+                    2: { sorter: 'network' },
+                    3: { sorter: 'quality' },
+                    4: { sorter: 'sports' },
+                    5: { sorter: 'scene' },
+                    6: { sorter: 'anime' },
+                    7: { sorter: 'flatfold' },
+                    8: { sorter: 'paused' },
+                    9: { sorter: 'subtitle' },
+                    10: { sorter: 'default_ep_status' },
+                    11: { sorter: 'status' },
+                    12: { sorter: false },
+                    13: { sorter: false },
+                    14: { sorter: false },
+                    15: { sorter: false },
+                    16: { sorter: false },
+                    17: { sorter: false }
                 },
                 widgetOptions: {
                     columnSelector_mediaquery: false // eslint-disable-line camelcase
@@ -3278,7 +3279,7 @@ const SICKCHILL = {
 
                 const submitForm = $(
                     '<form method=\'post\' action=\'' + srRoot + '/manage/massEdit\'>' +
-                        '<input type=\'hidden\' name=\'toEdit\' value=\'' + editArray.join('|') + '\'/>' +
+                    '<input type=\'hidden\' name=\'toEdit\' value=\'' + editArray.join('|') + '\'/>' +
                     '</form>'
                 );
                 submitForm.appendTo('body');
@@ -3403,7 +3404,7 @@ const SICKCHILL = {
             $('#pickShow').on('change', event => {
                 const id = $(event.currentTarget).val();
                 if (id) {
-                    $('html,body').animate({scrollTop: $('#show-' + id).offset().top - 25}, 'slow');
+                    $('html,body').animate({ scrollTop: $('#show-' + id).offset().top - 25 }, 'slow');
                 }
             });
         },
@@ -3411,7 +3412,7 @@ const SICKCHILL = {
             $('#failedTable:has(tbody tr)').tablesorter({
                 widgets: ['zebra'],
                 sortList: [[1, 0]],
-                headers: {3: {sorter: false}}
+                headers: { 3: { sorter: false } }
             });
             $('#limit').on('change', event => {
                 window.location.href = srRoot + '/manage/failedDownloads/?limit=' + $(event.currentTarget).val();
@@ -3483,7 +3484,7 @@ const SICKCHILL = {
             $('.edit_root_dir').on('click', function () {
                 const curIndex = findDirIndex($(this).attr('id'));
                 const initialDir = $('#new_root_dir_' + curIndex).val();
-                $(this).nFileBrowser(editRootDir, {initialDir, whichId: curIndex});
+                $(this).nFileBrowser(editRootDir, { initialDir, whichId: curIndex });
             });
 
             $('.delete_root_dir').on('click', function () {
@@ -3655,28 +3656,28 @@ const SICKCHILL = {
                 headers: (function () {
                     if (isMeta('sickbeard.HISTORY_LAYOUT', ['detailed'])) {
                         return {
-                            0: {sorter: 'realISODate'},
-                            1: {sorter: 'loadingNames'},
-                            4: {sorter: 'quality'},
-                            5: {sorter: false, filter: false}
+                            0: { sorter: 'realISODate' },
+                            1: { sorter: 'loadingNames' },
+                            4: { sorter: 'quality' },
+                            5: { sorter: false, filter: false }
                         };
                     }
 
                     if (isMeta('sickbeard.USE_SUBTITLES', ['True'])) {
                         return {
-                            0: {sorter: 'realISODate'},
-                            1: {sorter: 'loadingNames'},
-                            4: {sorter: false},
-                            5: {sorter: 'quality'},
-                            6: {sorter: false, filter: false}
+                            0: { sorter: 'realISODate' },
+                            1: { sorter: 'loadingNames' },
+                            4: { sorter: false },
+                            5: { sorter: 'quality' },
+                            6: { sorter: false, filter: false }
                         };
                     }
 
                     return {
-                        0: {sorter: 'realISODate'},
-                        1: {sorter: 'loadingNames'},
-                        4: {sorter: 'quality'},
-                        5: {sorter: false, filter: false}
+                        0: { sorter: 'realISODate' },
+                        1: { sorter: 'loadingNames' },
+                        4: { sorter: 'quality' },
+                        5: { sorter: false, filter: false }
                     };
                 })()
             });
@@ -3809,7 +3810,7 @@ const SICKCHILL = {
         },
         index() {
             if (isMeta('sickbeard.COMING_EPS_LAYOUT', ['list'])) {
-                const sortCodes = {date: 0, show: 2, network: 5};
+                const sortCodes = { date: 0, show: 2, network: 5 };
                 const sort = getMeta('sickbeard.COMING_EPS_SORT');
                 const sortList = (sort in sortCodes) ? [[sortCodes[sort], 0]] : [[0, 0]];
 
@@ -3835,13 +3836,13 @@ const SICKCHILL = {
                         }
                     },
                     headers: {
-                        0: {sorter: 'realISODate'},
-                        1: {sorter: 'realISODate'},
-                        2: {sorter: 'loadingNames'},
-                        4: {sorter: 'loadingNames'},
-                        7: {sorter: 'quality'},
-                        8: {sorter: false},
-                        9: {sorter: false}
+                        0: { sorter: 'realISODate' },
+                        1: { sorter: 'realISODate' },
+                        2: { sorter: 'loadingNames' },
+                        4: { sorter: 'loadingNames' },
+                        7: { sorter: 'quality' },
+                        8: { sorter: false },
+                        9: { sorter: false }
                     },
                     widgetOptions: {
                         filter_columnFilters: true, // eslint-disable-line camelcase
@@ -3903,7 +3904,7 @@ const SICKCHILL = {
                             /* Randomise, else the rating_votes can already
                              * have sorted leaving this with nothing to do.
                              */
-                            $('#container').isotope({sortBy: 'random'});
+                            $('#container').isotope({ sortBy: 'random' });
                             sortCriteria = 'rating';
                             break;
                         case 'rating_votes':
@@ -3953,7 +3954,7 @@ const SICKCHILL = {
                         // if this is not done, all retrieval of cache urls (by changing the src value) will be done after all retrieval of images
                         // this because the cache urls are appended to the request queue of the browser after the ajax calls for retrieval of images
                         setTimeout(() => {
-                            $.post(url, {indexerId}, data => {
+                            $.post(url, { indexerId }, data => {
                                 if (data) {
                                     // Replace src with cache location
                                     $('img.trakt-image[data-src-indexer-id="' + data + '"]').attr('src', $('img.trakt-image[data-src-indexer-id="' + data + '"]').attr('data-src-cache'));
@@ -4050,7 +4051,7 @@ const SICKCHILL = {
 
                 // If we have a show name then sanitize and use it for the dir name
                 if (object.showName.length > 0) {
-                    $.post(srRoot + '/addShows/sanitizeFileName', {name: object.showName}, data => {
+                    $.post(srRoot + '/addShows/sanitizeFileName', { name: object.showName }, data => {
                         $('#desc-show-name').text(object.showName);
                         if (object.dir === $('#fullShowPath').val()) {
                             $('#desc-directory-name').html(object.dir);
@@ -4203,7 +4204,7 @@ const SICKCHILL = {
                         $('.new-show-table').tablesorter(
                             {
                                 widgets: ['stickyHeaders', 'zebra', 'saveSort'],
-                                headers: {0: {sorter: false}}
+                                headers: { 0: { sorter: false } }
                             });
                     }
                 });
@@ -4305,7 +4306,7 @@ const SICKCHILL = {
                         // SortList: [[1,0]],
                         widgets: ['zebra'],
                         headers: {
-                            0: {sorter: false}
+                            0: { sorter: false }
                         }
                     });
                 });
@@ -4337,7 +4338,7 @@ const SICKCHILL = {
             $('#tableDiv').on('click', '.showManage', event => {
                 event.preventDefault();
                 $('#tabs').tabs('option', 'active', 0);
-                $('html,body').animate({scrollTop: 0}, 1000);
+                $('html,body').animate({ scrollTop: 0 }, 1000);
             });
         },
         recommendedShows() {
