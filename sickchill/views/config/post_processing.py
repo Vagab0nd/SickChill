@@ -15,9 +15,6 @@ from . import Config
 
 @Route("/config/postProcessing(/?.*)", name="config:postprocessing")
 class ConfigPostProcessing(Config):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     @addslash
     def index(self, *args_, **kwargs_):
         t = PageTemplate(rh=self, filename="config_postProcessing.mako")
@@ -52,7 +49,6 @@ class ConfigPostProcessing(Config):
         unpack_dir=None,
         unrar_tool=None,
         unar_tool=None,
-        bsdtar_tool=None,
         move_associated_files=None,
         delete_non_associated_files=None,
         sync_files=None,
@@ -69,6 +65,7 @@ class ConfigPostProcessing(Config):
         naming_anime=None,
         naming_abd_pattern=None,
         naming_strip_year=None,
+        naming_no_brackets=None,
         naming_custom_sports=None,
         naming_sports_pattern=None,
         naming_custom_anime=None,
@@ -87,7 +84,7 @@ class ConfigPostProcessing(Config):
         config.change_process_automatically(process_automatically)
         settings.USE_ICACLS = config.checkbox_to_value(use_icacls)
 
-        config.change_unrar_tool(unrar_tool, unar_tool, bsdtar_tool)
+        config.change_unrar_tool(unrar_tool, unar_tool)
 
         unpack = try_int(unpack)
         if unpack == settings.UNPACK_PROCESS_CONTENTS:
@@ -121,6 +118,7 @@ class ConfigPostProcessing(Config):
         settings.NAMING_CUSTOM_SPORTS = config.checkbox_to_value(naming_custom_sports)
         settings.NAMING_CUSTOM_ANIME = config.checkbox_to_value(naming_custom_anime)
         settings.NAMING_STRIP_YEAR = config.checkbox_to_value(naming_strip_year)
+        settings.NAMING_NO_BRACKETS = config.checkbox_to_value(naming_no_brackets)
         settings.NFO_RENAME = config.checkbox_to_value(nfo_rename)
 
         settings.METADATA_KODI = kodi_data
@@ -214,7 +212,7 @@ class ConfigPostProcessing(Config):
         """
         Test Unpacking Support: - checks if unrar is installed and accesible
         """
-        check = config.change_unrar_tool(settings.UNRAR_TOOL, settings.UNAR_TOOL, settings.BSDTAR_TOOL)
+        check = config.change_unrar_tool(settings.UNRAR_TOOL, settings.UNAR_TOOL)
         if not check:
             logger.warning("Looks like unrar is not installed, check failed")
         return ("not supported", "supported")[check]

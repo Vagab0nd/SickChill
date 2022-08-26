@@ -361,24 +361,6 @@
                                 </div>
                                 <div class="field-pair row">
                                     <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
-                                        <label class="component-title">${_('BSDTar Tool')}</label>
-                                    </div>
-                                    <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <input type="text" name="bsdtar_tool" id="bsdtar_tool" value="${settings.BSDTAR_TOOL}" class="form-control
-                                                input-sm input350" autocapitalize="off" />
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <label for="bsdtar_tool">${_('add the path to an bsdtar tool if it is not in the system path')}</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="field-pair row">
-                                    <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
                                         <label class="component-title">${_('Delete RAR contents')}</label>
                                     </div>
                                     <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
@@ -569,71 +551,86 @@
                                                 <td>${_('Show_Name')}</td>
                                             </tr>
                                             <tr class="even">
+                                                <td>&nbsp;</td>
+                                                <td>%SNY</td>
+                                                <td>${_('Show Name ShowYear - Overrides Strip Show Year selector')}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>&nbsp;</td>
+                                                <td>%S.N.Y</td>
+                                                <td>${_('Show.Name.ShowYear')}</td>
+                                            </tr>
+                                            <tr class="even">
+                                                <td>&nbsp;</td>
+                                                <td>%S_N_Y</td>
+                                                <td>${_('Show_Name_ShowYear')}</td>
+                                            </tr>
+                                            <tr>
                                                 <td class="align-right"><b>${_('Season Number')}:</b></td>
                                                 <td>%S</td>
                                                 <td>2</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td>&nbsp;</td>
                                                 <td>%0S</td>
                                                 <td>02</td>
                                             </tr>
-                                            <tr class="even">
+                                            <tr>
                                                 <td class="align-right"><b>${_('XEM Season Number')}:</b></td>
                                                 <td>%XS</td>
                                                 <td>2</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td>&nbsp;</td>
                                                 <td>%0XS</td>
                                                 <td>02</td>
                                             </tr>
-                                            <tr class="even">
+                                            <tr>
                                                 <td class="align-right"><b>${_('Episode Number')}:</b></td>
                                                 <td>%E</td>
                                                 <td>3</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td>&nbsp;</td>
                                                 <td>%0E</td>
                                                 <td>03</td>
-                                            </tr>
-                                            <tr class="even">
+                                            </tr class="even">
+                                            <tr>
                                                 <td class="align-right"><b>${_('XEM Episode Number')}:</b></td>
                                                 <td>%XE</td>
                                                 <td>3</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td>&nbsp;</td>
                                                 <td>%0XE</td>
                                                 <td>03</td>
                                             </tr>
-                                            <tr class="even">
+                                            <tr>
                                                 <td class="align-right"><b>${_('Episode Name')}:</b></td>
                                                 <td>%EN</td>
                                                 <td>${_('Episode Name')}</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td>&nbsp;</td>
                                                 <td>%E.N</td>
                                                 <td>${_('Episode.Name')}</td>
                                             </tr>
-                                            <tr class="even">
+                                            <tr>
                                                 <td>&nbsp;</td>
                                                 <td>%E_N</td>
                                                 <td>${_('Episode_Name')}</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td class="align-right"><b>${_('Air Date')}:</b></td>
                                                 <td>%M</td>
                                                 <td>${datetime.date.today().month}</td>
                                             </tr>
-                                            <tr class="even">
+                                            <tr>
                                                 <td>&nbsp;</td>
                                                 <td>%D</td>
                                                 <td>${datetime.date.today().day}</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td>&nbsp;</td>
                                                 <td>%Y</td>
                                                 <td>${datetime.date.today().year}</td>
@@ -653,17 +650,17 @@
                                                 <td>%CY</td>
                                                 <td>${datetime.date.today().year}</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td class="align-right"><b>${_('Quality')}:</b></td>
                                                 <td>%QN</td>
                                                 <td>720p BluRay</td>
                                             </tr>
-                                            <tr class="even">
+                                            <tr>
                                                 <td>&nbsp;</td>
                                                 <td>%Q.N</td>
                                                 <td>720p.BluRay</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="even">
                                                 <td>&nbsp;</td>
                                                 <td>%Q_N</td>
                                                 <td>720p_BluRay</td>
@@ -761,6 +758,20 @@
 
                         <div class="field-pair row">
                             <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
+                                <label class="component-title">${_('No Brackets on Show Year')}</label>
+                            </div>
+                            <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <input type="checkbox" id="naming_no_brackets"  name="naming_no_brackets" ${('', 'checked="checked"')[bool(settings.NAMING_NO_BRACKETS)]}/>
+                                        <label for="naming_no_brackets">${_('No brackets on the TV show\'s year when renaming the file?')}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-pair row">
+                            <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
                                 <label class="component-title">${_('Custom Air-By-Date')}</label>
                             </div>
                             <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
@@ -834,91 +845,106 @@
                                                     <td>${_('Show_Name')}</td>
                                                 </tr>
                                                 <tr class="even">
+                                                    <td>&nbsp;</td>
+                                                    <td>%SNY</td>
+                                                    <td>${_('Show Name ShowYear - Overrides Strip Show Year selector')}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;</td>
+                                                    <td>%S.N.Y</td>
+                                                    <td>${_('Show.Name.ShowYear')}</td>
+                                                </tr>
+                                                <tr class="even">
+                                                    <td>&nbsp;</td>
+                                                    <td>%S_N_Y</td>
+                                                    <td>${_('Show_Name_ShowYear')}</td>
+                                                </tr>
+                                                <tr>
                                                     <td class="align-right"><b>${_('Regular Air Date')}:</b></td>
                                                     <td>%AD</td>
                                                     <td>2010 03 09</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%A.D</td>
                                                     <td>2010.03.09</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%A_D</td>
                                                     <td>2010_03_09</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%A-D</td>
                                                     <td>2010-03-09</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('Episode Name')}:</b></td>
                                                     <td>%EN</td>
                                                     <td>${_('Episode Name')}</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%E.N</td>
                                                     <td>${_('Episode.Name')}</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%E_N</td>
                                                     <td>${_('Episode_Name')}</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><b>${_('Quality')}:</b></td>
                                                     <td>%QN</td>
                                                     <td>720p BluRay</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%Q.N</td>
                                                     <td>720p.BluRay</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%Q_N</td>
                                                     <td>720p_BluRay</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('Year')}:</b></td>
                                                     <td>%Y</td>
                                                     <td>2010</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><b>${_('Month')}:</b></td>
                                                     <td>%M</td>
                                                     <td>3</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right">&nbsp;</td>
                                                     <td>%0M</td>
                                                     <td>03</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><b>${_('Day')}:</b></td>
                                                     <td>%D</td>
                                                     <td>9</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right">&nbsp;</td>
                                                     <td>%0D</td>
                                                     <td>09</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="${_('Multi-EP style is ignored')}"></i> <b>${_('Release Name')}:</b></td>
                                                     <td>%RN</td>
                                                     <td>${_('Show.Name')}.2010.03.09.HDTV.XviD-RLSGROUP</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="'${_('SickChill\' is used in place of RLSGROUP if it could not be properly detected')}"></i> <b>${_('Release Group')}:</b></td>
                                                     <td>%RG</td>
                                                     <td>RLSGROUP</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="${_('If episode is proper/repack add \'proper\' to name.')}"></i> <b>${_('Release Type')}:</b></td>
                                                     <td>%RT</td>
                                                     <td>PROPER</td>
@@ -1019,91 +1045,106 @@
                                                     <td>${_('Show_Name')}</td>
                                                 </tr>
                                                 <tr class="even">
+                                                    <td>&nbsp;</td>
+                                                    <td>%SNY</td>
+                                                    <td>${_('Show Name ShowYear - Overrides Strip Show Year selector')}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;</td>
+                                                    <td>%S.N.Y</td>
+                                                    <td>${_('Show.Name.ShowYear')}</td>
+                                                </tr>
+                                                <tr class="even">
+                                                    <td>&nbsp;</td>
+                                                    <td>%S_N_Y</td>
+                                                    <td>${_('Show_Name_ShowYear')}</td>
+                                                </tr>
+                                                <tr>
                                                     <td class="align-right"><b>${_('Sports Air Date')}:</b></td>
                                                     <td>%AD</td>
                                                     <td>9 Mar 2011</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%A.D</td>
                                                     <td>9.Mar.2011</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%A_D</td>
                                                     <td>9_Mar_2011</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%A-D</td>
                                                     <td>9-Mar-2011</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('Episode Name')}:</b></td>
                                                     <td>%EN</td>
                                                     <td>${_('Episode Name')}</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%E.N</td>
                                                     <td>${_('Episode.Name')}</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%E_N</td>
                                                     <td>${_('Episode_Name')}</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><b>${_('Quality')}:</b></td>
                                                     <td>%QN</td>
                                                     <td>720p BluRay</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%Q.N</td>
                                                     <td>720p.BluRay</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%Q_N</td>
                                                     <td>720p_BluRay</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('Year')}:</b></td>
                                                     <td>%Y</td>
                                                     <td>2010</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><b>${_('Month')}:</b></td>
                                                     <td>%M</td>
                                                     <td>3</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right">&nbsp;</td>
                                                     <td>%0M</td>
                                                     <td>03</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><b>${_('Day')}:</b></td>
                                                     <td>%D</td>
                                                     <td>9</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right">&nbsp;</td>
                                                     <td>%0D</td>
                                                     <td>09</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="${_('Multi-EP style is ignored')}"></i> <b>${_('Release Name')}:</b></td>
                                                     <td>%RN</td>
                                                     <td>${_('Show.Name')}.9th.Mar.2011.HDTV.XviD-RLSGROUP</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="'${_('SickChill\' is used in place of RLSGROUP if it could not be properly detected')}"></i> <b>${_('Release Group')}:</b></td>
                                                     <td>%RG</td>
                                                     <td>RLSGROUP</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="${_('If episode is proper/repack add \'proper\' to name.')}"></i> <b>${_('Release Type')}:</b></td>
                                                     <td>%RT</td>
                                                     <td>PROPER</td>
@@ -1205,86 +1246,101 @@
                                                     <td>${_('Show_Name')}</td>
                                                 </tr>
                                                 <tr class="even">
+                                                    <td>&nbsp;</td>
+                                                    <td>%SNY</td>
+                                                    <td>${_('Show Name ShowYear - Overrides Strip Show Year selector')}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;</td>
+                                                    <td>%S.N.Y</td>
+                                                    <td>${_('Show.Name.ShowYear')}</td>
+                                                </tr>
+                                                <tr class="even">
+                                                    <td>&nbsp;</td>
+                                                    <td>%S_N_Y</td>
+                                                    <td>${_('Show_Name_ShowYear')}</td>
+                                                </tr>
+                                                <tr>
                                                     <td class="align-right"><b>${_('Season Number')}:</b></td>
                                                     <td>%S</td>
                                                     <td>2</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%0S</td>
                                                     <td>02</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('>XEM Season Number')}:</b></td>
                                                     <td>%XS</td>
                                                     <td>2</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%0XS</td>
                                                     <td>02</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('Episode Number')}:</b></td>
                                                     <td>%E</td>
                                                     <td>3</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%0E</td>
                                                     <td>03</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('XEM Episode Number')}:</b></td>
                                                     <td>%XE</td>
                                                     <td>3</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%0XE</td>
                                                     <td>03</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><b>${_('Episode Name')}:</b></td>
                                                     <td>%EN</td>
                                                     <td>${_('Episode Name')}</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%E.N</td>
                                                     <td>${_('Episode.Name')}</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%E_N</td>
                                                     <td>${_('Episode_Name')}</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><b>${_('Quality')}:</b></td>
                                                     <td>%QN</td>
                                                     <td>720p BluRay</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td>&nbsp;</td>
                                                     <td>%Q.N</td>
                                                     <td>720p.BluRay</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td>&nbsp;</td>
                                                     <td>%Q_N</td>
                                                     <td>720p_BluRay</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="${_('Multi-EP style is ignored')}"></i> <b>${_('Release Name')}:</b></td>
                                                     <td>%RN</td>
                                                     <td>${_('Show.Name')}.S02E03.HDTV.XviD-RLSGROUP</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="even">
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="'${_('SickChill\' is used in place of RLSGROUP if it could not be properly detected')}"></i> <b>${_('Release Group')}:</b></td>
                                                     <td>%RG</td>
                                                     <td>RLSGROUP</td>
                                                 </tr>
-                                                <tr class="even">
+                                                <tr>
                                                     <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="${_('If episode is proper/repack add \'proper\' to name.')}"></i> <b>${_('Release Type')}:</b></td>
                                                     <td>%RT</td>
                                                     <td>PROPER</td>

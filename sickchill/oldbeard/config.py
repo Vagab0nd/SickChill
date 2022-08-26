@@ -87,7 +87,7 @@ def change_https_key(https_key):
     return True
 
 
-def change_unrar_tool(unrar_tool, unar_tool, bsdtar_tool):
+def change_unrar_tool(unrar_tool, unar_tool):
     try:
         rarfile.tool_setup()
     except rarfile.RarCannotExec:
@@ -95,12 +95,10 @@ def change_unrar_tool(unrar_tool, unar_tool, bsdtar_tool):
     else:
         settings.UNAR_TOOL = rarfile.UNRAR_TOOL
         settings.UNAR_TOOL = rarfile.UNAR_TOOL
-        settings.BSDTAR_TOOL = rarfile.BSDTAR_TOOL
         return True
 
     _unrar_tool = rarfile.UNRAR_TOOL
     _unar_tool = rarfile.UNAR_TOOL
-    _bsdtar_tool = rarfile.BSDTAR_TOOL
 
     if unrar_tool and unrar_tool != rarfile.UNRAR_TOOL:
         rarfile.UNRAR_TOOL = unrar_tool
@@ -108,9 +106,6 @@ def change_unrar_tool(unrar_tool, unar_tool, bsdtar_tool):
     if unar_tool and unar_tool != rarfile.UNAR_TOOL:
         rarfile.UNAR_TOOL = unar_tool
 
-    if bsdtar_tool and bsdtar_tool != rarfile.BSDTAR_TOOL:
-        rarfile.BSDTAR_TOOL = bsdtar_tool
-
     try:
         rarfile.tool_setup()
     except rarfile.RarCannotExec:
@@ -118,12 +113,10 @@ def change_unrar_tool(unrar_tool, unar_tool, bsdtar_tool):
     else:
         settings.UNAR_TOOL = rarfile.UNRAR_TOOL
         settings.UNAR_TOOL = rarfile.UNAR_TOOL
-        settings.BSDTAR_TOOL = rarfile.BSDTAR_TOOL
         return True
 
     rarfile.UNRAR_TOOL = _unar_tool
     rarfile.UNAR_TOOL = _unar_tool
-    rarfile.BSDTAR_TOOL = _bsdtar_tool
 
     if platform.system() == "Windows":
         # Look for WinRAR installations
@@ -161,7 +154,7 @@ def change_unrar_tool(unrar_tool, unar_tool, bsdtar_tool):
             try:
                 os.remove(unrar_zip)
             except OSError as e:
-                logger.info("Unable to delete downloaded file {0}: {1}. You may delete it manually".format(unrar_zip, e.strerror))
+                logger.info(f"Unable to delete downloaded file {unrar_zip}: {e.strerror}. You may delete it manually")
 
             check = os.path.join(unrar_store, "unrar.exe")
             try:
@@ -178,7 +171,6 @@ def change_unrar_tool(unrar_tool, unar_tool, bsdtar_tool):
     # These must always be set to something before returning
     settings.UNRAR_TOOL = rarfile.UNRAR_TOOL = _unrar_tool
     settings.UNAR_TOOL = rarfile.UNAR_TOOL = _unar_tool
-    settings.BSDTAR_TOOL = rarfile.BSDTAR_TOOL = _bsdtar_tool
 
     try:
         rarfile.tool_setup()
@@ -203,7 +195,7 @@ def change_sickchill_background(background):
 
     background = os.path.normpath(background)
     if not os.path.exists(background):
-        logger.info("Background image does not exist: {0}".format(background))
+        logger.info(f"Background image does not exist: {background}")
         return False
 
     settings.SICKCHILL_BACKGROUND_PATH = background
@@ -224,10 +216,10 @@ def change_custom_css(new_css):
 
     new_css = os.path.normpath(new_css)
     if not os.path.isfile(new_css):
-        logger.info("Custom css file does not exist: {0}".format(new_css))
+        logger.info(f"Custom css file does not exist: {new_css}")
         return False
     if not new_css.endswith("css"):
-        logger.info("Custom css file should have the .css extension: {0}".format(new_css))
+        logger.info(f"Custom css file should have the .css extension: {new_css}")
         return False
 
     settings.CUSTOM_CSS_PATH = new_css

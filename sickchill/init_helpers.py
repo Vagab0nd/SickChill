@@ -2,10 +2,14 @@ import argparse
 import gettext
 import logging
 import os
+import re
 import site
 import subprocess
 import sys
 import tempfile
+from importlib import import_module
+from importlib.abc import Loader, MetaPathFinder
+from importlib.machinery import ModuleSpec
 from pathlib import Path
 from typing import List, Union
 from urllib.request import urlopen
@@ -20,6 +24,41 @@ pyproject_path = sickchill_module.parent / "pyproject.toml"
 pid_file: Path = None
 
 
+class DependencyInjectorLoader(Loader):
+    poetry_ran = False
+
+    def create_module(self, spec):
+        sys.meta_path = [x for x in sys.meta_path[1:] if x is not METAPATHFINDER]
+        module = None
+        try:
+            module = import_module(spec.name)
+        except ModuleNotFoundError:
+            if not spec.name.startswith("importlib.metadata"):
+                if not DependencyInjectorLoader.poetry_ran:
+                    poetry_install()
+                    DependencyInjectorLoader.poetry_ran = True
+                    module = import_module(spec.name)
+        finally:
+            sys.meta_path = [METAPATHFINDER] + [x for x in sys.meta_path if x is not METAPATHFINDER]
+        return module
+
+    def exec_module(self, module):
+        pass
+
+
+class SCDependencyInstaller(MetaPathFinder):
+    LOADER = DependencyInjectorLoader()
+
+    def find_spec(self, fullname, path, target=None):
+        return ModuleSpec(fullname, self.LOADER)
+
+
+METAPATHFINDER = SCDependencyInstaller()
+
+if not hasattr(sys, "frozen") and not os.environ.get("SC_NO_INSTALL_DEPENDS", None):
+    sys.meta_path.insert(0, METAPATHFINDER)
+
+
 def sickchill_dir():
     return os.path.abspath(os.path.dirname(__file__))
 
@@ -28,7 +67,7 @@ def locale_dir():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "locale"))
 
 
-IS_VIRTUALENV = hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix)
+IS_VIRTUALENV = hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix) or os.getenv("VIRTUAL_ENV")
 
 
 def setup_gettext(language: str = None) -> None:
@@ -138,20 +177,50 @@ def check_installed(name: str = __package__) -> bool:
             from importlib_metadata import Distribution, PackageNotFoundError  # noqa
         except ImportError:
             # Should not get here EVER, but just in case lets just try checking pip freeze instead
-            result, output = subprocess.getstatusoutput([f"{sys.executable} -m pip freeze"])
+            result, output = subprocess.getstatusoutput([f"{sys.executable} -m pip freeze --disable-pip-version-check"])
             if result != 0:  # Not Ok
                 return False
             is_installed = name in [requirement.split("==")[0] for requirement in output.splitlines()]
-            logger.debug(f"{name} found: {is_installed}")
+            if name != "sickchill" or (name == "sickchill" and is_installed):
+                logger.debug(f"{name} installed: {is_installed}")
             return is_installed
 
     try:
         Distribution.from_name(name)
-        logger.debug(f"{name} found: True")
+        logger.debug(f"{name} installed: True")
     except PackageNotFoundError:
-        logger.debug(f"{name} found: False")
+        if name != "sickchill":
+            logger.debug(f"{name} installed: False")
         return False
     return True
+
+
+def check_req_installed():
+    # get the packages string from poetry
+    result, output = subprocess.getstatusoutput(f"cd {pyproject_path.parent} && {sys.executable} -m poetry export -f requirements.txt --without-hashes")
+
+    output = clean_output(output)
+    output = output.strip().splitlines()
+
+    # Synology remove existing upto date packages from update lists
+    syno_wheelhouse = pyproject_path.parent.with_name("wheelhouse")
+    if syno_wheelhouse.is_dir():
+        # List installed packages in the freeze format then clean and drop case.
+        logger.debug("Synology bypass existing packages: Folder wheelhouse exists")
+        result_ins, output_ins = subprocess.getstatusoutput([f"{sys.executable} -m pip list --format freeze --disable-pip-version-check"])
+        output_ins = output_ins.strip().splitlines()
+        output_ins = [s.casefold() for s in output_ins]
+
+        # Add some Python 38 installed packages which SC can't update in DSM
+        py38pkg = ["importlib-metadata==", "typing-extensions==", "zipp==3.6.0"]
+        output_ins.extend(py38pkg)
+        # make the list of packages that need updating by blanking existing ones.
+        output_upd = [x for x in output if re.sub(r";.*$", "", x) not in output_ins]
+
+        # clean the list up for pip install and send to output.
+        output = output_upd
+
+    return result, output
 
 
 def subprocess_call(cmd_list):
@@ -180,9 +249,20 @@ def get_os_id():
             pass
 
 
+def clean_output(output: str) -> str:
+    # clean out Warning line in list (dirty clean)
+    # pip lock file warning removal
+    output = re.sub(r"Warning.*", "", output)
+    # SETUPTOOLS_USE_DISTUTILS=stdlib warnings removal if OS and package cause it
+    output = re.sub(r".*warnings\.warn.*", "", output)
+    output = re.sub(r".*SetuptoolsDeprecation.*", "", output)
+    return output
+
+
 def pip_install(packages: Union[List[str], str]) -> bool:
     if not isinstance(packages, list):
-        packages = packages.splitlines()
+        packages = clean_output(packages)
+        packages = packages.strip().splitlines()
 
     cmd = [
         sys.executable,
@@ -238,7 +318,7 @@ def check_env_writable():
             from distutils.sysconfig import get_python_lib
 
             locations.append(get_python_lib())
-        except (ImportError, ModuleNotFoundError):
+        except ModuleNotFoundError:
             pass
 
         try:
@@ -279,7 +359,11 @@ def check_and_install_pip() -> None:
 
     if not check_installed("pip"):
         logger.info("Installing pip")
-        tfd = download_to_temp_file("https://bootstrap.pypa.io/get-pip.py")
+        if sys.version_info[1:2][0] == 6:
+            tfd = download_to_temp_file(" https://bootstrap.pypa.io/pip/3.6/get-pip.py")
+        else:
+            tfd = download_to_temp_file("https://bootstrap.pypa.io/get-pip.py")
+
         result = subprocess_call([f"{sys.executable}", f"{tfd.name}"])
         if result == 0:
             logger.info("Pip installed")
@@ -360,6 +444,9 @@ def make_virtualenv_and_rerun(location: Path) -> None:
                     # add original arguments to this re-call
                     new_argv = [str(place)] + sys.argv
 
+                    if "VIRTUAL_ENV" not in os.environ:
+                        os.environ["VIRTUAL_ENV"] = str(location)
+
                     logger.info(f"Restarting SickChill with {new_argv}")
                     return os.execvp(new_argv[0], new_argv)
 
@@ -388,13 +475,15 @@ def poetry_install() -> None:
             check_and_install_pip()
 
             # Cool, we can write to site-packages
-            pip_install(["setuptools", "poetry", "poetry-date-version-plugin", "wheel", "--pre"])
+            pip_install(["setuptools", "poetry", "wheel"])
             if check_installed("poetry"):
-                result, output = subprocess.getstatusoutput(
-                    f"cd {pyproject_path.parent} && {sys.executable} -m poetry export -f requirements.txt --without-hashes"
-                )
+                logger.debug(f"Poetry installed packages checker started")
+                # go check what's already installed and reduce the list for synology.
+                result, output = check_req_installed()
+                logger.debug(f"Poetry installed packages checker completed")
                 if result == 0:  # Ok
-                    pip_install(output)
+                    if output:
+                        pip_install(output)
                 else:  # Not Ok
                     logger.info(output)
                     make_virtualenv_and_rerun(pyproject_path.with_name(".venv"))

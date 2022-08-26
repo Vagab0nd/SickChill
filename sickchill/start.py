@@ -14,7 +14,7 @@ from sickchill import logger, settings, show_updater, update_manager
 from sickchill.oldbeard.common import ARCHIVED, IGNORED, MULTI_EP_STRINGS, SD, SKIPPED, WANTED
 from sickchill.oldbeard.config import check_section, check_setting_bool, check_setting_float, check_setting_int, check_setting_str, ConfigMigrator
 from sickchill.oldbeard.databases import failed, main
-from sickchill.oldbeard.providers.newznab import NewznabProvider
+from sickchill.oldbeard.providers.newnewznab import NewznabProvider
 from sickchill.oldbeard.providers.rsstorrent import TorrentRssProvider
 
 from .helper import setup_github
@@ -118,12 +118,10 @@ def initialize(consoleLogging=True):
 
         # git_remote
         settings.GIT_REMOTE = check_setting_str(settings.CFG, "General", "git_remote", "origin")
-        settings.GIT_REMOTE_URL = check_setting_str(
-            settings.CFG, "General", "git_remote_url", "https://github.com/{0}/{1}.git".format(settings.GIT_ORG, settings.GIT_REPO)
-        )
+        settings.GIT_REMOTE_URL = check_setting_str(settings.CFG, "General", "git_remote_url", f"https://github.com/{settings.GIT_ORG}/{settings.GIT_REPO}.git")
 
         if "rage" in settings.GIT_REMOTE_URL.lower():
-            settings.GIT_REMOTE_URL = "https://github.com/{0}/{1}.git".format(settings.GIT_ORG, settings.GIT_REPO)
+            settings.GIT_REMOTE_URL = f"https://github.com/{settings.GIT_ORG}/{settings.GIT_REPO}.git"
 
         # current commit hash
         settings.CUR_COMMIT_HASH = check_setting_str(settings.CFG, "General", "cur_commit_hash")
@@ -159,24 +157,24 @@ def initialize(consoleLogging=True):
                         shutil.move(srcDir, dstDir)
                         logger.info("Restore: restoring cache successful")
                     except Exception as er:
-                        logger.exception("Restore: restoring cache failed: {0}".format(er))
+                        logger.exception(f"Restore: restoring cache failed: {er}")
 
                 restoreCache(os.path.join(restoreDir, "cache"), settings.CACHE_DIR)
         except Exception as e:
-            logger.exception("Restore: restoring cache failed: {0}".format(str(e)))
+            logger.exception(f"Restore: restoring cache failed: {str(e)}")
         finally:
             if os.path.exists(os.path.join(settings.DATA_DIR, "restore")):
                 try:
                     shutil.rmtree(os.path.join(settings.DATA_DIR, "restore"))
                 except Exception as e:
-                    logger.exception("Restore: settings.Unable to remove the restore directory: {0}".format(str(e)))
+                    logger.exception(f"Restore: settings.Unable to remove the restore directory: {str(e)}")
 
                 for cleanupDir in ["mako", "sessions", "indexers", "rss"]:
                     try:
                         shutil.rmtree(os.path.join(settings.CACHE_DIR, cleanupDir))
                     except Exception as e:
                         if cleanupDir not in ["rss", "sessions", "indexers"]:
-                            logger.info("Restore: Unable to remove the cache/{0} directory: {1}".format(cleanupDir, str(e)))
+                            logger.info(f"Restore: Unable to remove the cache/{cleanupDir} directory: {str(e)}")
 
         settings.IMAGE_CACHE = image_cache.ImageCache()
         settings.THEME_NAME = check_setting_str(settings.CFG, "GUI", "theme_name", "dark")
@@ -298,6 +296,7 @@ def initialize(consoleLogging=True):
         settings.NAMING_ANIME_MULTI_EP = check_setting_int(settings.CFG, "General", "naming_anime_multi_ep", 1, min_val=1, max_val=max(MULTI_EP_STRINGS))
         settings.NAMING_FORCE_FOLDERS = naming.check_force_season_folders()
         settings.NAMING_STRIP_YEAR = check_setting_bool(settings.CFG, "General", "naming_strip_year")
+        settings.NAMING_NO_BRACKETS = check_setting_bool(settings.CFG, "General", "naming_no_brackets")
 
         settings.USE_NZBS = check_setting_bool(settings.CFG, "General", "use_nzbs", settings.USE_NZBS)
         settings.USE_TORRENTS = check_setting_bool(settings.CFG, "General", "use_torrents", settings.USE_TORRENTS)
@@ -324,6 +323,7 @@ def initialize(consoleLogging=True):
         settings.ALLOWED_EXTENSIONS = check_setting_str(settings.CFG, "General", "allowed_extensions", settings.ALLOWED_EXTENSIONS)
 
         settings.USENET_RETENTION = check_setting_int(settings.CFG, "General", "usenet_retention", 500)
+        settings.CACHE_RETENTION = check_setting_int(settings.CFG, "General", "cache_retention", 30)
 
         settings.AUTOPOSTPROCESSOR_FREQUENCY = check_setting_int(
             settings.CFG,
@@ -372,7 +372,6 @@ def initialize(consoleLogging=True):
         config.change_unrar_tool(
             check_setting_str(settings.CFG, "General", "unrar_tool", rarfile.UNRAR_TOOL),
             check_setting_str(settings.CFG, "General", "unar_tool", rarfile.UNAR_TOOL),
-            check_setting_str(settings.CFG, "General", "bsdtar_tool", rarfile.BSDTAR_TOOL),
         )
 
         settings.RENAME_EPISODES = check_setting_bool(settings.CFG, "General", "rename_episodes", True)
@@ -496,6 +495,8 @@ def initialize(consoleLogging=True):
         settings.FREEMOBILE_NOTIFY_ONSUBTITLEDOWNLOAD = check_setting_bool(settings.CFG, "FreeMobile", "freemobile_notify_onsubtitledownload")
         settings.FREEMOBILE_ID = check_setting_str(settings.CFG, "FreeMobile", "freemobile_id")
         settings.FREEMOBILE_APIKEY = check_setting_str(settings.CFG, "FreeMobile", "freemobile_apikey")
+
+        settings.FLARESOLVERR_URI = check_setting_str(settings.CFG, "General", "flaresolverr_uri")
 
         settings.USE_TELEGRAM = check_setting_bool(settings.CFG, "Telegram", "use_telegram")
         settings.TELEGRAM_NOTIFY_ONSNATCH = check_setting_bool(settings.CFG, "Telegram", "telegram_notify_onsnatch")
@@ -757,6 +758,7 @@ def initialize(consoleLogging=True):
         settings.POSTER_SORTDIR = check_setting_int(settings.CFG, "GUI", "poster_sortdir", 1, min_val=0, max_val=1)
         settings.DISPLAY_ALL_SEASONS = check_setting_bool(settings.CFG, "General", "display_all_seasons", True)
         settings.ENDED_SHOWS_UPDATE_INTERVAL = check_setting_int(settings.CFG, "General", "ended_shows_update_interval", 7)
+        settings.NO_LGMARGIN = check_setting_bool(settings.CFG, "GUI", "no_lgmargin", True)
 
         if check_section(settings.CFG, "Shares"):
             settings.WINDOWS_SHARES.update(settings.CFG["Shares"])
@@ -1047,7 +1049,7 @@ def halt():
                 t.stop.set()
 
             for t in threads:
-                logger.info("Waiting for the {0} thread to exit".format(t.name))
+                logger.info(f"Waiting for the {t.name} thread to exit")
                 try:
                     t.join(10)
                 except Exception:
@@ -1190,6 +1192,7 @@ def save_config():
                 "nzb_method": settings.NZB_METHOD,
                 "torrent_method": settings.TORRENT_METHOD,
                 "usenet_retention": int(settings.USENET_RETENTION),
+                "cache_retention": int(settings.CACHE_RETENTION),
                 "autopostprocessor_frequency": int(settings.AUTOPOSTPROCESSOR_FREQUENCY),
                 "dailysearch_frequency": int(settings.DAILYSEARCH_FREQUENCY),
                 "backlog_frequency": int(settings.BACKLOG_FREQUENCY),
@@ -1215,6 +1218,7 @@ def save_config():
                 "auto_update": int(settings.AUTO_UPDATE),
                 "notify_on_update": int(settings.NOTIFY_ON_UPDATE),
                 "naming_strip_year": int(settings.NAMING_STRIP_YEAR),
+                "naming_no_brackets": int(settings.NAMING_NO_BRACKETS),
                 "naming_pattern": settings.NAMING_PATTERN,
                 "naming_custom_abd": int(settings.NAMING_CUSTOM_ABD),
                 "naming_abd_pattern": settings.NAMING_ABD_PATTERN,
@@ -1261,7 +1265,6 @@ def save_config():
                 "unpack_dir": settings.UNPACK_DIR,
                 "unrar_tool": settings.UNRAR_TOOL,
                 "unar_tool": settings.UNAR_TOOL,
-                "bsdtar_tool": settings.BSDTAR_TOOL,
                 "rename_episodes": int(settings.RENAME_EPISODES),
                 "airdate_episodes": int(settings.AIRDATE_EPISODES),
                 "file_timestamp_timezone": settings.FILE_TIMESTAMP_TIMEZONE,
@@ -1283,6 +1286,7 @@ def save_config():
                 "display_all_seasons": int(settings.DISPLAY_ALL_SEASONS),
                 "ended_shows_update_interval": int(settings.ENDED_SHOWS_UPDATE_INTERVAL),
                 "news_last_read": settings.NEWS_LAST_READ,
+                "flaresolverr_uri": settings.FLARESOLVERR_URI,
             },
             "Cloudflare": {"auth_domain": settings.CF_AUTH_DOMAIN, "audience_policy": settings.CF_POLICY_AUD},
             "Shares": settings.WINDOWS_SHARES,
@@ -1606,6 +1610,7 @@ def save_config():
                 "timezone_display": settings.TIMEZONE_DISPLAY,
                 "poster_sortby": settings.POSTER_SORTBY,
                 "poster_sortdir": settings.POSTER_SORTDIR,
+                "no_lgmargin": int(settings.NO_LGMARGIN),
             },
             "Subtitles": {
                 "use_subtitles": int(settings.USE_SUBTITLES),
@@ -1664,7 +1669,7 @@ def launchBrowser(protocol="http", startPort=None, web_root="/"):
     if not startPort:
         startPort = settings.WEB_PORT
 
-    browserURL = "{0}://localhost:{1:d}{2}/home/".format(protocol, startPort, web_root)
+    browserURL = f"{protocol}://localhost:{startPort:d}{web_root}/home/"
 
     try:
         webbrowser.open(browserURL, 2, True)

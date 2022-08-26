@@ -1,8 +1,13 @@
 import datetime
+import re
 import time
-from urllib.parse import urljoin
+import traceback
+from urllib.parse import urlencode, urljoin
 
-import js2py
+try:
+    import js2py
+except (ModuleNotFoundError, RuntimeError):
+    js2py = None
 
 from sickchill import logger
 from sickchill.helper.common import try_int
@@ -50,21 +55,29 @@ class Provider(TorrentProvider):
 
     def get_tracker_list(self):
         try:
-            script = self.get_url(self.script_url)
-            context = js2py.EvalJs()
-            context.execute(
-                """
-                escape = function(text){pyimport urllib; return urllib.quote(text)};
-                unescape = function(text){pyimport urllib; return urllib.unquote(text)};
-                encodeURI = function(text){pyimport urllib; return urllib.quote(text, safe='~@#$&()*!+=:;,.?/\\'')};
-                decodeURI = unescape;
-                encodeURIComponent = function(text){pyimport urllib; return urllib.quote(text, safe='~()*!.\\'')};
-                decodeURIComponent = unescape;
-                """
-            )
+            data = self.get_url(self.script_url)
+            if js2py:
+                context = js2py.EvalJs()
+                context.execute(
+                    """
+                    escape = function(text){pyimport urllib; return urllib.parse.quote(text)};
+                    unescape = function(text){pyimport urllib; return urllib.parse.unquote(text)};
+                    encodeURI = function(text){pyimport urllib; return urllib.parse.quote(text, safe='~@#$&()*!+=:;,.?/\\'')};
+                    decodeURI = unescape;
+                    encodeURIComponent = function(text){pyimport urllib; return urllib.parse.quote(text, safe='~()*!.\\'')};
+                    decodeURIComponent = unescape;
+                    """
+                )
 
-            context.execute(script)
-            return context.print_trackers()
+                context.execute(data)
+                return context.print_trackers()
+            else:
+                matcher = re.compile("'\&\+?tr='\+encodeURIComponent\('((?:udp|tcp|http|https)://[^']+)'\)", re.IGNORECASE | re.MULTILINE)
+                trackers_list = matcher.findall(data)
+                if trackers_list:
+                    joined = "&".join(urlencode({"tr": tracker}) for tracker in trackers_list)
+                    return f"&{joined}"
+
         except Exception:
             return ""
 
@@ -118,8 +131,8 @@ class Provider(TorrentProvider):
                             if not all([title, info_hash]):
                                 continue
 
-                            seeders = result["seeders"]
-                            leechers = result["leechers"]
+                            seeders = try_int(result["seeders"])
+                            leechers = try_int(result["leechers"])
 
                             # Filter unseeded torrent
                             if seeders < self.minseed or leechers < self.minleech:
@@ -151,7 +164,9 @@ class Provider(TorrentProvider):
                                 logger.debug("Found result: {0} with {1} seeders and {2} leechers".format(title, seeders, leechers))
 
                             items.append(item)
-                        except Exception:
+                        except Exception as error:
+                            logger.debug(f"Unable to process torrent on {self.name}: {error}")
+                            logger.debug(traceback.format_exc())
                             continue
 
             # For each search mode sort all the items by seeders if available

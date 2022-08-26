@@ -43,7 +43,7 @@ class ProperFinder(object):
             minutes, seconds = divmod(remainder, 60)
             run_at = ", next check in approx. " + ("{0:d}h, {1:d}m".format(hours, minutes) if hours > 0 else "{0:d}m, {1:d}s".format(minutes, seconds))
 
-        logger.info("Completed the search for new propers{0}".format(run_at))
+        logger.info(f"Completed the search for new propers{run_at}")
 
         self.amActive = False
 
@@ -56,10 +56,10 @@ class ProperFinder(object):
         search_date = datetime.datetime.today() - datetime.timedelta(days=2)
 
         # for each provider get a list of the
-        origThreadName = threading.currentThread().name
+        original_thread_name = threading.current_thread().name
         providers = [x for x in oldbeard.providers.sortedProviderList(settings.RANDOMIZE_PROVIDERS) if x.is_active]
         for curProvider in providers:
-            threading.currentThread().name = origThreadName + " :: [" + curProvider.name + "]"
+            threading.current_thread().name = original_thread_name + " :: [" + curProvider.name + "]"
 
             logger.info("Searching for any new PROPER releases from " + curProvider.name)
 
@@ -85,7 +85,7 @@ class ProperFinder(object):
                     x.provider = curProvider
                     propers[name] = x
 
-            threading.currentThread().name = origThreadName
+            threading.current_thread().name = original_thread_name
 
         # take the list of unique propers and get it sorted by
         sortedPropers = sorted(list(propers.values()), key=operator.attrgetter("date"), reverse=True)
@@ -96,7 +96,7 @@ class ProperFinder(object):
             try:
                 parse_result = NameParser(False).parse(curProper.name)
             except (InvalidNameException, InvalidShowException) as error:
-                logger.debug("{0}".format(error))
+                logger.debug(f"{error}")
                 continue
 
             if not parse_result.series_name:

@@ -114,3 +114,5 @@ atlassian-ide-plugin.xml
 # Readynas
 config.xml
 fvapp-sickchill.service
+
+poetry.lock
