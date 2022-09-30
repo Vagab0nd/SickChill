@@ -911,6 +911,29 @@
                         </div>
 
                         <div class="field-pair row">
+                            <div class="col-lg-3 col-md-3 col-sm-4 col-xs-12">
+                                <label class="component-title">${_('Log Dir')}</label>
+                            </div>
+                            <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12 pull-right component-desc">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <input type="text" name="log_dir" id="log_dir" value="${settings.LOG_DIR}" class="form-control input-sm input350" autocapitalize="off" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <span>${_('The folder where sickchill log goes.')}</span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <span><b>${_('note')}:</b>&nbsp;${_('please make sure that sickchill user has the rights permissions for the folder.')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-pair row">
                             <div class="col-lg-3 col-md-4 col-sm-5 col-xs-12">
                                 <label class="component-title">${_('Enable debug')}</label>
                             </div>
@@ -938,12 +961,12 @@
                                 <div class="row">
                                     <div class="col-md-12">
                                         <input type="checkbox" name="no_restart" id="no_restart" ${('', 'checked="checked"')[bool(settings.NO_RESTART)]}/>
-                                        <label for="no_restart">${_('only shutdown when restarting SR')}</label>
+                                        <label for="no_restart">${_('only shutdown when restarting SC')}</label>
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-12">
-                                        <label>${_('only select this when you have external software restarting SR automatically when it stops (like FireDaemon)')}</label>
+                                        <label>${_('only select this when you have external software restarting SC automatically when it stops (like FireDaemon)')}</label>
                                     </div>
                                 </div>
                             </div>

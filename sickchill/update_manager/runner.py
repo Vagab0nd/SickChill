@@ -14,7 +14,7 @@ from .pip import PipUpdateManager
 
 class UpdateManager(object):
     """
-    Version check class meant to run as a thread object with the sr scheduler.
+    Version check class meant to run as a thread object with the sc scheduler.
     """
 
     def __init__(self):
@@ -140,7 +140,7 @@ class UpdateManager(object):
                     logger.warning("We can't proceed with the update. Unable to check remote DB version. Error: {0}".format(result))
                 return result in ["equal"]  # add future True results to the list
             except Exception as error:
-                logger.warning("We can't proceed with the update. Unable to compare DB version. Error: {0}".format(repr(error)))
+                logger.warning(f"We can't proceed with the update. Unable to compare DB version. Error: {error}")
                 return False
 
         def postprocessor_safe():
@@ -199,13 +199,13 @@ class UpdateManager(object):
                 return "equal"
             else:
                 return "downgrade"
-        except Exception as e:
-            return repr(e)
+        except Exception as error:
+            return f"{error}"
 
     @staticmethod
     def find_install_type():
         """
-        Determines how this copy of sr was installed.
+        Determines how this copy of sc was installed.
 
         returns: type of installation. Possible values are:
             'win': any compiled windows build

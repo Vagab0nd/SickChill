@@ -58,8 +58,8 @@ class PipUpdateManager(UpdateManagerBase):
             newest_tag = "newer_version_available"
             update_url = self.get_update_url()
             newest_text = _(
-                f'There is a <a href="{url}" onclick="window.open(this.href); return false;">newer version available</a> &mdash; <a href="{update_url}">Update Now</a>'
-            )
+                'There is a <a href="{url}" onclick="window.open(this.href); return false;">newer version available</a> &mdash; <a href="{update_url}">Update Now</a>'
+            ).format(url=url, update_url=update_url)
 
         else:
             return
@@ -70,6 +70,7 @@ class PipUpdateManager(UpdateManagerBase):
         return self.get_newest_version() > self.get_current_version()
 
     def update(self):
+        logger.info("Updating using pip in your current environment")
         if not self.pip_install("sickchill"):
             return False
 
@@ -85,7 +86,8 @@ class PipUpdateManager(UpdateManagerBase):
                 stdout, stderr = process.communicate()
                 process.wait()
                 if stdout or stderr:
-                    logger.info(f"Command result: {stdout or stderr}")
+                    for line in (stdout or stderr).splitlines():
+                        logger.info(line)
             except Exception as error:
                 logger.info(f"Unable to run command: {error}")
                 return 126
@@ -114,7 +116,7 @@ class PipUpdateManager(UpdateManagerBase):
             "--no-color",
             # "--trusted-host=pypi.org",
             # "--trusted-host=files.pythonhosted.org",
-            "-qU",
+            "-U",
         ]
 
         os_id = get_os_id()
@@ -124,7 +126,7 @@ class PipUpdateManager(UpdateManagerBase):
         if os_id == "alpine":
             cmd.append(f"--extra-index-url=https://alpine-wheels.github.io/index")
 
-        elif os_id in ("raspian", "osmc"):
+        elif os_id in ("raspbian", "osmc"):
             cmd.append(f"--extra-index-url=https://www.piwheels.org/simple")
 
         syno_wheelhouse = sickchill_dir.with_name("wheelhouse")
@@ -132,7 +134,10 @@ class PipUpdateManager(UpdateManagerBase):
             logger.debug(f"Found wheelhouse dir at {syno_wheelhouse}")
             cmd.append(f"-f{syno_wheelhouse}")
 
-        cmd += packages
+        if isinstance(packages, list):
+            cmd += packages
+        elif isinstance(packages, str):
+            cmd.append(packages)
 
         logger.debug(f"pip args: {' '.join(cmd)}")
 
