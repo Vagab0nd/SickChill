@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sickchill"
-version = "2022.9.28"
+version = "2022.10.13"
 description = 'Automatic Video Library Manager for TV Shows'
 license = "GPL-3.0-or-later"
 
@@ -39,6 +39,16 @@ packages = [
     { include = "SickChill.py" },
 ]
 
+[tool.poetry.urls]
+"Changelog" = "https://raw.githubusercontent.com/SickChill/sickchill.github.io/master/sickchill-news/CHANGES.md"
+"Bug Tracker" = "https://github.com/sickchill/sickchill/issues"
+"News" = "https://raw.githubusercontent.com/SickChill/sickchill.github.io/master/sickchill-news/news.md"
+"Discord" = "https://discord.com/invite/U8WPBdf"
+"Slack" = "https://sickchill.slack.com/"
+"Telegram" = "https://t.me/sickchill"
+"IRC" = "https://webchat.freenode.net/?channels=#sickchill"
+"Donate"= "https://github.com/SickChill/SickChill/wiki/Donations"
+
 [tool.poetry.scripts]
 SickChill = "SickChill:main"
 sickchill = "SickChill:main"
@@ -65,6 +75,8 @@ isort = "^5.10.1"
 poethepoet = "^0.16.0"
 po2json = "^0.2.2"
 bandit = "<=1.7.2"
+commitizen = "^2.35.0"
+pre-commit = "^2.20.0"
 
 [tool.poetry.group.speedups]
 optional = true
@@ -99,6 +111,12 @@ pyaes = "^1.6.1"
 experimental = ["experimental"]
 speedups = ["html5lib", "lxml", "Js2Py"]
 types = ["types"]
+
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "2022.10.8"
+tag_format = "$version"
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]
@@ -162,6 +180,7 @@ src_paths = [ "sickchill", "tests", "SickChill.py", "setup.py" ]
 line-length = 160
 target_version = ['py310']
 include = '\.pyi?$'
+exclude = 'contrib/scmaintools|\.venv|\.git|\.hg|\.mypy_cache|\.tox|\.venv|_build|buck-out|build|dist|node_modules|bower_components'
 
 [tool.poe.tasks]
 pytest = "pytest"
@@ -280,3 +299,7 @@ IMDbPY = ">=2020.09.25"
 babelfish = ">=0.6.0b1"
 kodipydent-alt = ">=2022.9.3"
 beekeeper-alt = ">=2022.9.3"
+
+# stevedore dropped support for python 3.7
+stevedore = {version = "<=3.5.0", python = "<3.8"}
+importlib-metadata = {version = "<5.0.0", python = "<3.8"}
