@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sickchill"
-version = "2022.10.13"
+version = "2023.1.2"
 description = 'Automatic Video Library Manager for TV Shows'
 license = "GPL-3.0-or-later"
 
@@ -37,6 +37,7 @@ classifiers = [
 packages = [
     { include = "sickchill" },
     { include = "SickChill.py" },
+    { include = "frontend" }
 ]
 
 [tool.poetry.urls]
@@ -75,7 +76,6 @@ isort = "^5.10.1"
 poethepoet = "^0.16.0"
 po2json = "^0.2.2"
 bandit = "<=1.7.2"
-commitizen = "^2.35.0"
 pre-commit = "^2.20.0"
 
 [tool.poetry.group.speedups]
@@ -107,16 +107,17 @@ optional = true
 [tool.poetry.group.experimental.dependencies]
 pyaes = "^1.6.1"
 
+[tool.poetry.group.frontend]
+optional = true
+
+[tool.poetry.group.frontend.dependencies]
+Flask = "^2.2.2"
+
 [tool.poetry.extras]
 experimental = ["experimental"]
-speedups = ["html5lib", "lxml", "Js2Py"]
+speedups = ["speedups"]
 types = ["types"]
-
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-version = "2022.10.8"
-tag_format = "$version"
+frontend = ["frontend"]
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]
@@ -265,7 +266,7 @@ jsonrpclib-pelix = "^0.4.2"
 Mako = "^1.1.4"
 markdown2 = "^2.4.0"
 PyGithub = "^1.54.1"
-pyOpenSSL = ">=20.0.1,<23.0.0"
+pyOpenSSL = ">=20.0.1,<24.0.0"
 python-dateutil = "^2.8.1"
 python-twitter = "^3.5"
 rarfile = "^4.0"
@@ -289,10 +290,10 @@ deluge-client = "^1.9.0"
 ifaddr = ">=0.1.7,<0.3.0"
 new-rtorrent-python = "^1.0.1-alpha.0"
 qbittorrent-api = ">=2021.3.18,<2023.0.0"
-packaging = ">=20.9,<22.0"
+packaging = ">=20.9,<23.0"
 timeago = "^1.0.15"
 SQLAlchemy = "^1.4.3"
-python-slugify = ">=4.0.1,<7.0.0"
+python-slugify = ">=4.0.1,<8.0.0"
 guessit = "^3.3.1"
 requests = "^2.25.1"
 IMDbPY = ">=2020.09.25"

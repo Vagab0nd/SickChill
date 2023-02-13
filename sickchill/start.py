@@ -249,7 +249,6 @@ def initialize(consoleLogging=True):
             settings.ROOT_DIRS = ""
 
         settings.QUALITY_DEFAULT = check_setting_int(settings.CFG, "General", "quality_default", SD)
-        settings.QUALITY_ALLOW_HEVC = check_setting_bool(settings.CFG, "General", "quality_allow_hevc", False)
         settings.STATUS_DEFAULT = check_setting_int(settings.CFG, "General", "status_default", SKIPPED)
         if settings.STATUS_DEFAULT not in (SKIPPED, WANTED, IGNORED):
             settings.STATUS_DEFAULT = SKIPPED
@@ -263,6 +262,9 @@ def initialize(consoleLogging=True):
 
         settings.ANIME_DEFAULT = check_setting_bool(settings.CFG, "General", "anime_default")
         settings.SCENE_DEFAULT = check_setting_bool(settings.CFG, "General", "scene_default")
+
+        settings.WHITELIST_DEFAULT = check_setting_str(settings.CFG, "General", "whitelist_default")
+        settings.BLACKLIST_DEFAULT = check_setting_str(settings.CFG, "General", "blacklist_default")
 
         settings.PROVIDER_ORDER = check_setting_str(settings.CFG, "General", "provider_order").split()
 
@@ -1180,7 +1182,6 @@ def save_config():
                 "skip_removed_files": int(settings.SKIP_REMOVED_FILES),
                 "allowed_extensions": settings.ALLOWED_EXTENSIONS,
                 "quality_default": int(settings.QUALITY_DEFAULT),
-                "quality_allow_hevc": int(settings.QUALITY_ALLOW_HEVC),
                 "status_default": int(settings.STATUS_DEFAULT),
                 "status_default_after": int(settings.STATUS_DEFAULT_AFTER),
                 "season_folders_default": int(settings.SEASON_FOLDERS_DEFAULT),
@@ -1188,6 +1189,8 @@ def save_config():
                 "indexer_timeout": int(settings.INDEXER_TIMEOUT),
                 "anime_default": int(settings.ANIME_DEFAULT),
                 "scene_default": int(settings.SCENE_DEFAULT),
+                "whitelist_default": settings.WHITELIST_DEFAULT,
+                "blacklist_default": settings.BLACKLIST_DEFAULT,
                 "provider_order": " ".join(settings.PROVIDER_ORDER),
                 "version_notify": int(settings.VERSION_NOTIFY),
                 "auto_update": int(settings.AUTO_UPDATE),
