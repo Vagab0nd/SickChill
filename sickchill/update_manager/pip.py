@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Union
 
 from packaging import version as packaging_version
+from packaging.version import Version
 
 from sickchill import logger, settings
 from sickchill.init_helpers import get_current_version, sickchill_dir
@@ -21,7 +22,7 @@ class PipUpdateManager(UpdateManagerBase):
         self._newest_version: packaging_version.Version = None
         self.session = helpers.make_session()
 
-    def get_current_version(self) -> str:
+    def get_current_version(self) -> Version:
         return packaging_version.parse(self.version_text)
 
     def get_clean_version(self, use_version: packaging_version.Version = None):
@@ -50,7 +51,7 @@ class PipUpdateManager(UpdateManagerBase):
             newest_tag = "newer_version_available"
             update_url = self.get_update_url()
             newest_text = _(
-                'There is a <a href="{url}" onclick="window.open(this.href); return false;">newer version available</a> &mdash; <a href="{update_url}">Update Now</a>'
+                'There is a <a href="{url}" target="_blank" rel="noreferrer">newer version available</a> &mdash; <a href="{update_url}">Update Now</a>'
             ).format(url=url, update_url=update_url)
 
         else:
@@ -69,7 +70,7 @@ class PipUpdateManager(UpdateManagerBase):
         notifiers.notify_update(f"{self._newest_version}")
         return True
 
-    def pip_install(self, packages: Union[List[str], str]) -> bool:
+    def pip_install(self, packages: Union[List[str], str, Path]) -> bool:
         def subprocess_call(cmd_list):
             try:
                 process = subprocess.Popen(
@@ -130,6 +131,8 @@ class PipUpdateManager(UpdateManagerBase):
             cmd += packages
         elif isinstance(packages, str):
             cmd.append(packages)
+        elif isinstance(packages, Path):
+            cmd.append(str(packages.resolve()))
 
         logger.debug(f"pip args: {' '.join(cmd)}")
 

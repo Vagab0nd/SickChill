@@ -1,5 +1,3 @@
-import validators
-
 from sickchill import logger
 from sickchill.helper.common import convert_size, try_int
 from sickchill.oldbeard import tvcache
@@ -8,7 +6,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         # Provider Init
         super().__init__("TorrentProject")
 
@@ -30,7 +27,7 @@ class Provider(TorrentProvider):
         # Cache
         self.cache = tvcache.TVCache(self, search_params={"RSS": ["0day"]})
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
 
         search_params = {"out": "json", "filter": 2101, "showmagnets": "on", "num": 50}
@@ -40,14 +37,13 @@ class Provider(TorrentProvider):
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
 
             for search_string in {*search_strings[mode]}:
-
                 if mode != "RSS":
                     logger.debug(_("Search String: {search_string}").format(search_string=search_string))
 
                 search_params["s"] = search_string
 
                 if self.custom_url:
-                    if validators.url(self.custom_url) != True:
+                    if self.invalid_url(self.custom_url):
                         logger.warning("Invalid custom url set, please check your settings")
                         return results
                     search_url = self.custom_url

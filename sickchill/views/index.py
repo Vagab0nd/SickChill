@@ -6,14 +6,12 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from mimetypes import guess_type
-from operator import attrgetter
 from secrets import compare_digest
+from typing import Any
 from urllib.parse import urljoin
 
 from mako.exceptions import RichTraceback
 from tornado.concurrent import run_on_executor
-from tornado.escape import utf8, xhtml_escape
-from tornado.gen import coroutine
 from tornado.web import authenticated, HTTPError, RequestHandler
 
 import sickchill.start
@@ -22,17 +20,16 @@ from sickchill.init_helpers import check_installed, locale_dir
 from sickchill.show.ComingEpisodes import ComingEpisodes
 from sickchill.views.routes import Route
 
-from ..oldbeard import db, helpers, network_timezones, ui
+from ..oldbeard import config, db, helpers, network_timezones, ui
 from .api.webapi import function_mapper
 from .common import PageTemplate
 
 try:
     import jwt
-    from jwt.algorithms import RSAAlgorithm as jwt_algorithms_RSAAlgorithm
-
-    has_cryptography = True
-except Exception:
-    has_cryptography = False
+    from jwt.algorithms import RSAAlgorithm
+except (ImportError, Exception):
+    jwt = None
+    RSAAlgorithm = None
 
 
 class BaseHandler(RequestHandler):
@@ -41,10 +38,11 @@ class BaseHandler(RequestHandler):
 
     def initialize(self):
         super().initialize()
-        self.startTime = time.time()
+        self.page_load_start_time = time.time()
 
-    # def set_default_headers(self):
-    #     self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    def set_default_headers(self):
+        self.set_header("X-Robots-Tag", "noindex")
+        # self.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 
     def write_error(self, status_code, **kwargs):
         # handle 404 http errors
@@ -104,27 +102,27 @@ class BaseHandler(RequestHandler):
             assert isinstance(status, int)
             assert 300 <= status <= 399
         self.set_status(status)
-        self.set_header("Location", urljoin(utf8(self.request.uri), utf8(url)))
+        self.set_header("Location", urljoin(self.request.uri, url))
 
     def get_current_user(self):
         if isinstance(self, UI):
             return True
 
         if settings.WEB_USERNAME and settings.WEB_PASSWORD:
+            # Logged into UI?
+            if self.get_signed_cookie("sickchill_user"):
+                return True
+
             # Authenticate using jwt for CF Access
             # NOTE: Setting a username and password is STILL required to protect poorly configured tunnels or firewalls
-            if settings.CF_AUTH_DOMAIN and settings.CF_POLICY_AUD and has_cryptography:
-                CERTS_URL = "{}/cdn-cgi/access/certs".format(settings.CF_AUTH_DOMAIN)
-                if "CF_Authorization" in self.request.cookies:
-                    jwk_set = helpers.getURL(CERTS_URL, returns="json")
-                    for key_dict in jwk_set["keys"]:
-                        public_key = jwt_algorithms_RSAAlgorithm.from_jwk(json.dumps(key_dict))
-                        if jwt.decode(self.request.cookies["CF_Authorization"], key=public_key, audience=settings.CF_POLICY_AUD):
-                            return True
-
-            # Logged into UI?
-            if self.get_secure_cookie("sickchill_user"):
-                return True
+            if settings.CF_AUTH_DOMAIN and settings.CF_POLICY_AUD and jwt:
+                token = self.request.cookies.get("CF_Authorization") or self.request.headers.get("Cf-Access-Jwt-Assertion")
+                if token:
+                    key_set = helpers.getURL(f"{settings.CF_AUTH_DOMAIN}/cdn-cgi/access/certs", returns="json")
+                    if key_set:
+                        for key in key_set["keys"]:
+                            if jwt.decode(token, key=RSAAlgorithm.from_jwk(key), audience=settings.CF_POLICY_AUD):
+                                return True
 
             # Basic Auth at a minimum
             auth_header = self.request.headers.get("Authorization")
@@ -134,7 +132,6 @@ class BaseHandler(RequestHandler):
                 if compare_digest(username, settings.WEB_USERNAME) and compare_digest(password, settings.WEB_PASSWORD):
                     return True
                 return False
-
         else:
             # Local network
             # strip <scope id> / <zone id> (%value/if_name) from remote_ip IPv6 scoped literal IP Addresses (RFC 4007) until phihag/ipaddress is updated tracking cpython 3.9.
@@ -150,36 +147,68 @@ class WebHandler(BaseHandler):
         self.executor = ThreadPoolExecutor(thread_name_prefix="WEBSERVER-" + self.__class__.__name__.upper())
 
     @authenticated
-    @coroutine
-    def get(self, route, *args, **kwargs):
+    async def get(self, route, *_args, **_kwargs):
         try:
-            # logger.debug(f"Call for {route} with args [{self.request.arguments}]")
             # route -> method obj
             route = route.strip("/").replace(".", "_").replace("-", "_") or "index"
-            method = getattr(self, route)
+            # logger.debug(f"Route: {route}")
+            if hasattr(self, route):
+                method = getattr(self, route)
+            else:
+                message = ("404", "Could not find the page you requested")
+                ui.notifications.error(*message)
+                logger.info(", ".join(message))
+                helpers.add_site_message(", ".join(message), tag=message[0])
+                return self.redirect("/home/")
 
-            results = yield self.async_call(method)
+            from inspect import signature
 
-            self.finish(results)
+            sig = signature(method)
+            if settings.DEVELOPER:
+                if len(sig.parameters):
+                    logger.debug(f"{route} has signature {sig} and needs updated to use get_*_argument to properly decode and sanitize argument values")
 
+            results = await self.async_call(method, len(sig.parameters))
+            try:
+                await self.finish(results)
+            except Exception as e:
+                if 0:
+                    logger.debug(f"self.finish exception {e}, result {results}")
+                else:
+                    logger.debug(f"self.finish exception {e}")
         except AttributeError:
-            logger.debug('Failed doing webui request "{0}": {1}'.format(route, traceback.format_exc()))
+            logger.debug(f"Failed doing webui request '{route}'", exc_info=True)
             raise HTTPError(404)
 
     @run_on_executor
-    def async_call(self, function):
+    def async_call(self, function, needs_params):
         try:
-            # TODO: Make all routes use get_argument so we can take advantage of tornado's argument sanitization, separate post and get, and get rid of this
+            # TODO: Make all routes use get_*_argument so we can take advantage of tornado's argument sanitization, separate post and get, and get rid of this
+            # TODO: Until the new web interface is ready, we should also make each route asynchronous and yield back the result.
             # nonsense loop so we can just yield the method directly
-            # raise Exception('Raising from async_call')
-            kwargs = self.request.arguments
-            for arg, value in kwargs.items():
-                if len(value) == 1:
-                    kwargs[arg] = xhtml_escape(value[0])
-                elif isinstance(value, str):
-                    kwargs[arg] = xhtml_escape(value)
+
+            if not needs_params:
+                return function()
+
+            if self.request.method == "POST":
+                method_argument = self.get_body_argument
+                method_arguments = self.get_body_arguments
+            elif self.request.method == "GET":
+                method_argument = self.get_query_argument
+                method_arguments = self.get_query_arguments
+            else:
+                method_argument = self.get_argument
+                method_arguments = self.get_arguments
+
+            kwargs = {}
+            for arg, value in self.request.arguments.items():
+                if isinstance(value, str):
+                    kwargs[arg] = method_argument(arg)
                 elif isinstance(value, list):
-                    kwargs[arg] = [xhtml_escape(v) for v in value]
+                    if len(value) == 1:
+                        kwargs[arg] = method_argument(arg)
+                    else:
+                        kwargs[arg] = method_arguments(arg)
                 else:
                     raise Exception
             return function(**kwargs)
@@ -195,7 +224,8 @@ class WebHandler(BaseHandler):
 @Route("(.*)(/?)", name="index")
 class WebRoot(WebHandler):
     def print_traceback(self, error, *args, **kwargs):
-        logger.info(f"A mako error occurred: {error}")
+        logger.info(f"A mako error occurred: {error}", stack_info=True, exc_info=True)
+        logger.debug(f"args: {args}, kwargs: {kwargs}")
         t = PageTemplate(rh=self, filename="500.mako")
         kwargs["backtrace"] = RichTraceback(error=error)
         return t.render(*args, **kwargs)
@@ -210,10 +240,10 @@ class WebRoot(WebHandler):
 
     def apibuilder(self):
         main_db_con = db.DBConnection(row_type="dict")
-        shows = sorted(settings.showList, key=lambda mbr: attrgetter("sort_name")(mbr))
+
         episodes = {}
 
-        results = main_db_con.select("SELECT episode, season, showid " "FROM tv_episodes " "ORDER BY season ASC, episode ASC")
+        results = main_db_con.select("SELECT episode, season, showid " "FROM tv_episodes " "ORDER BY season, episode")
 
         for result in results:
             if result["showid"] not in episodes:
@@ -230,7 +260,14 @@ class WebRoot(WebHandler):
             apikey = _("API Key not generated")
 
         t = PageTemplate(rh=self, filename="apiBuilder.mako")
-        return t.render(title=_("API Builder"), header=_("API Builder"), shows=shows, episodes=episodes, apikey=apikey, commands=function_mapper)
+        return t.render(
+            title=_("API Builder"),
+            header=_("API Builder"),
+            shows=settings.show_list,
+            episodes=episodes,
+            apikey=apikey,
+            commands=function_mapper,
+        )
 
     def setHomeLayout(self):
         layout = self.get_query_argument("layout")
@@ -243,7 +280,7 @@ class WebRoot(WebHandler):
 
     def setPosterSortBy(self):
         sort = self.get_query_argument("sort")
-        if sort not in ("name", "date", "network", "progress"):
+        if sort not in ("name", "date", "network", "progress", "status"):
             sort = "name"
 
         settings.POSTER_SORTBY = sort
@@ -296,13 +333,11 @@ class WebRoot(WebHandler):
         return self.redirect("/schedule/")
 
     def toggleScheduleDisplayPaused(self):
-
         settings.COMING_EPS_DISPLAY_PAUSED = not settings.COMING_EPS_DISPLAY_PAUSED
 
         return self.redirect("/schedule/")
 
     def toggleScheduleDisplaySnatched(self):
-
         settings.COMING_EPS_DISPLAY_SNATCHED = not settings.COMING_EPS_DISPLAY_SNATCHED
 
         return self.redirect("/schedule/")
@@ -319,9 +354,9 @@ class WebRoot(WebHandler):
     def schedule(self):
         layout = self.get_query_argument("layout", settings.COMING_EPS_LAYOUT)
         next_week = datetime.date.today() + datetime.timedelta(days=7)
-        next_week1 = datetime.datetime.combine(next_week, datetime.time(tzinfo=network_timezones.sb_timezone))
+        next_week1 = datetime.datetime.combine(next_week, datetime.time(tzinfo=network_timezones.sc_timezone))
         results = ComingEpisodes.get_coming_episodes(ComingEpisodes.categories, settings.COMING_EPS_SORT, False)
-        today = datetime.datetime.now().replace(tzinfo=network_timezones.sb_timezone)
+        today = datetime.datetime.now().replace(tzinfo=network_timezones.sc_timezone)
 
         # Allow local overriding of layout parameter
         if layout not in ("poster", "banner", "list", "calendar"):
@@ -344,7 +379,6 @@ class WebRoot(WebHandler):
 @Route("/ui(/?.*)", name="ui")
 class UI(WebRoot):
     def locale_json(self):
-
         lang = self.get_query_argument("lang")
         """ Get /locale/{lang_code}/LC_MESSAGES/messages.json """
         locale_file = os.path.normpath(f"{locale_dir}/{lang}/LC_MESSAGES/messages.json")
@@ -357,8 +391,18 @@ class UI(WebRoot):
             self.set_status(204)  # "No Content"
             return None
 
-    @staticmethod
-    def add_message():
+    def add_message(self):
+        title = self.get_argument("title")
+        message = self.get_argument("message")
+        success = config.checkbox_to_value(self.get_argument("success"))
+
+        if title and message:
+            if success:
+                ui.notifications.message(title, message)
+            else:
+                ui.notifications.error(title, message)
+            return
+
         ui.notifications.message(_("Test 1"), _("This is test number 1"))
         ui.notifications.error(_("Test 2"), _("This is test number 2"))
 
@@ -389,7 +433,7 @@ class UI(WebRoot):
         else:
             if self.get_current_user() and not (check_installed() or settings.DEVELOPER):
                 message = _("SickChill no longer is supported unless installed with pip or poetry. Source and git installs are for experienced users only")
-                helpers.add_site_message(message, tag="not_installed", level="danger")
+                helpers.add_site_message(message, tag="not_installed")
 
         return settings.SITE_MESSAGES
 
@@ -398,7 +442,7 @@ class UI(WebRoot):
         return settings.SITE_MESSAGES
 
     def dismiss_site_message(self):
-        index = self.get_query_argument("index")
+        index = self.get_argument("index")
         self.set_header("Cache-Control", "max-age=0,no-cache,no-store")
         helpers.remove_site_message(key=index)
         return settings.SITE_MESSAGES
@@ -413,6 +457,6 @@ class UI(WebRoot):
     def custom_css(self):
         if settings.CUSTOM_CSS_PATH and os.path.isfile(settings.CUSTOM_CSS_PATH):
             self.set_header("Content-Type", "text/css")
-            with open(settings.CUSTOM_CSS_PATH, "r") as content:
+            with open(settings.CUSTOM_CSS_PATH) as content:
                 return content.read()
         return None

@@ -34,7 +34,7 @@ class DailySearcher(object):
         else:
             curDate = (datetime.date.today() + datetime.timedelta(days=2)).toordinal()
 
-        curTime = datetime.datetime.now(network_timezones.sb_timezone)
+        curTime = datetime.datetime.now(network_timezones.sc_timezone)
 
         main_db_con = db.DBConnection()
         sql_results = main_db_con.select(
@@ -47,7 +47,7 @@ class DailySearcher(object):
         for sqlEp in sql_results:
             try:
                 if not show or int(sqlEp["showid"]) != show.indexerid:
-                    show = Show.find(settings.showList, int(sqlEp["showid"]))
+                    show = Show.find(settings.show_list, int(sqlEp["showid"]))
 
                 # for when there is orphaned series in the database but not loaded into our showlist
                 if not show or show.paused:
@@ -59,14 +59,14 @@ class DailySearcher(object):
 
             if show.airs and show.network:
                 # This is how you assure it is always converted to local time
-                air_time = network_timezones.parse_date_time(sqlEp["airdate"], show.airs, show.network).astimezone(network_timezones.sb_timezone)
+                air_time = network_timezones.parse_date_time(sqlEp["airdate"], show.airs, show.network).astimezone(network_timezones.sc_timezone)
 
                 # filter out any episodes that haven't started airing yet,
                 # but set them to the default status while they are airing so that they are snatched faster
                 if air_time > curTime:
                     continue
 
-            ep = show.getEpisode(sqlEp["season"], sqlEp["episode"])
+            ep = show.get_episode(sqlEp["season"], sqlEp["episode"])
             with ep.lock:
                 prefix = _("New episode {episode_string} airs today,").format(episode_string=ep.pretty_name)
                 if ep.season == 0:

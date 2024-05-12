@@ -11,7 +11,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         # Provider Init
         super().__init__("Torrentz")
 
@@ -43,14 +42,13 @@ class Provider(TorrentProvider):
         match = re.findall(r"[0-9]+", description)
         return int(match[0]) * 1024**2, int(match[1]), int(match[2])
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
 
         for mode in search_strings:
             items = []
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
             for search_string in {*search_strings[mode]}:
-
                 # Feed verified does not exist on this clone
                 # search_url = self.urls['verified'] if self.confirmed else self.urls['feed']
                 search_url = self.urls["feed"]
@@ -86,7 +84,7 @@ class Provider(TorrentProvider):
                             if seeders < self.minseed or leechers < self.minleech:
                                 if mode != "RSS":
                                     logger.debug(
-                                        "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                        _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                             title, seeders, leechers
                                         )
                                     )

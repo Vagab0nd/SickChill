@@ -12,10 +12,9 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("EliteTorrent")
 
-        self.onlyspasearch = None
+        self.only_spanish_search = None
         self.minseed = 0
         self.minleech = 0
         self.cache = tvcache.TVCache(self)  # Only poll EliteTorrent every 20 minutes max
@@ -24,9 +23,9 @@ class Provider(TorrentProvider):
 
         self.url = self.urls["base_url"]
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
-        lang_info = "" if not ep_obj or not ep_obj.show else ep_obj.show.lang
+        lang_info = self.show and self.show.lang or ""
 
         """
         Search query:
@@ -46,7 +45,7 @@ class Provider(TorrentProvider):
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
 
             # Only search if user conditions are true
-            if self.onlyspasearch and lang_info != "es" and mode != "RSS":
+            if self.only_spanish_search and lang_info != "es" and mode != "RSS":
                 logger.debug("Show info is not spanish, skipping provider search")
                 continue
 
@@ -97,7 +96,7 @@ class Provider(TorrentProvider):
                                 First encode latin1 and then decode utf8 to remains str
                                 """
                                 row_title = row.find("a", class_="nombre")["title"]
-                                title = self._processTitle(row_title.encode("latin-1").decode("utf8"))
+                                title = self._process_title(row_title.encode("latin-1").decode("utf8"))
 
                                 seeders = try_int(row.find("td", class_="semillas").get_text(strip=True))
                                 leechers = try_int(row.find("td", class_="clientes").get_text(strip=True))
@@ -118,7 +117,7 @@ class Provider(TorrentProvider):
                             if seeders < self.minseed or leechers < self.minleech:
                                 if mode != "RSS":
                                     logger.debug(
-                                        "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                        _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                             title, seeders, leechers
                                         )
                                     )
@@ -141,8 +140,7 @@ class Provider(TorrentProvider):
         return results
 
     @staticmethod
-    def _processTitle(title):
-
+    def _process_title(title):
         # Quality, if no literal is defined it's HDTV
         if "calidad" not in title:
             title += " HDTV x264"

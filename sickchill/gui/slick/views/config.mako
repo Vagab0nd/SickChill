@@ -1,4 +1,4 @@
-<%inherit file="/layouts/main.mako"/>
+<%inherit file="/layouts/main.mako" />
 <%!
     from sickchill import settings
     from sickchill.oldbeard import db
@@ -195,7 +195,7 @@
                     <i class="icon16-config-web"></i>&nbsp;&nbsp;${_('Website')}:
                 </div>
                 <div class="col-lg-9 col-md-9 col-sm-9 col-xs-12">
-                    <a href="${anon_url('https://sickchill.github.io/')}" rel="noreferrer" onclick="window.open(this.href, '_blank'); return false;">
+                    <a href="${anon_url('https://sickchill.github.io/')}" rel="noreferrer" target="_blank">
                         https://sickchill.github.io/
                     </a>
                 </div>
@@ -206,7 +206,7 @@
                     <i class="icon16-config-wiki"></i>&nbsp;&nbsp;${_('Wiki')}:
                 </div>
                 <div class="col-lg-9 col-md-9 col-sm-9 col-xs-12">
-                    <a href="${anon_url('https://github.com/SickChill/SickChill/wiki')}" rel="noreferrer" onclick="window.open(this.href, '_blank'); return false;">
+                    <a href="${anon_url('https://github.com/SickChill/SickChill/wiki')}" rel="noreferrer" target="_blank">
                         https://github.com/SickChill/SickChill/wiki
                     </a>
                 </div>
@@ -217,19 +217,8 @@
                     <i class="icon16-config-github"></i>&nbsp;&nbsp;${_('Source')}:
                 </div>
                 <div class="col-lg-9 col-md-9 col-sm-9 col-xs-12">
-                    <a href="${anon_url('https://github.com/SickChill/SickChill/')}" rel="noreferrer" onclick="window.open(this.href, '_blank'); return false;">
+                    <a href="${anon_url('https://github.com/SickChill/SickChill/')}" rel="noreferrer" target="_blank">
                         https://github.com/SickChill/SickChill/
-                    </a>
-                </div>
-            </div>
-            <br/>
-            <div class="row">
-                <div class="col-lg-3 col-md-3 col-sm-3 col-xs-12">
-                    <i class="icon16-config-mirc"></i>&nbsp;&nbsp;${_('IRC Chat')}:
-                </div>
-                <div class="col-lg-9 col-md-9 col-sm-9 col-xs-12">
-                    <a href="irc://irc.freenode.net/#sickchill" rel="noreferrer">
-                        <i>#sickchill</i> on <i>irc.freenode.net</i>
                     </a>
                 </div>
             </div>

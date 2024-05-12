@@ -22,8 +22,7 @@ from .common import Quality
 
 # https://github.com/Diaoul/subliminal/issues/536
 # provider_manager.register('napiprojekt = subliminal.providers.napiprojekt:NapiProjektProvider')
-# if 'legendastv' not in subliminal.provider_manager.names():
-#     subliminal.provider_manager.register('legendastv = subliminal.providers.legendastv:LegendasTVProvider')
+# 'legendastv' closed down
 if "itasa" not in subliminal.provider_manager.names():
     subliminal.provider_manager.register("itasa = sickchill.providers.subtitle.itasa:ItaSAProvider")
 if "wizdom" not in subliminal.provider_manager.names():
@@ -38,16 +37,13 @@ if "bsplayer" not in subliminal.provider_manager.names():
 subliminal.region.configure("dogpile.cache.memory")
 
 PROVIDER_URLS = {
-    "addic7ed": "http://www.addic7ed.com",
+    "addic7ed": "https://www.addic7ed.com",
     "bsplayer": "http://bsplayer-subtitles.com",
     "itasa": "http://www.italiansubs.net/",
-    "legendastv": "http://www.legendas.tv",
     "napiprojekt": "http://www.napiprojekt.pl",
-    "opensubtitles": "http://www.opensubtitles.org",
+    "opensubtitles": "https://www.opensubtitles.com",
     "podnapisi": "http://www.podnapisi.net",
-    "subscenter": "http://www.subscenter.info",
     "subtitulamos": "https://www.subtitulamos.tv",
-    "thesubdb": "http://www.thesubdb.com",
     "wizdom": "http://wizdom.xyz",
     "tvsubtitles": "http://www.tvsubtitles.net",
 }
@@ -78,7 +74,6 @@ class SubtitleProviderPool(object):
             provider_configs = {
                 "addic7ed": {"username": settings.ADDIC7ED_USER, "password": settings.ADDIC7ED_PASS},
                 "itasa": {"username": settings.ITASA_USER, "password": settings.ITASA_PASS},
-                "legendastv": {"username": settings.LEGENDASTV_USER, "password": settings.LEGENDASTV_PASS},
                 "opensubtitles": {"username": settings.OPENSUBTITLES_USER, "password": settings.OPENSUBTITLES_PASS},
                 "subscenter": {"username": settings.SUBSCENTER_USER, "password": settings.SUBSCENTER_PASS},
             }
@@ -106,7 +101,7 @@ class SubtitleProviderPool(object):
 
 def sorted_service_list():
     new_list = []
-    lmgtfy = "https://lmgtfy.com/?q=%s"
+    lmgtfy = "https://blog.lmgtfy.com/?q=%s"
 
     current_index = 0
     for current_service in settings.SUBTITLES_SERVICES_LIST:
@@ -269,12 +264,11 @@ def download_subtitles(episode, force_lang=None):
         sickchill.oldbeard.helpers.chmodAsParent(subtitle_path)
         sickchill.oldbeard.helpers.fixSetGroupID(subtitle_path)
 
-        History().logSubtitle(
+        History().log_subtitle(
             episode.show.indexerid, episode.season, episode.episode, episode.status, subtitle, log_scores(subtitle, video, user_score=user_score)
         )
 
         if settings.SUBTITLES_EXTRA_SCRIPTS and is_media_file(video_path) and not settings.EMBEDDED_SUBTITLES_ALL:
-
             run_subs_extra_scripts(episode, subtitle, video, single=not settings.SUBTITLES_MULTI)
 
     new_subtitles = sorted({subtitle.language.opensubtitles for subtitle in found_subtitles})
@@ -316,7 +310,7 @@ def get_video(video_path, subtitles_path=None, subtitles=True, embedded_subtitle
             embedded_subtitles = bool(not settings.EMBEDDED_SUBTITLES_ALL and video_path.endswith(".mkv"))
 
         # Let sickchill add more information to video file, based on the metadata.
-        if episode:
+        if episode is not None:
             refine_video(video, episode)
 
         subliminal.refine(video, embedded_subtitles=embedded_subtitles)
@@ -442,12 +436,12 @@ class SubtitlesFinder(object):
 
                 logger.info(f"Searching for missing subtitles of {ep_show_name} {ep_string}")
 
-                show_object = Show.find(settings.showList, int(ep_to_sub["showid"]))
+                show_object = Show.find(settings.show_list, int(ep_to_sub["showid"]))
                 if not show_object:
                     logger.debug(f"Show with ID {ep_show_id} not found in the database")
                     continue
 
-                episode_object = show_object.getEpisode(ep_season, ep_episode)
+                episode_object = show_object.get_episode(ep_season, ep_episode)
                 if isinstance(episode_object, str):
                     logger.debug(f"{ep_show_name} {ep_string} not found in the database")
                     continue
@@ -539,14 +533,14 @@ def refine_video(video, episode):
         try:
             if not getattr(video, name) and get_attr_value(episode, metadata_mapping[name]):
                 setattr(video, name, get_attr_value(episode, metadata_mapping[name]))
-            elif episode.show.subtitles_sr_metadata and get_attr_value(episode, metadata_mapping[name]):
+            elif episode.show.subtitles_sc_metadata and get_attr_value(episode, metadata_mapping[name]):
                 setattr(video, name, get_attr_value(episode, metadata_mapping[name]))
         except AttributeError:
             logger.debug("Unable to set {}.{} from episode.{} attribute".format(type(video), name, metadata_mapping[name]))
 
     # Set quality from metadata
     status, quality = Quality.splitCompositeStatus(episode.status)
-    if not video.source or episode.show.subtitles_sr_metadata:
+    if not video.source or episode.show.subtitles_sc_metadata:
         if quality & Quality.ANYHDTV:
             video.source = Quality.combinedQualityStrings.get(Quality.ANYHDTV)
         elif quality & Quality.ANYWEBDL:
@@ -554,7 +548,7 @@ def refine_video(video, episode):
         elif quality & Quality.ANYBLURAY:
             video.source = Quality.combinedQualityStrings.get(Quality.ANYBLURAY)
 
-    if not video.resolution or episode.show.subtitles_sr_metadata:
+    if not video.resolution or episode.show.subtitles_sc_metadata:
         if quality & (Quality.HDTV | Quality.HDWEBDL | Quality.HDBLURAY):
             video.resolution = "720p"
         elif quality & Quality.RAWHDTV:

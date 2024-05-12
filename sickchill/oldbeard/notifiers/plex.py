@@ -5,6 +5,7 @@ from requests.structures import CaseInsensitiveDict
 
 import sickchill.oldbeard.common
 from sickchill import logger, settings
+from sickchill.helper.common import USER_AGENT
 from sickchill.oldbeard import common
 from sickchill.oldbeard.helpers import getURL, make_session
 
@@ -15,7 +16,7 @@ class Notifier(object):
             {
                 "X-Plex-Device-Name": "SickChill",
                 "X-Plex-Product": "SickChill Notifier",
-                "X-Plex-Client-Identifier": sickchill.oldbeard.common.USER_AGENT,
+                "X-Plex-Client-Identifier": USER_AGENT,
                 "X-Plex-Version": "2016.02.10",
             }
         )
@@ -87,7 +88,7 @@ class Notifier(object):
     def test_notify_pms(self, host, username, password, plex_server_token):
         return self.update_library(host=host, username=username, password=password, plex_server_token=plex_server_token, force=True)
 
-    def update_library(self, ep_obj=None, host=None, username=None, password=None, plex_server_token=None, force=False):
+    def update_library(self, episode_object=None, host=None, username=None, password=None, plex_server_token=None, force=False):
         """Handles updating the Plex Media Server host via HTTP API
 
         Plex Media Server currently only supports updating the whole video library and not a specific path.
@@ -109,13 +110,12 @@ class Notifier(object):
             logger.warning("PLEX: Error getting auth token for Plex Media Server, check your settings")
             return False
 
-        file_location = "" if not ep_obj else ep_obj.location
+        file_location = "" if not episode_object else episode_object.location
         host_list = {x.strip() for x in host.split(",") if x.strip()}
         hosts_all = hosts_match = {}
         hosts_failed = set()
 
         for cur_host in host_list:
-
             url = "http{0}://{1}/library/sections".format(("", "s")[settings.PLEX_SERVER_HTTPS], cur_host)
             try:
                 xml_response = getURL(url, headers=self.headers, session=self.session, returns="text", verify=False, allow_proxy=False)
@@ -145,7 +145,6 @@ class Notifier(object):
 
             for section in sections:
                 if "show" == section.attrib["type"]:
-
                     keyed_host = [(str(section.attrib["key"]), cur_host)]
                     hosts_all.update(keyed_host)
                     if not file_location:
@@ -170,7 +169,6 @@ class Notifier(object):
 
         hosts_try = (hosts_match.copy(), hosts_all.copy())[not len(hosts_match)]
         for section_key, cur_host in hosts_try.items():
-
             url = "http{0}://{1}/library/sections/{2}/refresh".format(("", "s")[settings.PLEX_SERVER_HTTPS], cur_host, section_key)
             try:
                 getURL(url, headers=self.headers, session=self.session, returns="text", verify=False, allow_proxy=False)

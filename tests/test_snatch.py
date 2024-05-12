@@ -45,10 +45,10 @@ def _create_fake_xml(items):
     :param items:
     :return:
     """
-    xml = '<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/" encoding="utf-8"><channel>'  # noqa: E501
+    xml = '<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:newznab="https://www.newznab.com/DTD/2010/feeds/attributes/" encoding="utf-8"><channel>'
     for item in items:
         xml += "<item><title>" + item + "</title>\n"
-        xml += "<link>http://fantasy.com/" + item + "</link></item>"
+        xml += "<link>https://www.newznab.com/" + item + "</link></item>"
     xml += "</channel></rss>"
     return xml
 
@@ -64,7 +64,7 @@ class SearchTest(conftest.SickChillTestDBCase):
     @staticmethod
     def _fake_get_url(url, headers=None):
         """
-        Fake getting a url
+        Fake requesting url
 
         :param url:
         :param headers:
@@ -88,7 +88,7 @@ class SearchTest(conftest.SickChillTestDBCase):
         :return:
         """
 
-        for provider in sickchill.oldbeard.providers.sortedProviderList():
+        for provider in sickchill.oldbeard.providers.sorted_provider_list():
             provider.get_url = self._fake_get_url
             provider.is_active = self._fake_is_active
 
@@ -115,16 +115,16 @@ def generator(tvdb_id, show_name, cur_data, force_search):
         show = TVShow(1, tvdb_id)
         show.name = show_name
         show.quality = cur_data["q"]
-        show.saveToDB()
-        settings.showList.append(show)
+        show.save_to_db()
+        settings.show_list.append(show)
         episode = None
 
         for epNumber in cur_data["e"]:
             episode = TVEpisode(show, cur_data["s"], epNumber)
             episode.status = common.WANTED
-            episode.saveToDB()
+            episode.save_to_db()
 
-        best_result = search.searchProviders(show, episode.episode, force_search)
+        best_result = search.search_providers(show, episode.episode, force_search)
         if not best_result:
             assert cur_data["b"] == best_result
 

@@ -17,7 +17,6 @@ from sickchill.oldbeard.databases import failed, main
 from sickchill.oldbeard.providers.newznab import NewznabProvider
 from sickchill.oldbeard.providers.rsstorrent import TorrentRssProvider
 
-from .helper import setup_github
 from .init_helpers import locale_dir, setup_gettext
 from .oldbeard import (
     clients,
@@ -43,9 +42,8 @@ from .providers import metadata
 from .system.Shutdown import Shutdown
 
 
-def initialize(consoleLogging=True):
+def initialize(console_logging: bool = True, debug: bool = False, dbdebug: bool = False, disable_file_logging: bool = False) -> bool:
     with settings.INIT_LOCK:
-
         if settings.__INITIALIZED__:
             return False
 
@@ -74,22 +72,21 @@ def initialize(consoleLogging=True):
         check_section(settings.CFG, "Slack")
         check_section(settings.CFG, "RocketChat")
         check_section(settings.CFG, "Discord")
+        check_section(settings.CFG, "Gotify")
 
         # Need to be before any passwords
         settings.ENCRYPTION_VERSION = check_setting_int(settings.CFG, "General", "encryption_version", min_val=0, max_val=2)
         settings.ENCRYPTION_SECRET = check_setting_str(settings.CFG, "General", "encryption_secret", helpers.generateCookieSecret(), censor_log=True)
 
         # git login info
-        settings.GIT_USERNAME = check_setting_str(settings.CFG, "General", "git_username")
-        settings.GIT_TOKEN = check_setting_str(settings.CFG, "General", "git_token_password", censor_log=True)  # encryption needed
         settings.DEVELOPER = check_setting_bool(settings.CFG, "General", "developer")
 
         # debugging
-        settings.DEBUG = check_setting_bool(settings.CFG, "General", "debug")
-        settings.DBDEBUG = check_setting_bool(settings.CFG, "General", "dbdebug")
+        settings.DEBUG = check_setting_bool(settings.CFG, "General", "debug") or debug
+        settings.DBDEBUG = check_setting_bool(settings.CFG, "General", "dbdebug") or dbdebug
 
         settings.DEFAULT_PAGE = check_setting_str(settings.CFG, "General", "default_page", "home")
-        if settings.DEFAULT_PAGE not in ("home", "schedule", "history", "news", "IRC"):
+        if settings.DEFAULT_PAGE not in ("home", "schedule", "history", "news"):
             settings.DEFAULT_PAGE = "home"
 
         settings.LOG_DIR = check_setting_str(settings.CFG, "General", "log_dir", os.path.normpath(os.path.join(settings.DATA_DIR, "Logs")))
@@ -98,17 +95,14 @@ def initialize(consoleLogging=True):
 
         if settings.LOG_SIZE > 100:
             settings.LOG_SIZE = 10.0
-        fileLogging = True
+        file_logging = not disable_file_logging
 
-        if not helpers.makeDir(settings.LOG_DIR) or not os.access(settings.LOG_DIR, os.W_OK):
+        if file_logging and not (helpers.makeDir(settings.LOG_DIR) and os.access(settings.LOG_DIR, os.W_OK)):
             sys.stderr.write("!!! No log folder or log folder not writable, logging to console only!\n")
-            fileLogging = False
+            file_logging = False
 
         # init logging
-        logger.init_logging(console_logging=consoleLogging, file_logging=fileLogging, debug_logging=settings.DEBUG, database_logging=settings.DBDEBUG)
-
-        # Initializes oldbeard.gh
-        setup_github()
+        logger.init_logging(console_logging=console_logging, file_logging=file_logging, debug_logging=settings.DEBUG, database_logging=settings.DBDEBUG)
 
         settings.GUI_NAME = check_setting_str(settings.CFG, "GUI", "gui_name", "slick")
         settings.GUI_LANG = check_setting_str(settings.CFG, "GUI", "language")
@@ -121,26 +115,25 @@ def initialize(consoleLogging=True):
 
         # Check if we need to perform a restore of the cache folder
         try:
-            restoreDir = os.path.join(settings.DATA_DIR, "restore")
-            if os.path.exists(restoreDir) and os.path.exists(os.path.join(restoreDir, "cache")):
+            restore_dir = os.path.join(settings.DATA_DIR, "restore")
+            if os.path.exists(restore_dir) and os.path.exists(os.path.join(restore_dir, "cache")):
 
-                def restoreCache(srcDir, dstDir):
+                def restore_cache(source, destination):
                     def path_leaf(path):
                         head, tail = os.path.split(path)
                         return tail or os.path.basename(head)
 
                     try:
-                        if os.path.isdir(dstDir):
-                            # noinspection PyTypeChecker
-                            bakFilename = "{0}-{1}".format(path_leaf(dstDir), datetime.datetime.strftime(datetime.datetime.now(), "%Y%m%d_%H%M%S"))
-                            shutil.move(dstDir, os.path.join(os.path.dirname(dstDir), bakFilename))
+                        if os.path.isdir(destination):
+                            backup_name = "{0}-{1}".format(path_leaf(destination), datetime.datetime.strftime(datetime.datetime.now(), "%Y%m%d_%H%M%S"))
+                            shutil.move(destination, os.path.join(os.path.dirname(destination), backup_name))
 
-                        shutil.move(srcDir, dstDir)
+                        shutil.move(source, destination)
                         logger.info("Restore: restoring cache successful")
                     except Exception as er:
                         logger.exception(f"Restore: restoring cache failed: {er}")
 
-                restoreCache(os.path.join(restoreDir, "cache"), settings.CACHE_DIR)
+                restore_cache(os.path.join(restore_dir, "cache"), settings.CACHE_DIR)
         except Exception as error:
             logger.exception(f"Restore: restoring cache failed: {error}")
         finally:
@@ -207,7 +200,7 @@ def initialize(consoleLogging=True):
         settings.ANON_REDIRECT = check_setting_str(settings.CFG, "General", "anon_redirect", settings.DEFAULT_ANON_REDIRECT)
         if settings.ANON_REDIRECT == "disabled" or not settings.ANON_REDIRECT.endswith("?"):
             settings.ANON_REDIRECT = ""
-        if settings.ANON_REDIRECT == "http://dereferer.org/?":
+        if settings.ANON_REDIRECT in ("http://dereferer.org/?", "https://anonym.to/?"):
             settings.ANON_REDIRECT = settings.DEFAULT_ANON_REDIRECT
 
         settings.PROXY_SETTING = check_setting_str(settings.CFG, "General", "proxy_setting")
@@ -263,8 +256,8 @@ def initialize(consoleLogging=True):
         settings.ANIME_DEFAULT = check_setting_bool(settings.CFG, "General", "anime_default")
         settings.SCENE_DEFAULT = check_setting_bool(settings.CFG, "General", "scene_default")
 
-        settings.WHITELIST_DEFAULT = check_setting_str(settings.CFG, "General", "whitelist_default")
-        settings.BLACKLIST_DEFAULT = check_setting_str(settings.CFG, "General", "blacklist_default")
+        settings.WHITELIST_DEFAULT = check_setting_str(settings.CFG, "General", "whitelist_default").split(",")
+        settings.BLACKLIST_DEFAULT = check_setting_str(settings.CFG, "General", "blacklist_default").split(",")
 
         settings.PROVIDER_ORDER = check_setting_str(settings.CFG, "General", "provider_order").split()
 
@@ -568,6 +561,24 @@ def initialize(consoleLogging=True):
         settings.SLACK_WEBHOOK = check_setting_str(settings.CFG, "Slack", "slack_webhook")
         settings.SLACK_ICON_EMOJI = check_setting_str(settings.CFG, "Slack", "slack_icon_emoji")
 
+        settings.USE_MATTERMOST = check_setting_bool(settings.CFG, "Mattermost", "use_mattermost")
+        settings.MATTERMOST_NOTIFY_SNATCH = check_setting_bool(settings.CFG, "Mattermost", "mattermost_notify_snatch")
+        settings.MATTERMOST_NOTIFY_DOWNLOAD = check_setting_bool(settings.CFG, "Mattermost", "mattermost_notify_download")
+        settings.MATTERMOST_NOTIFY_SUBTITLEDOWNLOAD = check_setting_bool(settings.CFG, "Mattermost", "mattermost_notify_subtitledownload")
+        settings.MATTERMOST_WEBHOOK = check_setting_str(settings.CFG, "Mattermost", "mattermost_webhook")
+        settings.MATTERMOST_USERNAME = check_setting_str(settings.CFG, "Mattermost", "mattermost_username")
+        settings.MATTERMOST_ICON_EMOJI = check_setting_str(settings.CFG, "Mattermost", "mattermost_icon_emoji")
+
+        settings.USE_MATTERMOSTBOT = check_setting_bool(settings.CFG, "MattermostBot", "use_mattermostbot")
+        settings.MATTERMOSTBOT_NOTIFY_SNATCH = check_setting_bool(settings.CFG, "MattermostBot", "mattermostbot_notify_snatch")
+        settings.MATTERMOSTBOT_NOTIFY_DOWNLOAD = check_setting_bool(settings.CFG, "MattermostBot", "mattermostbot_notify_download")
+        settings.MATTERMOSTBOT_NOTIFY_SUBTITLEDOWNLOAD = check_setting_bool(settings.CFG, "MattermostBot", "mattermostbot_notify_subtitledownload")
+        settings.MATTERMOSTBOT_URL = check_setting_str(settings.CFG, "MattermostBot", "mattermostbot_url")
+        settings.MATTERMOSTBOT_TOKEN = check_setting_str(settings.CFG, "MattermostBot", "mattermostbot_token")
+        settings.MATTERMOSTBOT_CHANNEL = check_setting_str(settings.CFG, "MattermostBot", "mattermostbot_channel")
+        settings.MATTERMOSTBOT_ICON_EMOJI = check_setting_str(settings.CFG, "MattermostBot", "mattermostbot_icon_emoji")
+        settings.MATTERMOSTBOT_AUTHOR = check_setting_str(settings.CFG, "MattermostBot", "mattermostbot_author")
+
         settings.USE_ROCKETCHAT = check_setting_bool(settings.CFG, "RocketChat", "use_rocketchat")
         settings.ROCKETCHAT_NOTIFY_SNATCH = check_setting_bool(settings.CFG, "RocketChat", "rocketchat_notify_snatch")
         settings.ROCKETCHAT_NOTIFY_DOWNLOAD = check_setting_bool(settings.CFG, "RocketChat", "rocketchat_notify_download")
@@ -589,7 +600,7 @@ def initialize(consoleLogging=True):
         settings.DISCORD_WEBHOOK = check_setting_str(settings.CFG, "Discord", "discord_webhook")
         settings.DISCORD_NAME = check_setting_str(settings.CFG, "Discord", "discord_name")
         settings.DISCORD_AVATAR_URL = check_setting_str(settings.CFG, "Discord", "discord_avatar_url")
-        settings.DISCORD_TTS = check_setting_str(settings.CFG, "Discord", "discord_tts")
+        settings.DISCORD_TTS = check_setting_bool(settings.CFG, "Discord", "discord_tts")
 
         settings.USE_TRAKT = check_setting_bool(settings.CFG, "Trakt", "use_trakt")
         settings.TRAKT_USERNAME = check_setting_str(settings.CFG, "Trakt", "trakt_username", censor_log=True)
@@ -638,6 +649,13 @@ def initialize(consoleLogging=True):
         settings.PUSHBULLET_DEVICE = check_setting_str(settings.CFG, "Pushbullet", "pushbullet_device")
         settings.PUSHBULLET_CHANNEL = check_setting_str(settings.CFG, "Pushbullet", "pushbullet_channel")
 
+        settings.USE_GOTIFY = check_setting_bool(settings.CFG, "Gotify", "use_gotify")
+        settings.GOTIFY_NOTIFY_ONSNATCH = check_setting_bool(settings.CFG, "Gotify", "gotify_notify_onsnatch")
+        settings.GOTIFY_NOTIFY_ONDOWNLOAD = check_setting_bool(settings.CFG, "Gotify", "gotify_notify_ondownload")
+        settings.GOTIFY_NOTIFY_ONSUBTITLEDOWNLOAD = check_setting_bool(settings.CFG, "Gotify", "gotify_notify_onsubtitledownload")
+        settings.GOTIFY_HOST = check_setting_str(settings.CFG, "Gotify", "gotify_host", censor_log=True)
+        settings.GOTIFY_AUTHORIZATIONTOKEN = check_setting_str(settings.CFG, "Gotify", "gotify_authorizationtoken", censor_log=True)
+
         settings.USE_EMAIL = check_setting_bool(settings.CFG, "Email", "use_email")
         settings.EMAIL_NOTIFY_ONSNATCH = check_setting_bool(settings.CFG, "Email", "email_notify_onsnatch")
         settings.EMAIL_NOTIFY_ONDOWNLOAD = check_setting_bool(settings.CFG, "Email", "email_notify_ondownload")
@@ -675,9 +693,6 @@ def initialize(consoleLogging=True):
 
         settings.ITASA_USER = check_setting_str(settings.CFG, "Subtitles", "itasa_username", censor_log=True)
         settings.ITASA_PASS = check_setting_str(settings.CFG, "Subtitles", "itasa_password", censor_log=True)
-
-        settings.LEGENDASTV_USER = check_setting_str(settings.CFG, "Subtitles", "legendastv_username", censor_log=True)
-        settings.LEGENDASTV_PASS = check_setting_str(settings.CFG, "Subtitles", "legendastv_password", censor_log=True)
 
         settings.OPENSUBTITLES_USER = check_setting_str(settings.CFG, "Subtitles", "opensubtitles_username", censor_log=True)
         settings.OPENSUBTITLES_PASS = check_setting_str(settings.CFG, "Subtitles", "opensubtitles_password", censor_log=True)
@@ -749,13 +764,13 @@ def initialize(consoleLogging=True):
         settings.providerList = providers.makeProviderList()
 
         settings.NEWZNAB_DATA = check_setting_str(settings.CFG, "Newznab", "newznab_data")
-        settings.newznabProviderList = NewznabProvider.providers_list(settings.NEWZNAB_DATA)
+        settings.newznab_provider_list = NewznabProvider.providers_list(settings.NEWZNAB_DATA)
 
         TORRENTRSS_DATA = check_setting_str(settings.CFG, "TorrentRss", "torrentrss_data")
-        settings.torrentRssProviderList = TorrentRssProvider.providers_list(TORRENTRSS_DATA)
+        settings.torrent_rss_provider_list = TorrentRssProvider.providers_list(TORRENTRSS_DATA)
 
         # dynamically load provider settings
-        for curProvider in providers.sortedProviderList():
+        for curProvider in providers.sorted_provider_list():
             curProvider.enabled = (curProvider.can_daily or curProvider.can_backlog) and check_setting_bool(
                 settings.CFG, curProvider.get_id().upper(), curProvider.get_id()
             )
@@ -781,8 +796,8 @@ def initialize(consoleLogging=True):
                 curProvider.ranked = check_setting_bool(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_ranked"), True)
             if hasattr(curProvider, "engrelease"):
                 curProvider.engrelease = check_setting_bool(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_engrelease"))
-            if hasattr(curProvider, "onlyspasearch"):
-                curProvider.onlyspasearch = check_setting_bool(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_onlyspasearch"))
+            if hasattr(curProvider, "only_spanish_search"):
+                curProvider.only_spanish_search = check_setting_bool(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_only_spanish_search"))
             if hasattr(curProvider, "sorting"):
                 curProvider.sorting = check_setting_str(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_sorting"), "seeders")
             if hasattr(curProvider, "options"):
@@ -792,11 +807,11 @@ def initialize(consoleLogging=True):
             if hasattr(curProvider, "minseed"):
                 curProvider.minseed = check_setting_int(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_minseed"), 1, min_val=0)
             if hasattr(curProvider, "minleech"):
-                curProvider.minleech = check_setting_int(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_minleech"), 0, min_val=0)
+                curProvider.minleech = check_setting_int(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_minleech"), min_val=0)
             if hasattr(curProvider, "freeleech"):
                 curProvider.freeleech = check_setting_bool(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_freeleech"))
             if hasattr(curProvider, "search_mode"):
-                curProvider.search_mode = check_setting_str(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_search_mode"), "eponly")
+                curProvider.search_mode = check_setting_str(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_search_mode"), "episode")
             if hasattr(curProvider, "search_fallback"):
                 curProvider.search_fallback = check_setting_bool(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_search_fallback"))
             if hasattr(curProvider, "enable_daily"):
@@ -808,7 +823,7 @@ def initialize(consoleLogging=True):
                     settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_enable_backlog"), curProvider.can_backlog
                 )
             if hasattr(curProvider, "cat"):
-                curProvider.cat = check_setting_int(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_cat"), 0)
+                curProvider.cat = check_setting_int(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_cat"))
             if hasattr(curProvider, "subtitle"):
                 curProvider.subtitle = check_setting_bool(settings.CFG, curProvider.get_id().upper(), curProvider.get_id("_subtitle"))
             if hasattr(curProvider, "cookies"):
@@ -817,10 +832,10 @@ def initialize(consoleLogging=True):
         providers.check_enabled_providers()
 
         if not os.path.isfile(settings.CONFIG_FILE):
-            logger.debug("Unable to find '" + settings.CONFIG_FILE + "', all settings will be default!")
+            logger.debug(f"Unable to find ${settings.CONFIG_FILE}, all settings will be default!")
             save_config()
 
-        # initialize the main SB database
+        # initialize the main SC database
         main_db_con = db.DBConnection()
         db.upgrade_database(main_db_con, main.InitialSchema)
 
@@ -850,7 +865,6 @@ def initialize(consoleLogging=True):
             (settings.METADATA_TIVO, metadata.tivo),
             (settings.METADATA_MEDE8ER, metadata.mede8er),
         ]:
-
             cur_metadata_config, cur_metadata_module = cur_metadata_tuple
             cur_metadata_class = cur_metadata_module.metadata_class()
             cur_metadata_class.set_config(cur_metadata_config)
@@ -1049,19 +1063,17 @@ def halt():
         settings.started.clear()
 
 
-def sig_handler(signum=None, frame=None):
-    # noinspection PyUnusedLocal
-    frame_ = frame
+def sig_handler(signum=None, *args, **kwargs):
     if not isinstance(signum, type(None)):
-        logger.info("Signal {0:d} caught, saving and exiting...".format(int(signum)))
+        logger.info(f"Signal {signum} caught, saving and exiting...")
         Shutdown.stop(settings.PID)
 
 
-def saveAll():
+def save_all():
     # write all shows
     logger.info("Saving all shows to the database")
-    for show in settings.showList:
-        show.saveToDB()
+    for show in settings.show_list:
+        show.save_to_db()
 
     # save config
     logger.info("Saving config file to disk")
@@ -1071,9 +1083,9 @@ def saveAll():
 def save_config():
     new_config = ConfigObj(settings.CONFIG_FILE, encoding="UTF-8", indent_type="  ")
 
-    # For passwords you must include the word `password` in the item_name and add `helpers.encrypt(settings.ITEM_NAME, settings.ENCRYPTION_VERSION)` in save_config()
+    # For passwords, you must include the word `password` in the item_name and add `helpers.encrypt(settings.ITEM_NAME, settings.ENCRYPTION_VERSION)` in save_config()
     # dynamically save provider settings
-    for curProvider in providers.sortedProviderList():
+    for curProvider in providers.sorted_provider_list():
         new_config[curProvider.get_id().upper()] = {}
         new_config[curProvider.get_id().upper()][curProvider.get_id()] = int(curProvider.enabled)
         if hasattr(curProvider, "custom_url"):
@@ -1098,8 +1110,8 @@ def save_config():
             new_config[curProvider.get_id().upper()][curProvider.get_id("_ranked")] = int(curProvider.ranked)
         if hasattr(curProvider, "engrelease"):
             new_config[curProvider.get_id().upper()][curProvider.get_id("_engrelease")] = int(curProvider.engrelease)
-        if hasattr(curProvider, "onlyspasearch"):
-            new_config[curProvider.get_id().upper()][curProvider.get_id("_onlyspasearch")] = int(curProvider.onlyspasearch)
+        if hasattr(curProvider, "only_spanish_search"):
+            new_config[curProvider.get_id().upper()][curProvider.get_id("_only_spanish_search")] = int(curProvider.only_spanish_search)
         if hasattr(curProvider, "sorting"):
             new_config[curProvider.get_id().upper()][curProvider.get_id("_sorting")] = curProvider.sorting
         if hasattr(curProvider, "ratio"):
@@ -1130,8 +1142,6 @@ def save_config():
     new_config.update(
         {
             "General": {
-                "git_username": settings.GIT_USERNAME,
-                "git_token_password": helpers.encrypt(settings.GIT_TOKEN, settings.ENCRYPTION_VERSION),
                 "config_version": settings.CONFIG_VERSION,
                 "encryption_version": int(settings.ENCRYPTION_VERSION),
                 "encryption_secret": settings.ENCRYPTION_SECRET,
@@ -1189,8 +1199,8 @@ def save_config():
                 "indexer_timeout": int(settings.INDEXER_TIMEOUT),
                 "anime_default": int(settings.ANIME_DEFAULT),
                 "scene_default": int(settings.SCENE_DEFAULT),
-                "whitelist_default": settings.WHITELIST_DEFAULT,
-                "blacklist_default": settings.BLACKLIST_DEFAULT,
+                "whitelist_default": ",".join(settings.WHITELIST_DEFAULT),
+                "blacklist_default": ",".join(settings.BLACKLIST_DEFAULT),
                 "provider_order": " ".join(settings.PROVIDER_ORDER),
                 "version_notify": int(settings.VERSION_NOTIFY),
                 "auto_update": int(settings.AUTO_UPDATE),
@@ -1226,7 +1236,7 @@ def save_config():
                 "metadata_mede8er": settings.METADATA_MEDE8ER,
                 "backlog_days": int(settings.BACKLOG_DAYS),
                 "backlog_missing_only": int(settings.BACKLOG_MISSING_ONLY),
-                "root_dirs": settings.ROOT_DIRS if settings.ROOT_DIRS else "",
+                "root_dirs": settings.ROOT_DIRS or "",
                 "tv_download_dir": settings.TV_DOWNLOAD_DIR,
                 "keep_processed_dir": int(settings.KEEP_PROCESSED_DIR),
                 "process_method": settings.PROCESS_METHOD,
@@ -1467,6 +1477,26 @@ def save_config():
                 "slack_webhook": settings.SLACK_WEBHOOK,
                 "slack_icon_emoji": settings.SLACK_ICON_EMOJI,
             },
+            "Mattermost": {
+                "use_mattermost": int(settings.USE_MATTERMOST),
+                "mattermost_notify_snatch": int(settings.MATTERMOST_NOTIFY_SNATCH),
+                "mattermost_notify_download": int(settings.MATTERMOST_NOTIFY_DOWNLOAD),
+                "mattermost_notify_subtitledownload": int(settings.MATTERMOST_NOTIFY_SUBTITLEDOWNLOAD),
+                "mattermost_username": settings.MATTERMOST_USERNAME,
+                "mattermost_webhook": settings.MATTERMOST_WEBHOOK,
+                "mattermost_icon_emoji": settings.MATTERMOST_ICON_EMOJI,
+            },
+            "MattermostBot": {
+                "use_mattermostbot": int(settings.USE_MATTERMOSTBOT),
+                "mattermostbot_notify_snatch": int(settings.MATTERMOSTBOT_NOTIFY_SNATCH),
+                "mattermostbot_notify_download": int(settings.MATTERMOSTBOT_NOTIFY_DOWNLOAD),
+                "mattermostbot_notify_subtitledownload": int(settings.MATTERMOSTBOT_NOTIFY_SUBTITLEDOWNLOAD),
+                "mattermostbot_token": settings.MATTERMOSTBOT_TOKEN,
+                "mattermostbot_channel": settings.MATTERMOSTBOT_CHANNEL,
+                "mattermostbot_url": settings.MATTERMOSTBOT_URL,
+                "mattermostbot_icon_emoji": settings.MATTERMOSTBOT_ICON_EMOJI,
+                "mattermostbot_author": settings.MATTERMOSTBOT_AUTHOR,
+            },
             "RocketChat": {
                 "use_rocketchat": int(settings.USE_ROCKETCHAT),
                 "rocketchat_notify_snatch": int(settings.ROCKETCHAT_NOTIFY_SNATCH),
@@ -1491,7 +1521,7 @@ def save_config():
                 "discord_webhook": settings.DISCORD_WEBHOOK,
                 "discord_name": settings.DISCORD_NAME,
                 "discord_avatar_url": settings.DISCORD_AVATAR_URL,
-                "discord_tts": settings.DISCORD_TTS,
+                "discord_tts": int(settings.DISCORD_TTS),
             },
             "Trakt": {
                 "use_trakt": int(settings.USE_TRAKT),
@@ -1545,6 +1575,14 @@ def save_config():
                 "pushbullet_device": settings.PUSHBULLET_DEVICE,
                 "pushbullet_channel": settings.PUSHBULLET_CHANNEL,
             },
+            "Gotify": {
+                "use_gotify": int(settings.USE_GOTIFY),
+                "gotify_notify_onsnatch": int(settings.GOTIFY_NOTIFY_ONSNATCH),
+                "gotify_notify_ondownload": int(settings.GOTIFY_NOTIFY_ONDOWNLOAD),
+                "gotify_notify_onsubtitledownload": int(settings.GOTIFY_NOTIFY_ONSUBTITLEDOWNLOAD),
+                "gotify_host": settings.GOTIFY_HOST,
+                "gotify_authorizationtoken": settings.GOTIFY_AUTHORIZATIONTOKEN,
+            },
             "Email": {
                 "use_email": int(settings.USE_EMAIL),
                 "email_notify_onsnatch": int(settings.EMAIL_NOTIFY_ONSNATCH),
@@ -1561,7 +1599,7 @@ def save_config():
                 "email_subject": settings.EMAIL_SUBJECT,
             },
             "Newznab": {"newznab_data": settings.NEWZNAB_DATA},
-            "TorrentRss": {"torrentrss_data": "!!!".join([x.configStr() for x in settings.torrentRssProviderList])},
+            "TorrentRss": {"torrentrss_data": "!!!".join([x.config_string() for x in settings.torrent_rss_provider_list])},
             "GUI": {
                 "gui_name": settings.GUI_NAME,
                 "language": settings.GUI_LANG,
@@ -1610,8 +1648,6 @@ def save_config():
                 "addic7ed_password": helpers.encrypt(settings.ADDIC7ED_PASS, settings.ENCRYPTION_VERSION),
                 "itasa_username": settings.ITASA_USER,
                 "itasa_password": helpers.encrypt(settings.ITASA_PASS, settings.ENCRYPTION_VERSION),
-                "legendastv_username": settings.LEGENDASTV_USER,
-                "legendastv_password": helpers.encrypt(settings.LEGENDASTV_PASS, settings.ENCRYPTION_VERSION),
                 "opensubtitles_username": settings.OPENSUBTITLES_USER,
                 "opensubtitles_password": helpers.encrypt(settings.OPENSUBTITLES_PASS, settings.ENCRYPTION_VERSION),
                 "subscenter_username": settings.SUBSCENTER_USER,
@@ -1637,7 +1673,6 @@ def save_config():
 
 
 def launchBrowser(protocol="http", startPort=None, web_root="/"):
-
     try:
         import webbrowser
     except ImportError:
@@ -1650,9 +1685,9 @@ def launchBrowser(protocol="http", startPort=None, web_root="/"):
     browserURL = f"{protocol}://localhost:{startPort:d}{web_root}/home/"
 
     try:
-        webbrowser.open(browserURL, 2, True)
+        webbrowser.open(browserURL, 2)
     except Exception:
         try:
-            webbrowser.open(browserURL, 1, True)
+            webbrowser.open(browserURL, 1)
         except Exception:
             logger.exception("Unable to launch a browser")

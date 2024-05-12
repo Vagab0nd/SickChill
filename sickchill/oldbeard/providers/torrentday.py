@@ -1,7 +1,6 @@
 import re
 from urllib.parse import urljoin
 
-import validators
 from requests.utils import dict_from_cookiejar
 
 from sickchill import logger
@@ -12,7 +11,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         # Provider Init
         super().__init__("TorrentDay")
 
@@ -39,7 +37,7 @@ class Provider(TorrentProvider):
         self.enable_cookies = True
 
         # Cache
-        self.cache = tvcache.TVCache(self, min_time=10)  # Only poll IPTorrents every 10 minutes max
+        self.cache = tvcache.TVCache(self, min_time=10)  # Only poll every 10 minutes max
 
     def login(self):
         cookie_dict = dict_from_cookiejar(self.session.cookies)
@@ -55,8 +53,8 @@ class Provider(TorrentProvider):
             login_params = {"username": self.username, "password": self.password, "submit.x": 0, "submit.y": 0}
             login_url = self.urls["login"]
             if self.custom_url:
-                if validators.url(self.custom_url) != True:
-                    logger.warning("Invalid custom url: {0}".format(self.custom_url))
+                if self.invalid_url(self.custom_url):
+                    logger.warning(_("Invalid custom url: {0}").format(self.custom_url))
                     return False
 
                 login_url = urljoin(self.custom_url, self.urls["login"].split(self.url)[1])
@@ -79,14 +77,14 @@ class Provider(TorrentProvider):
             logger.info("You need to set your cookies to use torrentday")
             return False
 
-    def search(self, search_params, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
 
         search_url = self.urls["search"]
         download_url = self.urls["download"]
         if self.custom_url:
-            if validators.url(self.custom_url) != True:
-                logger.warning("Invalid custom url: {0}".format(self.custom_url))
+            if self.invalid_url(self.custom_url):
+                logger.warning(_("Invalid custom url: {0}").format(self.custom_url))
                 return results
 
             search_url = urljoin(self.custom_url, search_url.split(self.url)[1])
@@ -95,11 +93,10 @@ class Provider(TorrentProvider):
         if not self.login():
             return results
 
-        for mode in search_params:
+        for mode in search_strings:
             items = []
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
-            for search_string in search_params[mode]:
-
+            for search_string in search_strings[mode]:
                 if mode != "RSS":
                     logger.debug(_("Search String: {search_string}").format(search_string=search_string))
 
@@ -118,7 +115,6 @@ class Provider(TorrentProvider):
                     continue
 
                 for torrent in torrents:
-
                     title = re.sub(r"\[.*=.*\].*\[/.*\]", "", torrent["name"]) if torrent["name"] else None
                     torrent_url = urljoin(download_url, "{0}/{1}.torrent".format(torrent["t"], torrent["name"])) if torrent["t"] and torrent["name"] else None
                     if not all([title, torrent_url]):
@@ -131,7 +127,9 @@ class Provider(TorrentProvider):
                     if seeders < self.minseed or leechers < self.minleech:
                         if mode != "RSS":
                             logger.debug(
-                                "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(title, seeders, leechers)
+                                _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
+                                    title, seeders, leechers
+                                )
                             )
                         continue
 

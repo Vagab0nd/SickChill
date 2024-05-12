@@ -14,7 +14,7 @@ DISCORD = 600
 
 class NotificationsQueue(generic_queue.GenericQueue):
     """
-    Queue to handle multiple post processing tasks
+    Queue to handle multiple post-processing tasks
     """
 
     def __init__(self):
@@ -28,7 +28,7 @@ class NotificationsQueue(generic_queue.GenericQueue):
     @property
     def is_paused(self):
         """
-        Shows if the post processing queue is paused
+        Shows if the post-processing queue is paused
         :return: bool
         """
         return self.min_priority == generic_queue.QueuePriorities.HIGH
@@ -58,6 +58,11 @@ class NotificationsQueue(generic_queue.GenericQueue):
     def add_item(self, message, notifier="discord", force_next=False):
         added = False
         item = None
+
+        if not settings.USE_DISCORD:
+            logger.debug("Notification for Discord not enabled, skipping this notification")
+            return added
+
         with self.lock:
             if self.queue and not force_next:
                 for index in range(0, len(self.queue)):
@@ -129,33 +134,47 @@ class DiscordTask(generic_queue.QueueItem):
         discord_webhook = webhook or settings.DISCORD_WEBHOOK
         discord_name = name or settings.DISCORD_NAME
         avatar_icon = avatar or settings.DISCORD_AVATAR_URL
-        discord_tts = bool(settings.DISCORD_TTS if tts is None else tts)
+        discord_tts = int(settings.DISCORD_TTS if tts is None else tts)
 
-        logger.info("Sending discord message: " + ", ".join(f["value"] for f in self.embed["fields"]))
-        logger.info("Sending discord message to url: " + discord_webhook)
+        if not settings.USE_DISCORD:
+            logger.debug("Notification for Discord not enabled, skipping this notification")
+            return False
+
+        if not discord_name:
+            logger.debug("Discord Bot name blank, forcing to SickChill")
+            discord_name = "SickChill"
+            settings.DISCORD_NAME = discord_name
+
+        if discord_tts == 1:
+            discord_content = "" + ", ".join(f["value"] for f in self.embed["fields"])
+        else:
+            discord_content = ""
+
+        logger.info(f"Sending discord message: {discord_content}")
+        logger.info(f"Sending discord message to url: {discord_webhook}")
 
         headers = CaseInsensitiveDict({"Content-Type": "application/json"})
+        message_data = json.dumps(dict(embeds=[self.embed], username=discord_name, avatar_url=avatar_icon, content=discord_content))
         try:
-            r = requests.post(
-                discord_webhook, data=json.dumps(dict(embeds=[self.embed], username=discord_name, avatar_url=avatar_icon, tts=discord_tts)), headers=headers
-            )
+            r = requests.post(discord_webhook, data=message_data, headers=headers)
             r.raise_for_status()
         except requests.exceptions.ConnectionError as error:
             logger.info("Could not reach the webhook url")
+            logger.debug(f"Error: {error}")
             return False
         except requests.exceptions.RequestException as error:
             if error.response.status_code != 429 or int(error.response.headers.get("X-RateLimit-Remaining")) != 0:
+                logger.exception(f"RequestException traceback: {traceback.format_exc()}")
                 raise error
 
-            logger.info("Discord rate limiting, retrying after {} seconds".format(error.response.headers.get("X-RateLimit-Reset-After")))
+            retry_after = error.response.headers.get("X-RateLimit-Reset-After")
+            logger.info(f"Discord rate limiting, retrying after {retry_after} seconds")
             time.sleep(int(error.response.headers.get("X-RateLimit-Reset-After")) + 1)
-            r = requests.post(
-                discord_webhook, data=json.dumps(dict(embeds=[self.embed], username=discord_name, avatar_url=avatar_icon, tts=discord_tts)), headers=headers
-            )
+            r = requests.post(discord_webhook, data=message_data, headers=headers)
             r.raise_for_status()
         except Exception as error:
             logger.exception(f"Error Sending Discord message: {error}")
-
+            logger.exception(f"Traceback: {traceback.format_exc()}")
             return False
 
         return True

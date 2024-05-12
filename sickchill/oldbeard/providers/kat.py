@@ -4,8 +4,6 @@ import urllib
 from collections import OrderedDict
 from urllib.parse import urljoin
 
-import validators
-
 from sickchill import logger
 from sickchill.helper.common import convert_size, try_int
 from sickchill.oldbeard import tvcache
@@ -15,7 +13,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("KickAssTorrents")
 
         self.public = True
@@ -40,21 +37,20 @@ class Provider(TorrentProvider):
 
         self.rows_selector = dict(class_=re.compile(r"even|odd"), id=re.compile(r"torrent_.*_torrents"))
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if not (self.url and self.urls):
             self.find_domain()
             if not (self.url and self.urls):
                 return results
 
-        anime = (self.show and self.show.anime) or (ep_obj and ep_obj.show and ep_obj.show.anime) or False
+        anime = self.show and self.show.anime or False
         search_params = OrderedDict(field="seeders", sorder="desc", category=("tv", "anime")[anime])
 
         for mode in search_strings:
             items = []
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
             for search_string in {*search_strings[mode]}:
-
                 # search_params["q"] = (search_string, None)[mode == "RSS"]
                 search_params["field"] = ("seeders", "time_add")[mode == "RSS"]
 
@@ -69,8 +65,8 @@ class Provider(TorrentProvider):
                     search_url = self.urls["rss"]
 
                 if self.custom_url:
-                    if validators.url(self.custom_url) != True:
-                        logger.warning("Invalid custom url: {0}".format(self.custom_url))
+                    if self.invalid_url(self.custom_url):
+                        logger.warning(_("Invalid custom url: {0}").format(self.custom_url))
                         return results
                     search_url = urljoin(self.custom_url, search_url.split(self.url)[1])
 
@@ -85,7 +81,7 @@ class Provider(TorrentProvider):
                         return results
 
                     # This will recurse a few times until all of the mirrors are exhausted if none of them work.
-                    return self.search(search_strings, age, ep_obj)
+                    return self.search(search_strings)
 
                 with BS4Parser(data) as html:
                     labels = [cell.get_text() for cell in html.find(class_="firstr")("th")]
@@ -111,7 +107,7 @@ class Provider(TorrentProvider):
                             if seeders < self.minseed or leechers < self.minleech:
                                 if mode != "RSS":
                                     logger.debug(
-                                        "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                        _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                             title, seeders, leechers
                                         )
                                     )
@@ -160,8 +156,7 @@ class Provider(TorrentProvider):
             logger.info("Setting mirror to use to {url}".format(url=self.url))
         else:
             logger.warning(
-                "Unable to get a working mirror for kickasstorrents, you might need to enable another provider and disable KAT until KAT starts working "
-                "again."
+                "Unable to get a working mirror for KickassTorrent. You might need to enable another provider and disable KAT until it starts working again."
             )
 
         self.urls = {"search": urljoin(self.url, "/usearch/{q}/"), "rss": urljoin(self.url, "/tv/")}

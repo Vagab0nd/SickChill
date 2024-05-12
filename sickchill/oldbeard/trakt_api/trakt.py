@@ -20,7 +20,6 @@ class TraktAPI:
         self.headers = CaseInsensitiveDict({"Content-Type": "application/json", "trakt-api-version": "2", "trakt-api-key": settings.TRAKT_API_KEY})
 
     def traktToken(self, trakt_pin=None, refresh=False, count=0):
-
         if count > 3:
             settings.TRAKT_ACCESS_TOKEN = ""
             return False
@@ -49,7 +48,6 @@ class TraktAPI:
         return False
 
     def validateAccount(self):
-
         resp = self.traktRequest("users/settings")
 
         if "account" in resp:
@@ -65,11 +63,11 @@ class TraktAPI:
         if headers is None:
             headers = self.headers
 
-        if settings.TRAKT_ACCESS_TOKEN == "" and count >= 2:
+        if count >= 2 and not settings.TRAKT_ACCESS_TOKEN:
             logger.warning(_("You must get a Trakt TOKEN. Check your Trakt settings"))
             return {}
 
-        if settings.TRAKT_ACCESS_TOKEN != "":
+        if settings.TRAKT_ACCESS_TOKEN:
             headers["Authorization"] = "Bearer " + settings.TRAKT_ACCESS_TOKEN
 
         try:

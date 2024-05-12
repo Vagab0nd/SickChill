@@ -1,5 +1,5 @@
-function getMeta(pyVar) {
-    return $('meta[data-var="' + pyVar + '"]').data('content');
+function getMeta(pythonVariable) {
+    return $('meta[data-var="' + pythonVariable + '"]').data('content');
 }
 
 const scRoot = getMeta('scRoot');
@@ -7,30 +7,32 @@ const scDefaultPage = getMeta('scDefaultPage');
 const themeSpinner = getMeta('themeSpinner');
 const anonURL = getMeta('anonURL');
 const topImageHtml = '<img src="' + scRoot + '/images/top.gif" width="31" height="11" alt="Jump to top" />'; // eslint-disable-line no-unused-vars
-const loading = '<img src="' + scRoot + '/images/loading16' + themeSpinner + '.gif" height="16" width="16" />';
+const loading = '<img src="' + scRoot + '/images/loading16' + themeSpinner + '.gif" alt="loading" height="16" width="16" />';
 
-let srPID = getMeta('srPID');
+let scPID = getMeta('scPID');
 
-function configSuccess() {
+function configSuccess(reload = true) {
     $('.config_submitter').each(function () {
         $(this).removeAttr('disabled');
         $(this).next().remove();
         $(this).show();
+        if (reload === true) {
+            window.location.reload();
+        }
     });
     $('.config_submitter_refresh').each(function () {
         $(this).removeAttr('disabled');
         $(this).next().remove();
         $(this).show();
-        window.location.href = scRoot + '/config/providers/';
     });
     $('#email_show').trigger('notify');
     $('#prowl_show').trigger('notify');
 }
 
-function metaToBool(pyVar) {
-    let meta = $('meta[data-var="' + pyVar + '"]').data('content');
+function metaToBool(pythonVariable) {
+    let meta = $('meta[data-var="' + pythonVariable + '"]').data('content');
     if (meta === undefined) {
-        console.log(pyVar + ' is empty, did you forget to add this to main.mako?');
+        console.log(pythonVariable + ' is empty, did you forget to add this to "main.mako"?');
         return meta;
     }
 
@@ -40,9 +42,9 @@ function metaToBool(pyVar) {
     return !(meta === 'false' || meta === 'none' || meta === '0');
 }
 
-function isMeta(pyVar, result) {
+function isMeta(pythonVariable, result) {
     const reg = new RegExp(result.length > 1 ? result.join('|') : result);
-    return (reg).test($('meta[data-var="' + pyVar + '"]').data('content'));
+    return (reg).test($('meta[data-var="' + pythonVariable + '"]').data('content'));
 }
 
 function notifyModal(message) {
@@ -56,7 +58,7 @@ function addSiteMessage(level = 'danger', tag = '', message = '') {
         if (messagesDiv !== undefined) {
             messagesDiv.empty();
             for (const key in siteMessages) {
-                if (Object.prototype.hasOwnProperty.call(siteMessages, key)) {
+                if (Object.hasOwn(siteMessages, key)) {
                     messagesDiv.append('<div class="alert alert-' + siteMessages[key].level + ' upgrade-notification hidden-print" id="site-message-' + key + '" role="alert">'
                         + '<span>' + siteMessages[key].message + '</span><span class="glyphicon glyphicon-check site-message-dismiss pull-right" data-id="' + key + '"/>'
                         + '</div>');
@@ -120,7 +122,7 @@ const SICKCHILL = {
 
             $('a.shutdown').confirm({
                 title: 'Shutdown',
-                text: 'Are you sure you want to shutdown SickChill?',
+                text: 'Are you sure you want to shut down SickChill?',
             });
 
             $('a.restart').confirm({
@@ -135,7 +137,7 @@ const SICKCHILL = {
                     + '<input type="checkbox" id="deleteFiles" name="deleteFiles"/>&nbsp;'
                     + '<label for="deleteFiles" class="red-text">Check to delete files as well. IRREVERSIBLE</label>',
                 confirm(event) {
-                    location.href = event.context.href + ($('#deleteFiles')[0].checked ? '&full=1' : '');
+                    location.href = event.context.href + ($('#deleteFiles')[0].checked ? '&full=1' : '&full=0');
                 },
             });
 
@@ -158,22 +160,20 @@ const SICKCHILL = {
                 activate(event, ui) {
                     let lastOpenedPanel = $(this).data('lastOpenedPanel');
 
-                    if (!lastOpenedPanel) {
-                        lastOpenedPanel = $(ui.oldPanel);
-                    }
+                    lastOpenedPanel ||= $(ui.oldPanel);
 
                     if (!$(this).data('topPositionTab')) {
                         $(this).data('topPositionTab', $(ui.newPanel).position().top);
                     }
 
-                    // Dont use the builtin fx effects. This will fade in/out both tabs, we dont want that
+                    // Don't use the builtin fx effects. This will fade in/out both tabs, we don't want that
                     // Fadein the new tab yourself
                     $(ui.newPanel).hide().fadeIn(0);
 
                     if (lastOpenedPanel) {
                         // 1. Show the previous opened tab by removing the jQuery UI class
                         // 2. Make the tab temporary position:absolute so the two tabs will overlap
-                        // 3. Set topposition so they will overlap if you go from tab 1 to tab 0
+                        // 3. Set topposition, so they will overlap if you go from tab 1 to tab 0
                         // 4. Remove position:absolute after animation
                         lastOpenedPanel
                             .toggleClass('ui-tabs-hide')
@@ -193,9 +193,9 @@ const SICKCHILL = {
             // hack alert: if we don't have a touchscreen, and we are already hovering the mouse, then click should link instead of toggle
             if ((navigator.maxTouchPoints || 0) < 2) {
                 $('.dropdown-toggle').on('click', function () {
-                    const $this = $(this);
-                    if ($this.attr('aria-expanded') === 'true') {
-                        window.location.href = $this.attr('href');
+                    const element = $(this);
+                    if (element.prop('ariaExpanded') === 'true') {
+                        window.location.href = element.prop('href');
                     }
                 });
             }
@@ -225,29 +225,21 @@ const SICKCHILL = {
             }
 
             $(document.body).on('click', 'a[data-no-redirect]', event => {
-                const element = $(event.currentTarget).preventDefault();
-                $.get(element.attr('href'));
-
+                event.preventDefault();
+                $.get($(event.currentTarget).prop('href'));
                 return false;
             });
 
-            $(document.body).on('click', '.bulkCheck', event => {
-                const element = $(event.currentTarget);
-                const whichBulkCheck = element.attr('id');
+            $(document.body).on('change', '.bulkCheck', event => {
+                const checkbox = event.currentTarget;
+                const childrenClass = '.' + checkbox.id + ':visible';
 
-                $('.' + whichBulkCheck + ':visible').each(function () {
-                    $(this).prop('checked', element.is(':checked'));
+                $(childrenClass).each(function () {
+                    this.checked = checkbox.checked;
                 });
             });
-
-            $('.enabler').each(function () {
-                if (!$(this).is(':checked')) {
-                    $('#content_' + $(this).attr('id')).hide();
-                }
-            });
-
             $('.enabler').on('change', function () {
-                if ($(this).is(':checked')) {
+                if (this.checked) {
                     $('#content_' + $(this).attr('id')).fadeIn('fast', 'linear');
                 } else {
                     $('#content_' + $(this).attr('id')).fadeOut('fast', 'linear');
@@ -314,7 +306,7 @@ const SICKCHILL = {
             $('#config-components').tabs();
 
             $('.viewIf').on('click', function () {
-                if ($(this).is(':checked')) {
+                if (this.checked) {
                     $('.hide_if_' + $(this).attr('id')).css('display', 'none');
                     $('.show_if_' + $(this).attr('id')).fadeIn('fast', 'linear');
                 } else {
@@ -324,12 +316,12 @@ const SICKCHILL = {
             });
 
             $('.datePresets').on('click', function () {
-                let def = $('#date_presets').val();
-                if ($(this).is(':checked') && def === '%x') {
-                    def = '%a, %b %d, %Y';
+                let defaultPreset = $('#date_presets').val();
+                if (this.checked && defaultPreset === '%x') {
+                    defaultPreset = '%a, %b %d, %Y';
                     $('#date_use_system_default').html('1');
-                } else if (!$(this).is(':checked') && $('#date_use_system_default').html() === '1') {
-                    def = '%x';
+                } else if (!this.checked && $('#date_use_system_default').html() === '1') {
+                    defaultPreset = '%x';
                 }
 
                 $('#date_presets').attr('name', 'date_preset_old');
@@ -341,17 +333,17 @@ const SICKCHILL = {
                 $('#date_presets_old').attr('name', 'date_preset_na');
                 $('#date_presets_old').attr('id', 'date_presets_na');
 
-                if (def) {
-                    $('#date_presets').val(def);
+                if (defaultPreset) {
+                    $('#date_presets').val(defaultPreset);
                 }
             });
 
-            // Bind 'myForm' and provide a simple callback function
+            // Bind 'configForm' and provide a simple callback function
             $('#configForm').ajaxForm({
                 beforeSubmit() {
                     $('.config_submitter .config_submitter_refresh').each(function () {
                         $(this).attr('disabled', 'disabled');
-                        $(this).after('<span><img src="' + scRoot + '/images/loading16' + themeSpinner + '.gif"> Saving...</span>');
+                        $(this).after('<span>' + loading + ' Saving...</span>');
                         $(this).hide();
                     });
                 },
@@ -360,64 +352,52 @@ const SICKCHILL = {
                 },
             });
 
+            $('#config_save_button').on('click', () => {
+                $('#configForm').submit();
+            });
+
             $('#api_key').on('click', () => {
                 $('#api_key').select();
             });
 
             $('#generate_new_apikey').on('click', () => {
                 $.get(scRoot + '/config/general/generateApiKey', data => {
-                    if (data.error !== undefined) {
+                    if (data.error === undefined) {
+                        $('#api_key').val(data);
+                    } else {
                         notifyModal(data.error);
-                        return;
                     }
-
-                    $('#api_key').val(data);
                 });
-            });
-
-            $('#git_token').on('click', $('#git_token').select());
-
-            $('#create_access_token').on('click', () => {
-                notifyModal(
-                    '<p>Copy the generated token and paste it in the token input box.</p>'
-                    + '<p>Provide permissions for repo:status, public_repo, write:discussion, read:discussion, user, gist, and notifications</p>'
-                    + '<p><a href="' + anonURL + 'https://github.com/settings/tokens/new?description=SickChill&scopes=user,gist,public_repo" target="_blank">'
-                    + '<input class="btn" type="button" value="Continue to Github..."></a></p>');
-                $('#git_token').select();
-            });
-
-            $('#manage_tokens').on('click', () => {
-                window.open(anonURL + 'https://github.com/settings/tokens', '_blank');
             });
         },
         index() {
             $('#log_dir').fileBrowser({title: _('Select log file folder location')});
-            $('#sickchill_background_path').fileBrowser({title: _('Select Background Image'), key: 'sickchill_background_path', includeFiles: 1, fileTypes: ['images']});
-            $('#custom_css_path').fileBrowser({title: _('Select CSS file'), key: 'custom_css_path', includeFiles: 1, fileTypes: ['css']});
+            $('#sickchill_background_path').fileBrowser({
+                title: _('Select Background Image'), key: 'sickchill_background_path', includeFiles: 1, fileTypes: ['images'],
+            });
+            $('#custom_css_path').fileBrowser({
+                title: _('Select CSS file'), key: 'custom_css_path', includeFiles: 1, fileTypes: ['css'],
+            });
         },
         backupRestore() {
-            $('#Backup').on('click', () => {
-                $('#Backup').attr('disabled', true);
-                $('#Backup-result').html(loading);
-                const backupDir = $('#backupDir').val();
-                $.get(scRoot + '/config/backuprestore/backup', {backupDir})
-                    .done(data => {
-                        $('#Backup-result').html(data);
-                        $('#Backup').attr('disabled', false);
-                    });
+            $('#backup-submit').on('click', () => {
+                $('#backup-submit').attr('disabled', true);
+                $('#backup-result').html(loading);
+                $.post(scRoot + '/config/backuprestore/backup', {backupDirectory: $('#backupDirectory').val()}).done(data => {
+                    $('#backup-result').html(data);
+                    $('#backup-submit').attr('disabled', false);
+                });
             });
-            $('#Restore').on('click', () => {
-                $('#Restore').attr('disabled', true);
-                $('#Restore-result').html(loading);
-                const backupFile = $('#backupFile').val();
-                $.post(scRoot + '/config/backuprestore/restore', {backupFile})
-                    .done(data => {
-                        $('#Restore-result').html(data);
-                        $('#Restore').attr('disabled', false);
-                    });
+            $('#restore-submit').on('click', () => {
+                $('#restore-submit').attr('disabled', true);
+                $('#restore-result').html(loading);
+                $.post(scRoot + '/config/backuprestore/restore', {backupFile: $('#backupFile').val()}).done(data => {
+                    $('#restore-result').html(data);
+                    $('#restore-submit').attr('disabled', false);
+                });
             });
 
-            $('#backupDir').fileBrowser({title: _('Select backup folder to save to'), key: 'backupPath'});
+            $('#backupDirectory').fileBrowser({title: _('Select backup folder to save to'), key: 'backupPath'});
             $('#backupFile').fileBrowser({title: _('Select backup files to restore'), key: 'backupFile', includeFiles: 1});
             $('#config-components').tabs();
         },
@@ -683,6 +663,18 @@ const SICKCHILL = {
                 });
             });
 
+            $('#testMattermost').on('click', () => {
+                $.post(scRoot + '/home/testMattermost', data => {
+                    $('#testMattermost-result').html(data);
+                });
+            });
+
+            $('#testMattermostBot').on('click', () => {
+                $.post(scRoot + '/home/testMattermostBot', data => {
+                    $('#testMattermostBot-result').html(data);
+                });
+            });
+
             $('#testRocketChat').on('click', () => {
                 $.post(scRoot + '/home/testRocketChat', data => {
                     $('#testRocketChat-result').html(data);
@@ -696,27 +688,22 @@ const SICKCHILL = {
             });
 
             $('#testDiscord').on('click', () => {
-                const discord = {};
                 const discordWebhook = $('#discord_webhook');
-                discord.webhook = discordWebhook.val();
-                if (!discord.webhook) {
+                if (!discordWebhook.val()) {
                     discordWebhook.focus();
                     notifyModal('Please fill in the webhook address');
                     return;
                 }
 
-                discord.name = $('#discord_name').val();
-                discord.avatar = $('#discord_avatar_url').val();
-                discord.tts = $('#discord_tts').val();
-
+                const discord = {
+                    webhook: discordWebhook.val(),
+                    name: $('#discord_name').val(),
+                    avatar: $('#discord_avatar_url').val(),
+                    tts: $('#discord_tts').is(':checked') ? 1 : 0,
+                };
                 $('#testDiscord').prop('disabled', true);
                 $('#testDiscord-result').html(loading);
-                $.get(scRoot + '/home/testDiscord', {
-                    webhook: discord.webhook,
-                    name: discord.name,
-                    avatar: discord.avatar,
-                    tts: discord.tts,
-                }).done(data => {
+                $.post(scRoot + '/home/testDiscord', discord).done(data => {
                     $('#testDiscord-result').html(data);
                     $('#testDiscord').prop('disabled', false);
                 });
@@ -1070,6 +1057,39 @@ const SICKCHILL = {
                 });
             });
 
+            $('#testGotify').on('click', function () {
+                const gotify = {};
+                gotify.host = $.trim($('#gotify_host').val());
+                gotify.authToken = $.trim($('#gotify_authorizationtoken').val());
+                if (!gotify.host || !gotify.authToken) {
+                    $('#testGotify-result').html(_('Please fill out the necessary fields above.'));
+                    if (gotify.host) {
+                        $('#gotify_host').removeClass('warning');
+                    } else {
+                        $('#gotify_host').addClass('warning');
+                    }
+
+                    if (gotify.authToken) {
+                        $('#gotify_authorizationtoken').removeClass('warning');
+                    } else {
+                        $('#gotify_authorizationtoken').addClass('warning');
+                    }
+
+                    return;
+                }
+
+                $('#gotify_host,#gotify_authorizationtoken').removeClass('warning');
+                $(this).prop('disabled', true);
+                $('#testGotify-result').html(loading);
+                $.post(scRoot + '/home/testGotify', {
+                    host: gotify.host,
+                    authorizationToken: gotify.authToken,
+                }).done(data => {
+                    $('#testGotify-result').html(data);
+                    $('#testGotify').prop('disabled', false);
+                });
+            });
+
             $('#testPushbullet').on('click', function () {
                 const pushbullet = {};
                 pushbullet.api = $.trim($('#pushbullet_api').val());
@@ -1110,12 +1130,12 @@ const SICKCHILL = {
                     pushbullet.devices = $.parseJSON(data).devices;
                     pushbullet.currentDevice = $('#pushbullet_device').val();
                     $('#pushbullet_device_list').html('');
-                    for (let i = 0; i < pushbullet.devices.length; i++) {
-                        if (pushbullet.devices[i].active === true) {
-                            if (pushbullet.currentDevice === pushbullet.devices[i].iden) {
-                                $('#pushbullet_device_list').append('<option value="' + pushbullet.devices[i].iden + '" selected>' + pushbullet.devices[i].nickname + '</option>');
+                    for (let device = 0; device < pushbullet.devices.length; device++) {
+                        if (pushbullet.devices[device].active === true) {
+                            if (pushbullet.currentDevice === pushbullet.devices[device].iden) {
+                                $('#pushbullet_device_list').append('<option value="' + pushbullet.devices[device].iden + '" selected>' + pushbullet.devices[device].nickname + '</option>');
                             } else {
-                                $('#pushbullet_device_list').append('<option value="' + pushbullet.devices[i].iden + '">' + pushbullet.devices[i].nickname + '</option>');
+                                $('#pushbullet_device_list').append('<option value="' + pushbullet.devices[device].iden + '">' + pushbullet.devices[device].nickname + '</option>');
                             }
                         }
                     }
@@ -1149,7 +1169,7 @@ const SICKCHILL = {
                         $('#pushbullet_channel_list').prepend('<option value="" ' + (pushbullet.currentChannel ? 'selected' : '') + '>No Channel</option>');
                         $('#pushbullet_channel_list').prop('disabled', false);
                     } else {
-                        $('#pushbullet_channel_list').prepend('<option value>No Channels</option>');
+                        $('#pushbullet_channel_list').prepend('<option value="">No Channels</option>');
                         $('#pushbullet_channel_list').prop('disabled', true);
                     }
 
@@ -1195,14 +1215,15 @@ const SICKCHILL = {
                     }
 
                     // Convert the 'list' object to a js array of objects so that we can sort it
-                    const _list = [];
-                    for (const _show in list) {
-                        if (Object.prototype.hasOwnProperty.call(list, _show) && _show.charAt(0) !== '_') {
-                            _list.push(list[_show]);
+                    // future: Why is this not just sent as json to begin with?
+                    const notifyList = [];
+                    for (const listKey in list) {
+                        if (Object.hasOwn(list, listKey) && listKey.charAt(0) !== '_') {
+                            notifyList.push(list[listKey]);
                         }
                     }
 
-                    const sortedList = _list.sort((a, b) => {
+                    const sortedList = notifyList.sort((a, b) => {
                         if (a.name < b.name) {
                             return -1;
                         }
@@ -1214,9 +1235,9 @@ const SICKCHILL = {
                         return 0;
                     });
                     let html = '<option value="-1">-- Select --</option>';
-                    for (const _show in sortedList) {
-                        if (Object.prototype.hasOwnProperty.call(sortedList, _show) && sortedList[_show].id && sortedList[_show].name) {
-                            html += '<option value="' + sortedList[_show].id + '">' + $('<div>').text(sortedList[_show].name).html() + '</option>';
+                    for (const sortedListKey in sortedList) {
+                        if (Object.hasOwn(sortedList, sortedListKey) && sortedList[sortedListKey].id && sortedList[sortedListKey].name) {
+                            html += '<option value="' + sortedList[sortedListKey].id + '">' + $('<div>').text(sortedList[sortedListKey].name).html() + '</option>';
                         }
                     }
 
@@ -1260,7 +1281,7 @@ const SICKCHILL = {
 
             // Show instructions for plex when enabled
             $('#use_plex_server').on('click', function () {
-                if ($(this).is(':checked')) {
+                if (this.checked) {
                     $('.plexinfo').removeClass('hide');
                 } else {
                     $('.plexinfo').addClass('hide');
@@ -1274,7 +1295,7 @@ const SICKCHILL = {
 
             // http://stackoverflow.com/questions/2219924/idiomatic-jquery-delayed-event-only-after-a-short-pause-in-typing-e-g-timew
             const typewatch = (function () {
-                let timer = 0;
+                let timer;
                 return function (callback, ms) {
                     clearTimeout(timer);
                     timer = setTimeout(callback, ms);
@@ -1364,7 +1385,7 @@ const SICKCHILL = {
 
                 $.post(scRoot + '/config/postProcessing/testNaming', {
                     pattern,
-                    abd: 'True',
+                    abd: true,
                 }, data => {
                     if (data) {
                         $('#naming_abd_example').text(data + '.ext');
@@ -1376,7 +1397,7 @@ const SICKCHILL = {
 
                 $.post(scRoot + '/config/postProcessing/isNamingValid', {
                     pattern,
-                    abd: 'True',
+                    abd: true,
                 }, data => {
                     let info;
                     if (data === 'invalid') {
@@ -1414,7 +1435,7 @@ const SICKCHILL = {
 
                 $.post(scRoot + '/config/postProcessing/testNaming', {
                     pattern,
-                    sports: 'True', // @TODO does this actually need to be a string or can it be a boolean?
+                    sports: true,
                 }, data => {
                     if (data) {
                         $('#naming_sports_example').text(data + '.ext');
@@ -1426,7 +1447,7 @@ const SICKCHILL = {
 
                 $.post(scRoot + '/config/postProcessing/isNamingValid', {
                     pattern,
-                    sports: 'True', // @TODO does this actually need to be a string or can it be a boolean?
+                    sports: true,
                 }, data => {
                     let info;
                     if (data === 'invalid') {
@@ -1496,34 +1517,34 @@ const SICKCHILL = {
                     anime_type: example.animeType, // eslint-disable-line camelcase
                 }, data => {
                     let info;
-                    const $namingAnimePatternInput = $('#naming_anime_pattern');
+                    const namingAnimePatternInput = $('#naming_anime_pattern');
                     if (data === 'invalid') {
                         info = _('This pattern is invalid.');
-                        $namingAnimePatternInput.qtip('option', {
+                        namingAnimePatternInput.qtip('option', {
                             'content.text': info,
                             'style.classes': 'qtip-rounded qtip-shadow qtip-red',
                         });
-                        $namingAnimePatternInput.qtip('toggle', true);
-                        $namingAnimePatternInput.css('background-color', '#FFDDDD');
+                        namingAnimePatternInput.qtip('toggle', true);
+                        namingAnimePatternInput.css('background-color', '#FFDDDD');
                     } else if (data === 'seasonfolders') {
                         info = _('This pattern would be invalid without the folders, using it will force "Season Folders" on for all shows.');
-                        $namingAnimePatternInput.qtip('option', {
+                        namingAnimePatternInput.qtip('option', {
                             'content.text': info,
                             'style.classes': 'qtip-rounded qtip-shadow qtip-red',
                         });
-                        $namingAnimePatternInput.qtip('toggle', true);
-                        $namingAnimePatternInput.css('background-color', '#FFFFDD');
+                        namingAnimePatternInput.qtip('toggle', true);
+                        namingAnimePatternInput.css('background-color', '#FFFFDD');
                     } else {
                         info = _('This pattern is valid.');
-                        $namingAnimePatternInput.qtip('option', {
+                        namingAnimePatternInput.qtip('option', {
                             'content.text': info,
                             'style.classes': 'qtip-rounded qtip-shadow qtip-green',
                         });
-                        $namingAnimePatternInput.qtip('toggle', false);
-                        $namingAnimePatternInput.css('background-color', '#FFFFFF');
+                        namingAnimePatternInput.qtip('toggle', false);
+                        namingAnimePatternInput.css('background-color', '#FFFFFF');
                     }
 
-                    $namingAnimePatternInput.attr('title', info);
+                    namingAnimePatternInput.attr('title', info);
                 });
             }
 
@@ -1690,8 +1711,8 @@ const SICKCHILL = {
             });
 
             $.fn.refreshMetadataConfig = function (first) {
-                let curMost = 0;
-                let curMostProvider = '';
+                let currentMost = 0;
+                let currentMostProvider = '';
 
                 $('.metadataDiv').each(function () { // eslint-disable-line complexity
                     const generatorName = $(this).attr('id');
@@ -1708,16 +1729,27 @@ const SICKCHILL = {
                     const seasonAllPoster = $('#' + generatorName + '_season_all_poster').is(':checked');
                     const seasonAllBanner = $('#' + generatorName + '_season_all_banner').is(':checked');
 
-                    configArray.push(showMetadata ? '1' : '0', episodeMetadata ? '1' : '0', fanart ? '1' : '0', poster ? '1' : '0', banner ? '1' : '0', episodeThumbnails ? '1' : '0', seasonPosters ? '1' : '0', seasonBanners ? '1' : '0', seasonAllPoster ? '1' : '0', seasonAllBanner ? '1' : '0');
+                    configArray.push(
+                        showMetadata ? '1' : '0',
+                        episodeMetadata ? '1' : '0',
+                        fanart ? '1' : '0',
+                        poster ? '1' : '0',
+                        banner ? '1' : '0',
+                        episodeThumbnails ? '1' : '0',
+                        seasonPosters ? '1' : '0',
+                        seasonBanners ? '1' : '0',
+                        seasonAllPoster ? '1' : '0',
+                        seasonAllBanner ? '1' : '0',
+                    );
 
-                    let curNumber = 0;
+                    let currentNumber = 0;
                     for (const element of configArray) {
-                        curNumber += Number.parseInt(element, 10);
+                        currentNumber += Number.parseInt(element, 10);
                     }
 
-                    if (curNumber > curMost) {
-                        curMost = curNumber;
-                        curMostProvider = generatorName;
+                    if (currentNumber > currentMost) {
+                        currentMost = currentNumber;
+                        currentMostProvider = generatorName;
                     }
 
                     $('#' + generatorName + '_eg_show_metadata').attr('class', showMetadata ? 'enabled' : 'disabled');
@@ -1733,8 +1765,8 @@ const SICKCHILL = {
                     $('#' + generatorName + '_data').val(configArray.join('|'));
                 });
 
-                if (curMostProvider !== '' && first) {
-                    $('#metadataType option[value=' + curMostProvider + ']').attr('selected', 'selected');
+                if (currentMostProvider !== '' && first) {
+                    $('#metadataType option[value=' + currentMostProvider + ']').attr('selected', 'selected');
                     $(this).showHideMetadata();
                 }
             };
@@ -1923,12 +1955,16 @@ const SICKCHILL = {
                     } else if (selectedProvider.toLowerCase() === 'rtorrent') {
                         client = 'rTorrent';
                         $('#host_desc_torrent').html(_('URL to your rTorrent client (e.g. scgi://localhost:5000 <br> '
-                                                        + 'or https://localhost/rutorrent/plugins/httprpc/action.php)'));
+                            + 'or https://localhost/rutorrent/plugins/httprpc/action.php)'));
                         $('#torrent_verify_cert_option').show();
                         $('#torrent_auth_type_option').show();
                     } else if (selectedProvider.toLowerCase() === 'qbittorrent') {
                         client = 'qBittorrent';
-                        $('#torrent_path_option').hide();
+                        $('#torrent_path_option').show();
+                        $('#torrent_path_option').find('.fileBrowser').show();
+                        $('#torrent_path_incomplete_option').show();
+                        $('#torrent_seed_time_label').text(_('Stop seeding after'));
+                        $('#torrent_seed_time_option').show();
                         $('#label_warning_qbittorrent').show();
                         $('#label_anime_warning_qbittorrent').show();
                         $('#torrent_verify_cert_option').show();
@@ -2083,7 +2119,7 @@ const SICKCHILL = {
                 if ($('#service_order_list > #' + id).length === 0 && showService !== false) {
                     let toAdd = '';
                     toAdd += '<li class="ui-state-default" id="' + id + '"> ';
-                    toAdd += '<input type="checkbox" id="enable_' + id + '" class="service_enabler" CHECKED> ';
+                    toAdd += '<input type="checkbox" id="enable_' + id + '" class="service_enabler" checked> ';
                     toAdd += '<a href="' + anonURL + url + '" class="imgLink" target="_new">';
                     toAdd += '<img src="' + scRoot + '/images/services/newznab.gif" alt="' + name + '" width="16" height="16"></a> ';
                     toAdd += name + '</li>';
@@ -2681,7 +2717,9 @@ const SICKCHILL = {
                         subtitlesTd.empty();
                         $.each(subtitles, (index, language) => {
                             if (language !== '') {
-                                subtitlesTd.append($('<img/>', {src: scRoot + '/images/subtitles/flags/' + language + '.png', alt: language, width: 16, height: 11}));
+                                subtitlesTd.append($('<img/>', {
+                                    src: scRoot + '/images/subtitles/flags/' + language + '.png', alt: language, width: 16, height: 11,
+                                }));
                             }
                         });
                         icon.prop('class', 'displayshow-icon-sub');
@@ -2744,8 +2782,8 @@ const SICKCHILL = {
                 $(this).val('jump');
             });
 
-            $('#seasonJumpLinks a').on('click', ev => {
-                const season = $(ev.target).data('season');
+            $('#seasonJumpLinks a').on('click', event_ => {
+                const season = $(event_.target).data('season');
                 $('html,body').animate({scrollTop: $('#' + season).offset().top - 50}, 'slow');
                 $('#collapseSeason-' + season).collapse('show');
                 location.hash = season;
@@ -2775,9 +2813,12 @@ const SICKCHILL = {
                     return false;
                 }
 
-                const url = scRoot + '/home/setStatus';
-                const parameters = 'show=' + $('#showID').attr('value') + '&eps=' + epArray.join('|') + '&status=' + $('#statusSelect').val();
-                $.post(url, parameters, () => {
+                const parameters = {
+                    show: $('#showID').attr('value'),
+                    eps: epArray,
+                    status: $('#statusSelect').val(),
+                };
+                $.post(scRoot + '/home/setStatus', parameters, () => {
                     location.reload(true);
                 });
             });
@@ -2854,7 +2895,7 @@ const SICKCHILL = {
 
             // Initially show/hide all the rows according to the checkboxes
             $('#checkboxControls input').each(function () {
-                const status = $(this).is(':checked');
+                const status = this.checked;
                 $('tr.' + $(this).attr('id')).each(function () {
                     if (status) {
                         $(this).show();
@@ -2895,21 +2936,13 @@ const SICKCHILL = {
                 const showId = $('#showID').val();
                 const indexer = $('#indexer').val();
 
-                if (sceneSeason === '') {
-                    sceneSeason = null;
-                }
-
-                if (sceneEpisode === '') {
-                    sceneEpisode = null;
-                }
-
                 $.getJSON(scRoot + '/home/setSceneNumbering', {
                     show: showId,
                     indexer,
                     forSeason,
                     forEpisode,
-                    sceneSeason,
-                    sceneEpisode,
+                    sceneSeason: sceneSeason === '' ? null : sceneSeason,
+                    sceneEpisode: sceneEpisode === '' ? null : sceneEpisode,
                 }, data => {
                     // Set the values we get back
                     if (data.sceneSeason === null || data.sceneEpisode === null) {
@@ -2932,15 +2965,11 @@ const SICKCHILL = {
                 const showId = $('#showID').val();
                 const indexer = $('#indexer').val();
 
-                if (sceneAbsolute === '') {
-                    sceneAbsolute = null;
-                }
-
                 $.getJSON(scRoot + '/home/setSceneNumbering', {
                     show: showId,
                     indexer,
                     forAbsolute,
-                    sceneAbsolute,
+                    sceneAbsolute: sceneAbsolute === '' ? null : sceneAbsolute,
                 },
                 data => {
                     // Set the values we get back
@@ -2972,7 +3001,7 @@ const SICKCHILL = {
 
             $('.sceneSeasonXEpisode').on('change', function () {
                 // Strip non-numeric characters
-                $(this).val($(this).val().replace(/[^\dxX]*/g, ''));
+                $(this).val($(this).val().replaceAll(/[^\dxX]*/g, ''));
                 const forSeason = $(this).attr('data-for-season');
                 const forEpisode = $(this).attr('data-for-episode');
                 const m = $(this).val().match(/^(\d+)x(\d+)$/i);
@@ -2980,7 +3009,7 @@ const SICKCHILL = {
 
                 let sceneSeason = null;
                 let sceneEpisode = null;
-                let isValid = false;
+                let isValid;
                 if (m) {
                     sceneSeason = m[1];
                     sceneEpisode = m[2];
@@ -3002,7 +3031,7 @@ const SICKCHILL = {
 
             $('.sceneAbsolute').on('change', function () {
                 // Strip non-numeric characters
-                $(this).val($(this).val().replace(/[^\dxX]*/g, ''));
+                $(this).val($(this).val().replaceAll(/[^\dxX]*/g, ''));
                 const forAbsolute = $(this).attr('data-for-absolute');
 
                 const m = $(this).val().match(/^(\d{1,3})$/i);
@@ -3035,7 +3064,7 @@ const SICKCHILL = {
                 html: true, // Required if content has HTML
                 content: '<div id="popover-target"></div>',
             })
-            // Bootstrap popover event triggered when the popover opens
+                // Bootstrap popover event triggered when the popover opens
                 .on('shown.bs.popover', () => {
                     $('.displayShowTable').each((index, item) => {
                         $.tablesorter.columnSelector.attachTo(item, '#popover-target');
@@ -3179,7 +3208,7 @@ const SICKCHILL = {
             });
         },
         restart() {
-            let currentPid = srPID;
+            let currentPid = scPID;
             let checkIsAlive = setTimeout(() => {
                 setInterval(() => {
                     $.post(scRoot + '/home/is-alive/', data => {
@@ -3194,7 +3223,7 @@ const SICKCHILL = {
                             $('#restart_loading').hide();
                             $('#restart_success').show();
                             $('#refresh_message').show();
-                            srPID = data.msg;
+                            scPID = data.msg;
                             currentPid = data.msg;
                             checkIsAlive = setInterval(() => {
                                 $.post(scRoot + '/home/is-alive/', () => { // eslint-disable-line max-nested-callbacks
@@ -3230,13 +3259,13 @@ const SICKCHILL = {
             $.makeSubtitleRow = function (indexerId, season, episode, name, subtitles, checked) { // eslint-disable-line max-params
                 let row = '';
                 row += '<tr class="good show-' + indexerId + '">';
-                row += '<td align="center"><input type="checkbox" class="' + indexerId + '-epcheck" name="' + indexerId + '-' + season + 'x' + episode + '"' + (checked ? ' checked' : '') + '></td>';
+                row += '<td class="text-center"><input type="checkbox" class="' + indexerId + '-epcheck" name="' + indexerId + '-' + season + 'x' + episode + '"' + (checked ? ' checked' : '') + '></td>';
                 row += '<td style="width: 2%;">' + season + 'x' + episode + '</td>';
                 if (subtitles.length > 0) {
                     row += '<td style="width: 8%;">';
                     subtitles = subtitles.split(',');
                     for (const i in subtitles) {
-                        if (Object.prototype.hasOwnProperty.call(subtitles, i)) {
+                        if (Object.hasOwn(subtitles, i)) {
                             row += '<img src="' + scRoot + '/images/subtitles/flags/' + subtitles[i] + '.png" width="16" height="11" alt="' + subtitles[i] + '" />&nbsp;';
                         }
                     }
@@ -3251,47 +3280,55 @@ const SICKCHILL = {
 
                 return row;
             };
+
+            $('#config_save_button').on('click', () => {
+                $('#configForm').submit();
+            });
         },
         index() {
-            $('.resetsorting').on('click', () => {
-                $('table').trigger('filterReset');
-            });
+            function checkBool(item) {
+                return item === 'Y' ? 'Yes' : 'No';
+            }
 
             $('#massUpdateTable:has(tbody tr)').tablesorter({
                 sortList: [[1, 0]],
+                widthFixed: true,
                 textExtraction: {
                     2(node) { // Network
-                        return ($(node).find('img').attr('alt') || 'unknown').toLowerCase();
+                        return ($(node).find('img').attr('alt') || 'unknown');
                     },
                     3(node) { // Quality
-                        return $(node).find('span').attr('title').toLowerCase();
+                        return $(node).find('span').text();
                     },
                     4(node) { // Sports
-                        return $(node).find('span').attr('title').toLowerCase();
+                        return checkBool($(node).find('span').attr('title'));
                     },
                     5(node) { // Scene
-                        return $(node).find('span').attr('title').toLowerCase();
+                        return checkBool($(node).find('span').attr('title'));
                     },
                     6(node) { // Anime
-                        return $(node).find('span').attr('title').toLowerCase();
+                        return checkBool($(node).find('span').attr('title'));
                     },
                     7(node) { // Season Folders
-                        return $(node).find('span').attr('title').toLowerCase();
+                        return checkBool($(node).find('span').attr('title'));
                     },
                     8(node) { // Paused
-                        return $(node).find('span').attr('title').toLowerCase();
+                        return checkBool($(node).find('span').attr('title'));
                     },
                     9(node) { // Subtitle
-                        return $(node).find('span').attr('title').toLowerCase();
+                        return checkBool($(node).find('span').attr('title'));
                     },
                     10(node) { // Default Episode Status
-                        return $(node).text().toLowerCase();
+                        return $(node).text();
                     },
                     11(node) { // Show Status
-                        return $(node).text().toLowerCase();
+                        return $(node).text();
+                    },
+                    12(node) { // Root dir
+                        return $(node).text();
                     },
                 },
-                widgets: ['zebra', 'filter', 'columnSelector'],
+                widgets: ['zebra', 'filter', 'columnSelector', 'saveSort', 'stickyHeaders'],
                 headers: {
                     0: {sorter: false, filter: false},
                     1: {sorter: 'loadingNames'},
@@ -3305,15 +3342,26 @@ const SICKCHILL = {
                     9: {sorter: 'subtitle'},
                     10: {sorter: 'default_ep_status'},
                     11: {sorter: 'status'},
-                    12: {sorter: false},
+                    12: {sorter: 'roootDirs'},
                     13: {sorter: false},
                     14: {sorter: false},
                     15: {sorter: false},
                     16: {sorter: false},
                     17: {sorter: false},
+                    18: {sorter: false},
                 },
                 widgetOptions: {
+                    columnSelector_saveColumns: true, // eslint-disable-line camelcase
+                    columnSelector_layout: '<label><input type="checkbox"/>{name}</label>', // eslint-disable-line camelcase
                     columnSelector_mediaquery: false, // eslint-disable-line camelcase
+                    columnSelector_cssChecked: 'checked', // eslint-disable-line camelcase
+                    columnSelector_columns: { // eslint-disable-line camelcase
+                        12: false,
+                    },
+                    filter_cssFilter: 'text-center text-capitalize', // eslint-disable-line camelcase
+                    filter_hideFilters: false, // eslint-disable-line camelcase
+                    filter_ignoreCase: true, // eslint-disable-line camelcase
+                    filter_reset: '.resetsorting', // eslint-disable-line camelcase
                 },
             });
             $('#popover').popover({
@@ -3325,147 +3373,34 @@ const SICKCHILL = {
                 $.tablesorter.columnSelector.attachTo($('#massUpdateTable'), '#popover-target');
             });
 
-            $('.submitMassEdit').on('click', () => {
-                const editArray = [];
+            $('.submitMassUpdate').on('click', event => {
+                event.preventDefault();
 
-                $('.editCheck').each(function () {
-                    if (this.checked === true) {
-                        editArray.push($(this).attr('id').split('-')[1]);
-                    }
-                });
+                const form = $('[name="massUpdateForm"]');
+                const deleteInputs = $('.deleteCheck:checked');
 
-                if (editArray.length === 0) {
-                    return;
-                }
-
-                const submitForm = $(
-                    '<form method=\'post\' action=\'' + scRoot + '/manage/massEdit\'>'
-                        + '<input type=\'hidden\' name=\'toEdit\' value=\'' + editArray.join('|') + '\'/>'
-                    + '</form>',
-                );
-                submitForm.appendTo('body');
-
-                submitForm.submit();
-            });
-
-            $('.submitMassUpdate').on('click', () => {
-                const updateArray = [];
-                const refreshArray = [];
-                const renameArray = [];
-                const subtitleArray = [];
-                const deleteArray = [];
-                const removeArray = [];
-                const metadataArray = [];
-
-                $('.updateCheck').each(function () {
-                    if (this.checked === true) {
-                        updateArray.push($(this).attr('id').split('-')[1]);
-                    }
-                });
-
-                $('.refreshCheck').each(function () {
-                    if (this.checked === true) {
-                        refreshArray.push($(this).attr('id').split('-')[1]);
-                    }
-                });
-
-                $('.renameCheck').each(function () {
-                    if (this.checked === true) {
-                        renameArray.push($(this).attr('id').split('-')[1]);
-                    }
-                });
-
-                $('.subtitleCheck').each(function () {
-                    if (this.checked === true) {
-                        subtitleArray.push($(this).attr('id').split('-')[1]);
-                    }
-                });
-
-                $('.removeCheck').each(function () {
-                    if (this.checked === true) {
-                        removeArray.push($(this).attr('id').split('-')[1]);
-                    }
-                });
-
-                let deleteCount = 0;
-
-                $('.deleteCheck').each(function () {
-                    if (this.checked === true) {
-                        deleteCount++;
-                    }
-                });
-
-                if (deleteCount >= 1) {
+                if (deleteInputs.length > 0) {
                     $.confirm({
                         title: 'Delete Shows',
-                        text: 'You have selected to delete ' + deleteCount + ' show(s).  Are you sure you wish to continue? All files will be removed from your system.',
-                        confirmButton: 'Yes',
-                        cancelButton: 'Cancel',
-                        dialogClass: 'modal-dialog',
-                        post: false,
+                        text: 'You have selected to delete ' + deleteInputs.length + ' show(s).  Are you sure you wish to continue? All files will be removed from your system.',
                         confirm() {
-                            $('.deleteCheck').each(function () {
-                                if (this.checked === true) {
-                                    deleteArray.push($(this).attr('id').split('-')[1]);
-                                }
-                            });
-                            if (updateArray.length + refreshArray.length + renameArray.length + subtitleArray.length + deleteArray.length + removeArray.length + metadataArray.length === 0) {
-                                return false;
-                            }
-
-                            const url = scRoot + '/manage/massUpdate';
-                            const parameters = 'toUpdate=' + updateArray.join('|') + '&toRefresh=' + refreshArray.join('|') + '&toRename=' + renameArray.join('|') + '&toSubtitle=' + subtitleArray.join('|') + '&toDelete=' + deleteArray.join('|') + '&toRemove=' + removeArray.join('|') + '&toMetadata=' + metadataArray.join('|');
-                            $.post(url, parameters, () => {
-                                location.reload(true);
-                            });
+                            form.submit();
+                        },
+                        cancel() {
+                            $('.deleteCheck:checked').prop('checked', false);
+                            form.submit();
                         },
                     });
+                } else {
+                    form.submit();
                 }
-
-                if (updateArray.length + refreshArray.length + renameArray.length + subtitleArray.length + deleteArray.length + removeArray.length + metadataArray.length === 0) {
-                    return false;
-                }
-
-                const url = scRoot + '/manage/massUpdate';
-                const parameters = 'toUpdate=' + updateArray.join('|') + '&toRefresh=' + refreshArray.join('|') + '&toRename=' + renameArray.join('|') + '&toSubtitle=' + subtitleArray.join('|') + '&toDelete=' + deleteArray.join('|') + '&toRemove=' + removeArray.join('|') + '&toMetadata=' + metadataArray.join('|');
-                $.post(url, parameters, () => {
-                    location.reload(true);
-                });
             });
-
-            for (const name of ['.editCheck', '.updateCheck', '.refreshCheck', '.renameCheck', '.deleteCheck', '.removeCheck']) {
-                let lastCheck = null;
-
-                $(name).on('click', function (event) {
-                    if (!lastCheck || !event.shiftKey) {
-                        lastCheck = this; // eslint-disable-line unicorn/no-this-assignment
-                        return;
-                    }
-
-                    const check = this; // eslint-disable-line unicorn/no-this-assignment
-                    let found = 0;
-
-                    $(name).each(function () {
-                        if (found === 2) {
-                            return false;
-                        }
-
-                        if (found === 1 && !this.disabled) {
-                            this.checked = lastCheck.checked;
-                        }
-
-                        if (this === check || this === lastCheck) {
-                            found++;
-                        }
-                    });
-                });
-            }
         },
         backlogOverview() {
             $('#pickShow').on('change', event => {
-                const id = $(event.currentTarget).val();
-                if (id) {
-                    $('html,body').animate({scrollTop: $('#show-' + id).offset().top - 25}, 'slow');
+                const showid = $(event.currentTarget).val();
+                if (showid) {
+                    $('html,body').animate({scrollTop: $('#show-' + showid).offset().top - 25}, 'slow');
                 }
             });
         },
@@ -3492,7 +3427,7 @@ const SICKCHILL = {
                     return false;
                 }
 
-                $.post(scRoot + '/manage/failedDownloads', 'toRemove=' + removeArray.join('|'), () => {
+                $.post(scRoot + '/manage/failedDownloads', {remove: removeArray}, () => {
                     location.reload(true);
                 });
             });
@@ -3527,31 +3462,31 @@ const SICKCHILL = {
             }
         },
         massEdit() {
-            function findDirIndex(which) {
-                const dirParts = which.split('_');
-                return dirParts[dirParts.length - 1];
+            function findDirectoryIndex(which) {
+                const directoryParts = which.split('_');
+                return directoryParts.at(-1);
             }
 
-            function editRootDir(path, options) {
+            function editRootDirectory(path, options) {
                 $('#new_root_dir_' + options.whichId).val(path);
                 $('#new_root_dir_' + options.whichId).change();
             }
 
             $('.new_root_dir').on('change', function () {
-                const curIndex = findDirIndex($(this).attr('id'));
-                $('#display_new_root_dir_' + curIndex).html('<b>' + $(this).val() + '</b>');
+                const currentIndex = findDirectoryIndex($(this).attr('id'));
+                $('#display_new_root_dir_' + currentIndex).html('<b>' + $(this).val() + '</b>');
             });
 
             $('.edit_root_dir').on('click', function () {
-                const curIndex = findDirIndex($(this).attr('id'));
-                const initialDir = $('#new_root_dir_' + curIndex).val();
-                $(this).nFileBrowser(editRootDir, {initialDir, whichId: curIndex});
+                const currentIndex = findDirectoryIndex($(this).attr('id'));
+                const initialDirectory = $('#new_root_dir_' + currentIndex).val();
+                $(this).nFileBrowser(editRootDirectory, {initialDirectory, whichId: currentIndex});
             });
 
             $('.delete_root_dir').on('click', function () {
-                const curIndex = findDirIndex($(this).attr('id'));
-                $('#new_root_dir_' + curIndex).val(null);
-                $('#display_new_root_dir_' + curIndex).html('<b>' + _('DELETED') + '</b>');
+                const currentIndex = findDirectoryIndex($(this).attr('id'));
+                $('#new_root_dir_' + currentIndex).val(null);
+                $('#display_new_root_dir_' + currentIndex).html('<b>' + _('DELETED') + '</b>');
             });
 
             SICKCHILL.common.QualityChooser.init();
@@ -3559,34 +3494,34 @@ const SICKCHILL = {
         episodeStatuses() {
             $('.allCheck').on('click', function () {
                 const indexerId = $(this).attr('id').split('-')[1];
-                $('.' + indexerId + '-epcheck').prop('checked', $(this).is(':checked'));
+                $('.' + indexerId + '-epcheck').prop('checked', this.checked);
             });
 
             $('.get_more_eps').on('click', function () {
-                const curIndexerId = $(this).attr('id');
-                const checked = $('#allCheck-' + curIndexerId).is(':checked');
-                const lastRow = $('tr#' + curIndexerId);
+                const currentIndexerId = $(this).attr('id');
+                const checked = $('#allCheck-' + currentIndexerId).is(':checked');
+                const lastRow = $('tr#' + currentIndexerId);
                 const clicked = $(this).attr('data-clicked');
                 const action = $(this).attr('value');
 
                 if (!clicked) {
                     $.getJSON(scRoot + '/manage/showEpisodeStatuses', {
-                        indexer_id: curIndexerId, // eslint-disable-line camelcase
+                        indexer_id: currentIndexerId, // eslint-disable-line camelcase
                         whichStatus: $('#oldStatus').val(),
                     }, data => {
                         $.each(data, (season, eps) => {
                             $.each(eps, (episode, name) => {
-                                lastRow.after($.makeEpisodeRow(curIndexerId, season, episode, name, checked));
+                                lastRow.after($.makeEpisodeRow(currentIndexerId, season, episode, name, checked));
                             });
                         });
                     });
                     $(this).attr('data-clicked', 1);
                     $(this).prop('value', 'Collapse');
                 } else if (action.toLowerCase() === 'collapse') {
-                    $('.show-' + curIndexerId).hide();
+                    $('.show-' + currentIndexerId).hide();
                     $(this).prop('value', 'Expand');
                 } else if (action.toLowerCase() === 'expand') {
-                    $('.show-' + curIndexerId).show();
+                    $('.show-' + currentIndexerId).show();
                     $(this).prop('value', 'Collapse');
                 }
             });
@@ -3614,7 +3549,7 @@ const SICKCHILL = {
         subtitleMissed() {
             $('.allCheck').on('click', function () {
                 const indexerId = $(this).attr('id').split('-')[1];
-                $('.' + indexerId + '-epcheck').prop('checked', $(this).is(':checked'));
+                $('.' + indexerId + '-epcheck').prop('checked', this.checked);
             });
 
             $('.get_more_eps').on('click', function () {
@@ -3681,6 +3616,9 @@ const SICKCHILL = {
                             0(node) { // Time
                                 return $(node).find('time').attr('datetime');
                             },
+                            2(node) { // Provider
+                                return ($(node).find('img').attr('alt') || 'unknown').toLowerCase();
+                            },
                             4(node) { // Quality
                                 return $(node).find('span').text().toLowerCase();
                             },
@@ -3692,7 +3630,7 @@ const SICKCHILL = {
                             return $(node).find('time').attr('datetime');
                         },
                         2(node) { // Provider
-                            return $(node).attr('provider').toLowerCase();
+                            return $(node).find('span').text().toLowerCase();
                         },
                     };
 
@@ -3767,14 +3705,8 @@ const SICKCHILL = {
                 $.confirm({
                     title: 'Remove Logs',
                     text: 'You have selected to remove ' + removeCount + ' download history log(s).<br /><br />This cannot be undone.<br />Are you sure you wish to continue?',
-                    confirmButton: 'Yes',
-                    cancelButton: 'Cancel',
-                    dialogClass: 'modal-dialog',
-                    post: false,
                     confirm() {
-                        const url = scRoot + '/history/removeHistory';
-                        const parameters = 'toRemove=' + removeArray.join('|');
-                        $.post(url, parameters, () => {
+                        $.post(scRoot + '/history/removeHistory', {items: removeArray}, () => {
                             location.reload(true);
                         });
                     },
@@ -3869,10 +3801,6 @@ const SICKCHILL = {
                 const sort = getMeta('settings.COMING_EPS_SORT');
                 const sortList = (sort in sortCodes) ? [[sortCodes[sort], 0]] : [[0, 0]];
 
-                $('.resetsorting').on('click', () => {
-                    $('#showListTable').trigger('filterReset');
-                });
-
                 $('#showListTable:has(tbody tr)').tablesorter({
                     widgets: ['stickyHeaders', 'filter', 'columnSelector', 'saveSort'],
                     sortList,
@@ -3905,6 +3833,7 @@ const SICKCHILL = {
                         filter_saveFilters: false, // eslint-disable-line camelcase
                         columnSelector_mediaquery: false, // eslint-disable-line camelcase
                         stickyHeaders_offset: 50, // eslint-disable-line camelcase
+                        filter_reset: '.resetsorting', // eslint-disable-line camelcase
                     },
                 });
 
@@ -3916,8 +3845,8 @@ const SICKCHILL = {
                 $('.ep_summary').hide();
                 $('.ep_summaryTrigger').on('click', function () {
                     $(this).next('.ep_summary').slideToggle('normal', function () {
-                        $(this).prev('.ep_summaryTrigger').attr('src', function (i, src) {
-                            return $(this).next('.ep_summary').is(':visible') ? src.replace('plus', 'minus') : src.replace('minus', 'plus');
+                        $(this).prev('.ep_summaryTrigger').attr('src', function (i, source) {
+                            return $(this).next('.ep_summary').is(':visible') ? source.replace('plus', 'minus') : source.replace('minus', 'plus');
                         });
                     });
                 });
@@ -4032,7 +3961,7 @@ const SICKCHILL = {
                 const url = scRoot + '/addShows/getTrendingShowImage';
                 let ajaxCount = 0;
                 $('img.trakt-image').each(function () {
-                    // Only load image from indexer when there is a indexer_id present in data-src-indexer-id
+                    // Only load image from indexer when there is an indexer_id present in data-src-indexer-id
                     const indexerId = $(this).attr('data-src-indexer-id');
                     if (indexerId) {
                         // Use setTimemout to delay lookup for each lookup
@@ -4055,7 +3984,7 @@ const SICKCHILL = {
             };
 
             $.fn.loadRemoteShows = function (path, loadingTxt, errorTxt) {
-                $(this).html('<img id="searchingAnim" src="' + scRoot + '/images/loading32' + themeSpinner + '.gif" height="32" width="32" />&nbsp;' + loadingTxt);
+                $(this).html('<img id="searchingAnim" src="' + scRoot + '/images/loading32' + themeSpinner + '.gif" alt="loading" height="32" width="32" />&nbsp;' + loadingTxt);
                 $(this).load(scRoot + path + ' #container', function (response, status) {
                     if (status === 'error') {
                         $(this).empty().html(errorTxt);
@@ -4075,18 +4004,26 @@ const SICKCHILL = {
                 $('#bestQualities option:selected').each((i, d) => {
                     bestQualArray.push($(d).val());
                 });
+                const grpwhitelistArray = [];
+                const grpblacklistArray = [];
+                $('#white option').each((i, d) => {
+                    grpwhitelistArray.push($(d).val());
+                });
+                $('#black option').each((i, d) => {
+                    grpblacklistArray.push($(d).val());
+                });
                 generateBlackWhiteList(); // eslint-disable-line no-undef
                 $.post(scRoot + '/config/general/saveAddShowDefaults', {
                     defaultStatus: $('#statusSelect').val(),
-                    anyQualities: anyQualArray.join(','),
-                    bestQualities: bestQualArray.join(','),
+                    anyQualities: anyQualArray,
+                    bestQualities: bestQualArray,
                     defaultSeasonFolders: $('#season_folders').is(':checked'),
                     subtitles: $('#subtitles').is(':checked'),
                     anime: $('#anime').is(':checked'),
                     scene: $('#scene').is(':checked'),
                     defaultStatusAfter: $('#statusSelectAfter').val(),
-                    whitelist: $('#whitelist').val(),
-                    blacklist: $('#blacklist').val(),
+                    whitelist: grpwhitelistArray,
+                    blacklist: grpblacklistArray,
                 });
 
                 $(this).attr('disabled', true);
@@ -4228,11 +4165,11 @@ const SICKCHILL = {
 
                 const searchingFor = _($('#show-name').val().trim() + ' on ' + $('#providedIndexer option:selected').text() + ' in ' + $('#indexerLangSelect option:selected').text());
                 $('#searchResults').empty().html(
-                    '<img id="searchingAnim" src="' + scRoot + '/images/loading32' + themeSpinner + '.gif" height="32" width="32" /> '
+                    '<img id="searchingAnim" src="' + scRoot + '/images/loading32' + themeSpinner + '.gif" alt="loading" height="32" width="32" /> '
                     + _('searching {searchingFor}...').replace(/{searchingFor}/, searchingFor),
                 );
 
-                searchRequestXhr = $.ajax({
+                searchRequestXhr = $.post({
                     url: scRoot + '/addShows/searchIndexersForShowName',
                     data: {
                         search_term: $('#show-name').val().trim(), // eslint-disable-line camelcase
@@ -4255,7 +4192,8 @@ const SICKCHILL = {
                             const shows = [];
 
                             $.each(data.results, (index, object) => {
-                                const whichSeries = object.join('|').replace(/"/g, '');
+                                // Future: Results should be returned as json, and use attribute names rather than indexes and joining.
+                                const whichSeries = object.join('|').replaceAll('"', '');
 
                                 const show = {
                                     obj: whichSeries,
@@ -4379,7 +4317,7 @@ const SICKCHILL = {
                     }
                 });
 
-                $('#tableDiv').html('<img id="searchingAnim" src="' + scRoot + '/images/loading32.gif" height="32" width="32" /> ' + _('loading folders...'));
+                $('#tableDiv').html('<img id="searchingAnim" src="' + scRoot + '/images/loading32.gif" alt="loading" height="32" width="32" /> ' + _('loading folders...'));
                 $.post(scRoot + '/addShows/massAddTable/', url, data => {
                     $('#tableDiv').html(data);
                     $('#addRootDirTable').tablesorter({
@@ -4395,7 +4333,7 @@ const SICKCHILL = {
             let lastTxt = '';
             // @TODO This fixes the issue of the page not loading at all,
             //       before I added this I couldn't get the directories to show in the table.
-            const rootDirsWorkaround = function () {
+            const rootDirectoriesWorkaround = function () {
                 if (lastTxt === $('#rootDirText').val()) {
                     return false;
                 }
@@ -4409,17 +4347,11 @@ const SICKCHILL = {
                 loadContent();
             };
 
-            rootDirsWorkaround();
+            rootDirectoriesWorkaround();
 
-            $('#rootDirText').on('change', rootDirsWorkaround);
+            $('#rootDirText').on('change', rootDirectoriesWorkaround);
 
             $('#rootDirStaticList').on('click', '.dir_check', loadContent);
-
-            $('#tableDiv').on('click', '.showManage', event => {
-                event.preventDefault();
-                $('#tabs').tabs('option', 'active', 0);
-                $('html,body').animate({scrollTop: 0}, 1000);
-            });
         },
         recommendedShows() {
             $('#recommendedShows').loadRemoteShows(

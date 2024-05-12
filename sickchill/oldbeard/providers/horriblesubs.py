@@ -10,7 +10,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("HorribleSubs")
 
         self.public = True
@@ -25,7 +24,7 @@ class Provider(TorrentProvider):
 
         self.cache = tvcache.TVCache(self, min_time=15)  # only poll HorribleSubs every 15 minutes max
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if self.show and not self.show.is_anime:
             return results

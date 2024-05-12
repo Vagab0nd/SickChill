@@ -8,7 +8,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("torrent-paradise")
         self.minseed = 0
         self.minleech = 0
@@ -20,7 +19,7 @@ class Provider(TorrentProvider):
 
         self.cache = tvcache.TVCache(self)
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
 
         if "RSS" in search_strings:

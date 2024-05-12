@@ -23,6 +23,7 @@ def get_scene_numbering(indexer_id, indexer, season, episode, fallback_to_xem=Tr
     (so the return values will always be set)
 
     :param indexer_id: int
+    :param indexer: int
     :param season: int
     :param episode: int
     :param fallback_to_xem: bool If set (the default), check xem for matches if there is no local scene numbering
@@ -31,7 +32,7 @@ def get_scene_numbering(indexer_id, indexer, season, episode, fallback_to_xem=Tr
     if indexer_id is None or season is None or episode is None:
         return season, episode
 
-    showObj = Show.find(settings.showList, int(indexer_id))
+    showObj = Show.find(settings.show_list, int(indexer_id))
     if showObj and not showObj.is_scene:
         return season, episode
 
@@ -85,7 +86,7 @@ def get_scene_absolute_numbering(indexer_id, indexer, absolute_number, fallback_
     indexer_id = int(indexer_id)
     indexer = int(indexer)
 
-    showObj = Show.find(settings.showList, indexer_id)
+    showObj = Show.find(settings.show_list, indexer_id)
     if showObj and not showObj.is_scene:
         return absolute_number
 
@@ -208,8 +209,8 @@ def set_scene_numbering(indexer_id, indexer, season=None, episode=None, absolute
         )
 
     # Reload data from DB so that cache and db are in sync
-    show = Show.find(settings.showList, indexer_id)
-    show.flushEpisodes()
+    show = Show.find(settings.show_list, indexer_id)
+    show.flush_episodes()
 
 
 def find_xem_numbering(indexer_id, indexer, season, episode):
@@ -247,6 +248,7 @@ def find_xem_absolute_numbering(indexer_id, indexer, absolute_number):
     Refreshes/Loads as needed.
 
     :param indexer_id: int
+    :param indexer: int
     :param absolute_number: int
     :return: int
     """
@@ -305,6 +307,7 @@ def get_indexer_absolute_numbering_for_xem(indexer_id, indexer, sceneAbsoluteNum
     :param indexer_id: int
     :param indexer: int
     :param sceneAbsoluteNumber: int
+    :param scene_season: default None
     :return: int
     """
     if indexer_id is None or sceneAbsoluteNumber is None:
@@ -444,12 +447,12 @@ def get_xem_absolute_numbering_for_show(indexer_id, indexer):
     )
 
     for row in rows:
-        __absolute_number = row["absolute_number"]
-        __scene_absolute_number = row["scene_absolute_number"]
-        if not (__absolute_number and __scene_absolute_number):
+        absolute_number = row["absolute_number"]
+        scene_absolute_number = row["scene_absolute_number"]
+        if not (absolute_number and scene_absolute_number):
             continue
 
-        result[int(__absolute_number)] = int(__scene_absolute_number)
+        result[int(absolute_number)] = int(scene_absolute_number)
 
     return result
 
@@ -459,6 +462,8 @@ def xem_refresh(indexer_id, indexer, force=False):
     Refresh data from xem for a tv show
 
     :param indexer_id: int
+    :param indexer: int
+    :param force: default False
     """
     if not indexer_id or indexer_id < 1:
         return
@@ -486,7 +491,7 @@ def xem_refresh(indexer_id, indexer, force=False):
 
         try:
             # XEM MAP URL
-            url = f"http://thexem.info/map/havemap?origin={sickchill.indexer.slug(indexer)}"
+            url = f"https://thexem.info/map/havemap?origin={sickchill.indexer.slug(indexer)}"
             parsed_json = sickchill.oldbeard.helpers.getURL(url, session=xem_session, returns="json")
             if (
                 not parsed_json
@@ -498,7 +503,7 @@ def xem_refresh(indexer_id, indexer, force=False):
                 return
 
             # XEM API URL
-            url = f"http://thexem.info/map/all?id={indexer_id}&origin={sickchill.indexer.slug(indexer)}&destination=scene"
+            url = f"https://thexem.info/map/all?id={indexer_id}&origin={sickchill.indexer.slug(indexer)}&destination=scene"
 
             parsed_json = sickchill.oldbeard.helpers.getURL(url, session=xem_session, returns="json")
             if not parsed_json or "result" not in parsed_json or "success" not in parsed_json["result"]:

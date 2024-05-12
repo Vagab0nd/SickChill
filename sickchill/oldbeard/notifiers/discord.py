@@ -1,5 +1,6 @@
-from sickchill import settings
+from sickchill import logger, settings
 from sickchill.oldbeard import common
+from sickchill.oldbeard.classes import UIError
 
 
 class Notifier(object):
@@ -27,6 +28,13 @@ class Notifier(object):
             title = common.notifyStrings[common.NOTIFY_LOGIN]
             self._notify_discord(title + " - " + update_text.format(ipaddress))
 
+    def notify_logged_error(self, ui_error: UIError):
+        if settings.USE_DISCORD:
+            update_text = ui_error.message
+            title = ui_error.title
+
+            self._notify_discord(f"{title} - {update_text}")
+
     def test_notify(self, webhook: str = None, name: str = None, avatar: str = None, tts=None):
         from sickchill.oldbeard.notifications_queue import DiscordTask
 
@@ -39,6 +47,7 @@ class Notifier(object):
 
     def _notify_discord(self, message="", force=False):
         if not settings.USE_DISCORD and not force:
+            logger.debug("Notification for Discord not enabled, skipping this notification")
             return False
 
         return self._send_discord(message, force=force)

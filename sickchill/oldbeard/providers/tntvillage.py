@@ -41,7 +41,6 @@ category_excluded = {
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("TNTVillage")
 
         self._uid = None
@@ -92,7 +91,6 @@ class Provider(TorrentProvider):
         self.cache = tvcache.TVCache(self, min_time=30)  # only poll TNTVillage every 30 minutes max
 
     def _check_auth(self):
-
         if not self.username or not self.password:
             raise AuthException("Your authentication credentials for " + self.name + " are missing, check your config.")
 
@@ -118,7 +116,6 @@ class Provider(TorrentProvider):
 
     @staticmethod
     def _reverseQuality(quality):
-
         quality_string = ""
 
         if quality == Quality.SDTV:
@@ -196,7 +193,6 @@ class Provider(TorrentProvider):
             return Quality.UNKNOWN
 
     def _is_italian(self, torrent_rows):
-
         name = str(torrent_rows("td")[1].find("b").find("span"))
         if not name or name == "None":
             return False
@@ -221,7 +217,6 @@ class Provider(TorrentProvider):
 
     @staticmethod
     def _is_english(torrent_rows):
-
         name = str(torrent_rows("td")[1].find("b").find("span"))
         if not name or name == "None":
             return False
@@ -235,9 +230,8 @@ class Provider(TorrentProvider):
 
     @staticmethod
     def _is_season_pack(name):
-
         try:
-            parse_result = NameParser(tryIndexers=True).parse(name)
+            parse_result = NameParser(try_indexers=True).parse(name)
         except (InvalidNameException, InvalidShowException) as error:
             logger.debug(f"{error}")
             return False
@@ -248,18 +242,17 @@ class Provider(TorrentProvider):
         if int(episodes[0]["count"]) == len(parse_result.episode_numbers):
             return True
 
-    def search(self, search_params, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if not self.login():
             return results
 
         self.categories = "cat=" + str(self.cat)
 
-        for mode in search_params:
+        for mode in search_strings:
             items = []
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
-            for search_string in search_params[mode]:
-
+            for search_string in search_strings[mode]:
                 if mode == "RSS":
                     self.page = 2
 
@@ -304,7 +297,6 @@ class Provider(TorrentProvider):
                                 last_page = 1
 
                             for result in torrent_table("tr")[2:]:
-
                                 try:
                                     link = result.find("td").find("a")
                                     title = link.string
@@ -356,7 +348,7 @@ class Provider(TorrentProvider):
                                 if seeders < self.minseed or leechers < self.minleech:
                                     if mode != "RSS":
                                         logger.debug(
-                                            "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                            _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                                 title, seeders, leechers
                                             )
                                         )

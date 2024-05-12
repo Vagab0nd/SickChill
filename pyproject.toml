@@ -1,14 +1,12 @@
 [tool.poetry]
 name = "sickchill"
-version = "2023.1.2"
+version = "2024.3.1"
 description = 'Automatic Video Library Manager for TV Shows'
 license = "GPL-3.0-or-later"
 
 authors = [
     "Dustyn Gibson <miigotu@gmail.com>",
-    "BKSteve <stephen.rieger@gmail.com>",
-    "pigsyn <nobody@github.com>",
-    "kyuuk <nobody@github.com>"
+    "BKSteve <stephen.rieger@gmail.com>"
 ]
 
 maintainers = [
@@ -28,7 +26,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10"
@@ -41,13 +38,10 @@ packages = [
 ]
 
 [tool.poetry.urls]
-"Changelog" = "https://raw.githubusercontent.com/SickChill/sickchill.github.io/master/sickchill-news/CHANGES.md"
+"Changelog" = "https://github.com/SickChill/SickChill/blob/master/CHANGES.md"
 "Bug Tracker" = "https://github.com/sickchill/sickchill/issues"
 "News" = "https://raw.githubusercontent.com/SickChill/sickchill.github.io/master/sickchill-news/news.md"
 "Discord" = "https://discord.com/invite/U8WPBdf"
-"Slack" = "https://sickchill.slack.com/"
-"Telegram" = "https://t.me/sickchill"
-"IRC" = "https://webchat.freenode.net/?channels=#sickchill"
 "Donate"= "https://github.com/SickChill/SickChill/wiki/Donations"
 
 [tool.poetry.scripts]
@@ -58,47 +52,45 @@ sickchill = "SickChill:main"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-black = "^22.8.0"
+black = ">=22.8,<25.0"
 coveralls = "^3.3.1"
-mock = "^4.0.3"
+mock = ">=4.0.3,<6.0.0"
 Babel = "^2.9.0"
-pytest-cov = "^3.0.0"
+pytest-cov = ">=3,<5"
 pytest-isort = "^3.0.0"
 flake8-pytest-style = "^1.5.1"
 flake8-commas = "^2.0.0"
 flake8-quotes = "^3.3.0"
-flake8-bandit = "^2.1.2"
 flake8-docstrings = "^1.6.0"
 flake9 = "^3.8.3"
 codecov = "^2.1.12"
-pytest = "^7.0.1"
+pytest = ">=7.0.1,<9.0.0"
 isort = "^5.10.1"
-poethepoet = "^0.16.0"
+poethepoet = ">=0.16,<0.26"
 po2json = "^0.2.2"
-bandit = "<=1.7.2"
-pre-commit = "^2.20.0"
+pre-commit = ">=2.20,<4.0"
 
 [tool.poetry.group.speedups]
 optional = true
 
 [tool.poetry.group.speedups.dependencies]
 html5lib = "^1.1"
-lxml = "^4.9.1"
-Js2Py = "^0.71"
-pymediainfo = "^5.0.3"
+lxml = ">=4.9.1,<6.0.0"
+Js2Py = ">=0.71,<0.75"
+pymediainfo = ">=5.0.3,<7.0.0"
 
 [tool.poetry.group.types]
 optional = true
 
 [tool.poetry.group.types.dependencies]
 types-attrs = "^19.1.0"
-types-pyOpenSSL = "^22.0.10"
+types-pyOpenSSL = ">=22.0.10,<25.0.0"
 types-python-dateutil = "^2.8.19"
-types-python-slugify = "^6.1.0"
+types-python-slugify = ">=6.1,<9.0"
 types-requests = "^2.28.11"
 types-chardet = "^5.0.4"
-types-pytz = "^2022.2.1.0"
-types-setuptools = "^65.3.0"
+types-pytz = ">=2022.2.1,<2025.0.0"
+types-setuptools = ">=65.3,<70.0"
 types-six = "^1.16.20"
 
 [tool.poetry.group.experimental]
@@ -111,7 +103,9 @@ pyaes = "^1.6.1"
 optional = true
 
 [tool.poetry.group.frontend.dependencies]
-Flask = "^2.2.2"
+Flask = ">=2.2.2,<4.0.0"
+urllib3 = "<3.0.0"
+flask-sqlalchemy = "^3.0.3"
 
 [tool.poetry.extras]
 experimental = ["experimental"]
@@ -181,7 +175,7 @@ src_paths = [ "sickchill", "tests", "SickChill.py", "setup.py" ]
 line-length = 160
 target_version = ['py310']
 include = '\.pyi?$'
-exclude = 'contrib/scmaintools|\.venv|\.git|\.hg|\.mypy_cache|\.tox|\.venv|_build|buck-out|build|dist|node_modules|bower_components'
+exclude = 'contrib/scmaintools|\.venv|venv|\.git|\.hg|\.mypy_cache|\.tox|_build|buck-out|build|dist|node_modules|bower_components'
 
 [tool.poe.tasks]
 pytest = "pytest"
@@ -256,26 +250,24 @@ pybabel update
 """
 
 [tool.poetry.dependencies]
-python = ">=3.7.2,<4"
+python = ">=3.8,<4"
 "bencode.py" = "^4.0.0"
-CacheControl = "^0.12.6"
 configobj = "^5.0.6"
-greenlet = {version = ">=1.1.2", allow-prereleases = true}
+greenlet = {version = ">=2.0.0", allow-prereleases = true}
 ipaddress = "^1.0.23"
 jsonrpclib-pelix = "^0.4.2"
 Mako = "^1.1.4"
 markdown2 = "^2.4.0"
-PyGithub = "^1.54.1"
-pyOpenSSL = ">=20.0.1,<24.0.0"
+pyOpenSSL = ">=20.0.1,<25.0.0"
 python-dateutil = "^2.8.1"
 python-twitter = "^3.5"
 rarfile = "^4.0"
 subliminal = "^2.1.0"
 tmdbsimple = "^2.8.0"
-tornado = "^6.1"
+tornado = "^6.3.2"
 tvdbsimple = "^1.0.6"
 Unidecode = "^1.2.0"
-validators = ">=0.18.2,<0.21.0"
+validators = ">=0.18.2,<0.23.0"
 enzyme = "^0.4.1"
 python3-fanart = "^2.0.0"
 gntp = "^1.0.3"
@@ -285,22 +277,21 @@ PyNMA = "^1.0"
 "putio.py" = "^8.7.0"
 profilehooks = "^1.12.0"
 imagesize = "^1.2.0"
-Send2Trash = {version = "^1.5.0", optional = true}
+Send2Trash = ">=1.5.0"
 deluge-client = "^1.9.0"
 ifaddr = ">=0.1.7,<0.3.0"
 new-rtorrent-python = "^1.0.1-alpha.0"
-qbittorrent-api = ">=2021.3.18,<2023.0.0"
-packaging = ">=20.9,<23.0"
+qbittorrent-api = ">=2021.3.18,<2025.0.0"
+packaging = ">=20.9,<24.0"
 timeago = "^1.0.15"
-SQLAlchemy = "^1.4.3"
-python-slugify = ">=4.0.1,<8.0.0"
+SQLAlchemy = ">=2.0.0,<3.0.0"
+python-slugify = ">=4.0.1,<9.0.0"
 guessit = "^3.3.1"
 requests = "^2.25.1"
-IMDbPY = ">=2020.09.25"
-babelfish = ">=0.6.0b1"
+babelfish = ">=0.6.0"
 kodipydent-alt = ">=2022.9.3"
 beekeeper-alt = ">=2022.9.3"
 
-# stevedore dropped support for python 3.7
-stevedore = {version = "<=3.5.0", python = "<3.8"}
-importlib-metadata = {version = "<5.0.0", python = "<3.8"}
+stevedore = "^5.1.0"
+cachecontrol = ">=0.13.1,<0.15.0"
+cinemagoer = {version = "^2023.5.1", allow-prereleases = true}

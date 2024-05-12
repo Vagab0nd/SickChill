@@ -15,11 +15,16 @@ from . import Config
 @Route("/config/search(/?.*)", name="config:search")
 class ConfigSearch(Config):
     @addslash
-    def index(self, *args_, **kwargs_):
+    def index(self):
         t = PageTemplate(rh=self, filename="config_search.mako")
 
         return t.render(
-            submenu=self.ConfigMenu(), title=_("Config - Episode Search"), header=_("Search Settings"), topmenu="config", controller="config", action="search"
+            submenu=self.ConfigMenu(),
+            title=_("Config - Episode Search"),
+            header=_("Search Settings"),
+            topmenu="config",
+            controller="config",
+            action="search",
         )
 
     def saveSearch(
@@ -48,6 +53,7 @@ class ConfigSearch(Config):
         backlog_frequency=None,
         dailysearch_frequency=None,
         cache_retention=None,
+        show_skip_older=None,
         nzb_method=None,
         torrent_method=None,
         usenet_retention=None,
@@ -84,7 +90,6 @@ class ConfigSearch(Config):
         prefer_words=None,
         flaresolverr_uri=None,
     ):
-
         results = []
 
         if not config.change_nzb_dir(nzb_dir):
@@ -105,6 +110,7 @@ class ConfigSearch(Config):
         settings.TORRENT_METHOD = torrent_method
         settings.USENET_RETENTION = try_int(usenet_retention, 500)
         settings.CACHE_RETENTION = try_int(cache_retention, 30)
+        settings.SHOW_SKIP_OLDER = try_int(show_skip_older, 30)
 
         settings.IGNORE_WORDS = ignore_words if ignore_words else ""
         settings.TRACKERS_LIST = trackers_list if trackers_list else ""

@@ -63,7 +63,7 @@ def get_scene_exceptions(indexer_id, season=-1):
         if indexer_id in exceptions_cache and -1 in exceptions_cache[indexer_id]:
             results += exceptions_cache[indexer_id][-1]
     else:
-        show = Show.find(settings.showList, indexer_id)
+        show = Show.find(settings.show_list, indexer_id)
         if show:
             if show.show_name:
                 results.append(helpers.full_sanitizeSceneName(show.show_name))
@@ -104,13 +104,12 @@ def get_all_scene_exceptions(indexer_id):
 
         exceptions_cache[indexer_id][cur_exception["season"]].append(cur_exception["show_name"])
 
-    show = Show.find(settings.showList, indexer_id)
+    show = Show.find(settings.show_list, indexer_id)
     if show:
         sanitized_name = helpers.full_sanitizeSceneName(show.show_name)
         sanitized_custom_name = helpers.full_sanitizeSceneName(show.custom_name)
 
         if sanitized_name or sanitized_custom_name:
-
             if -1 not in all_exceptions_dict:
                 all_exceptions_dict[-1] = []
 
@@ -154,12 +153,10 @@ def get_scene_exception_by_name_multiple(show_name):
     all_exception_results = cache_db_con.select("SELECT show_name, indexer_id, season FROM scene_exceptions")
 
     for cur_exception in all_exception_results:
-
         cur_exception_name = cur_exception["show_name"]
         cur_indexer_id = int(cur_exception["indexer_id"])
 
         if show_name.lower() in (cur_exception_name.lower(), sickchill.oldbeard.helpers.sanitizeSceneName(cur_exception_name).lower().replace(".", " ")):
-
             logger.debug(f"Scene exception lookup got indexer id {cur_indexer_id}, using that")
 
             out.append((cur_indexer_id, int(cur_exception["season"])))
@@ -170,9 +167,9 @@ def get_scene_exception_by_name_multiple(show_name):
     return [(None, None)]
 
 
-def retrieve_exceptions():  # pylint:disable=too-many-locals, too-many-branches
+def retrieve_exceptions():
     """
-    Looks up the exceptions on github, parses them into a dict, and inserts them into the
+    Looks up the exceptions on GitHub, parses them into a dict, and inserts them into the
     scene_exceptions table in cache.db. Also clears the scene name cache.
     """
     # SC exceptions
@@ -287,7 +284,10 @@ def _anidb_exceptions_fetcher():
 
     if should_refresh("anidb"):
         logger.info("Checking for scene exception updates for AniDB")
-        for show in settings.showList:
+        for show in settings.show_list:
+            if settings.stopping or settings.restarting:
+                break
+
             if show.is_anime and show.indexer == 1:
                 try:
                     anime = adba.Anime(None, name=show.name, tvdbid=show.indexerid, autoCorrectName=True, cache_dir=Path(settings.CACHE_DIR))

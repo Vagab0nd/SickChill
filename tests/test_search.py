@@ -44,8 +44,8 @@ def generator(cur_data, cur_name, cur_provider):
         show = TVShow(1, int(cur_data["tvdbid"]))
         show.name = cur_name
         show.quality = common.ANY | common.Quality.UNKNOWN | common.Quality.RAWHDTV
-        show.saveToDB()
-        settings.showList.append(show)
+        show.save_to_db()
+        settings.show_list.append(show)
 
         for ep_number in cur_data["e"]:
             episode = TVEpisode(show, cur_data["s"], ep_number)
@@ -55,7 +55,7 @@ def generator(cur_data, cur_name, cur_provider):
             episode.scene_season = cur_data["s"]
             episode.scene_episode = ep_number
 
-            episode.saveToDB()
+            episode.save_to_db()
 
             cur_provider.show = show
             season_strings = cur_provider.get_season_search_strings(episode)
@@ -125,7 +125,7 @@ if __name__ == "__main__":
         for name, data in TESTS.items():
             filename = name.replace(" ", "_")
 
-            for provider in sickchill.oldbeard.providers.sortedProviderList():
+            for provider in sickchill.oldbeard.providers.sorted_provider_list():
                 if provider.provider_type == GenericProvider.TORRENT:
                     if forceSearch:
                         test_name = "test_manual_{0}_{1}_{2}".format(filename, data["tvdbid"], provider.name)

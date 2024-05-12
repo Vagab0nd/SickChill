@@ -58,7 +58,6 @@ class Provider(TorrentProvider):
 
     @staticmethod
     def _reverseQuality(quality):
-
         quality_string = ""
 
         if quality == Quality.SDTV:
@@ -121,7 +120,6 @@ class Provider(TorrentProvider):
             return Quality.UNKNOWN
 
     def _is_italian(self, name):
-
         if not name or name == "None":
             return False
 
@@ -145,7 +143,6 @@ class Provider(TorrentProvider):
 
     @staticmethod
     def _is_english(name):
-
         if not name or name == "None":
             return False
 
@@ -158,9 +155,8 @@ class Provider(TorrentProvider):
 
     @staticmethod
     def _is_season_pack(name):
-
         try:
-            parse_result = NameParser(tryIndexers=True).parse(name)
+            parse_result = NameParser(try_indexers=True).parse(name)
         except (InvalidNameException, InvalidShowException) as error:
             logger.debug(f"{error}")
             return False
@@ -174,16 +170,16 @@ class Provider(TorrentProvider):
     @staticmethod
     def _magnet_from_result(info_hash, title):
         return "magnet:?xt=urn:btih:{hash}&dn={title}&tr={trackers}".format(
-            hash=info_hash, title=quote_plus(title), trackers="http://tracker.tntvillage.scambioetico.org:2710/announce"
+            hash=info_hash, title=quote_plus(title), trackers="https://tracker.tntvillage.scambioetico.org:2710/announce"
         )
 
-    def search(self, search_params, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
 
-        for mode in search_params:
+        for mode in search_strings:
             items = []
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
-            for search_string in search_params[mode]:
+            for search_string in search_strings[mode]:
                 if search_string == "":
                     continue
 
@@ -277,7 +273,7 @@ class Provider(TorrentProvider):
                                 # Filter unseeded torrent
                                 if seeders < self.minseed or leechers < self.minleech:
                                     logger.debug(
-                                        "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                        _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                             title, seeders, leechers
                                         )
                                     )
@@ -296,7 +292,7 @@ class Provider(TorrentProvider):
                                 items.append(item)
 
                     except Exception as error:
-                        logger.exception("Failed parsing provider. Error: {0}".format(error))
+                        logger.exception(f"Failed parsing provider. Error: {error}")
 
                 # For each search mode sort all the items by seeders if available
                 items.sort(key=lambda d: try_int(d.get("seeders", 0)), reverse=True)

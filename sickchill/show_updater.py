@@ -6,6 +6,7 @@ import sickchill
 from sickchill import logger, settings
 from sickchill.helper.exceptions import CantRefreshShowException, CantUpdateShowException
 from sickchill.oldbeard import db, network_timezones, ui
+from sickchill.show.Show import Show
 
 
 class ShowUpdater(object):
@@ -36,7 +37,6 @@ class ShowUpdater(object):
 
                     current_check = update_timestamp
                     while current_check >= last_update:
-
                         try:
                             TvdbData = sickchill.indexer[1].updates(fromTime=current_check - self.seven_days, toTime=current_check)
                             TvdbData.series()
@@ -49,13 +49,15 @@ class ShowUpdater(object):
                     logger.info(_("No last update time from the cache, so we do a full update for all shows"))
 
                 pi_list = []
-                for cur_show in settings.showList:
+                for cur_show in settings.show_list:
+                    if settings.stopping or settings.restarting:
+                        break
                     try:
-                        cur_show.nextEpisode()
+                        cur_show.next_episode()
 
                         skip_update = False
-                        # Skip ended shows until interval is met
-                        if cur_show.status == "Ended" and settings.ENDED_SHOWS_UPDATE_INTERVAL != 0:  # 0 is always
+                        # Skip ended or paused shows until interval is met
+                        if (cur_show.status == "Ended" or cur_show.paused) and settings.ENDED_SHOWS_UPDATE_INTERVAL != 0:  # 0 is always
                             if settings.ENDED_SHOWS_UPDATE_INTERVAL == -1:  # Never
                                 skip_update = True
                             if (
@@ -63,12 +65,13 @@ class ShowUpdater(object):
                             ).days < settings.ENDED_SHOWS_UPDATE_INTERVAL:
                                 skip_update = True
 
-                        # Just update all of the shows for now until they fix the updates api
                         # When last_update is not set from the cache or the show was in the tvdb updated list we update the show
                         if not last_update or (cur_show.indexerid in updated_shows and not skip_update):
-                            pi_list.append(settings.showQueueScheduler.action.update_show(cur_show, True))
-                        else:
-                            pi_list.append(settings.showQueueScheduler.action.refresh_show(cur_show, force))
+                            pi_list.append(Show.update(cur_show, force))
+                        elif not skip_update:
+                            # TODO: do we really need to refresh every show every day if it is not updated?
+                            # Temporarily use the same duration for paused as ended
+                            pi_list.append(Show.refresh(cur_show, force))
                     except (CantUpdateShowException, CantRefreshShowException) as error:
                         logger.info(_("Automatic update failed: {error}").format(error=error))
 

@@ -1,5 +1,6 @@
 import datetime
 import json
+from typing import Dict, Iterable, List, TYPE_CHECKING, Union
 from urllib.parse import urlencode, urljoin
 
 from sickchill import logger
@@ -7,10 +8,12 @@ from sickchill.helper.exceptions import AuthException
 from sickchill.oldbeard import classes, tvcache
 from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
+if TYPE_CHECKING:
+    from sickchill.tv import TVEpisode, TVShow
+
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("HDBits")
 
         self.username = None
@@ -22,14 +25,13 @@ class Provider(TorrentProvider):
         self.urls = {"search": urljoin(self.url, "/api/torrents"), "rss": urljoin(self.url, "/api/torrents"), "download": urljoin(self.url, "/download.php")}
 
     def _check_auth(self):
-
         if not self.username or not self.passkey:
             raise AuthException("Your authentication credentials for " + self.name + " are missing, check your config.")
 
         return True
 
     @staticmethod
-    def _check_auth_from_data(parsed_json):
+    def check_auth_from_data(parsed_json):
         """Check that we are authenticated."""
 
         if "status" in parsed_json and "message" in parsed_json and parsed_json.get("status") == 5:
@@ -37,12 +39,12 @@ class Provider(TorrentProvider):
 
         return True
 
-    def get_season_search_strings(self, ep_obj):
-        season_search_string = [self.make_post_data_JSON(show=ep_obj.show, season=ep_obj)]
+    def get_season_search_strings(self, episode: "TVEpisode") -> Union[List[Dict], List[str]]:
+        season_search_string = [self.make_post_data_json(show=self.show, season=episode)]
         return season_search_string
 
-    def get_episode_search_strings(self, ep_obj, add_string=""):
-        episode_search_string = [self.make_post_data_JSON(show=ep_obj.show, episode=ep_obj)]
+    def get_episode_search_strings(self, episode: "TVEpisode", add_string: str = "") -> Union[List[Dict], Iterable]:
+        episode_search_string = [self.make_post_data_json(show=self.show, episode=episode)]
         return episode_search_string
 
     def _get_title_and_url(self, item):
@@ -51,12 +53,10 @@ class Provider(TorrentProvider):
 
         return title, url
 
-    def search(self, search_params, age=0, ep_obj=None):
-
-        # FIXME
+    def search(self, search_params):
         results = []
 
-        logger.debug("Search string: {0}".format(search_params))
+        logger.debug(f"Search string: {search_params}")
 
         self._check_auth()
 
@@ -64,7 +64,7 @@ class Provider(TorrentProvider):
         if not parsed_json:
             return []
 
-        if self._check_auth_from_data(parsed_json):
+        if self.check_auth_from_data(parsed_json):
             if parsed_json and "data" in parsed_json:
                 items = parsed_json["data"]
             else:
@@ -82,7 +82,7 @@ class Provider(TorrentProvider):
         search_terms = [" proper ", " repack "]
 
         for term in search_terms:
-            for item in self.search(self.make_post_data_JSON(search_term=term)):
+            for item in self.search(self.make_post_data_json(search_term=term)):
                 if item["utadded"]:
                     try:
                         result_date = datetime.datetime.fromtimestamp(int(item["utadded"]))
@@ -95,8 +95,8 @@ class Provider(TorrentProvider):
 
         return results
 
-    def make_post_data_JSON(self, show=None, episode=None, season=None, search_term=None):
-
+    # noinspection PyTypedDict
+    def make_post_data_json(self, show: "TVShow" = None, episode: "TVEpisode" = None, season=None, search_term=None):
         post_data = {
             "username": self.username,
             "passkey": self.passkey,
@@ -104,7 +104,7 @@ class Provider(TorrentProvider):
             # TV Category
         }
 
-        if episode:
+        if episode is not None:
             if show.air_by_date:
                 post_data["tvdb"] = {"id": show.indexerid, "episode": str(episode.airdate).replace("-", "|")}
             elif show.sports:
@@ -114,7 +114,7 @@ class Provider(TorrentProvider):
             else:
                 post_data["tvdb"] = {"id": show.indexerid, "season": episode.scene_season, "episode": episode.scene_episode}
 
-        if season:
+        if season is not None:
             if show.air_by_date or show.sports:
                 post_data["tvdb"] = {
                     "id": show.indexerid,
@@ -143,9 +143,9 @@ class HDBitsCache(tvcache.TVCache):
         results = []
 
         try:
-            parsed_json = self.provider.get_url(self.provider.urls["rss"], post_data=self.provider.make_post_data_JSON(), returns="json")
+            parsed_json = self.provider.get_url(self.provider.urls["rss"], post_data=self.provider.make_post_data_json(), returns="json")
 
-            if self.provider._check_auth_from_data(parsed_json):
+            if self.provider.check_auth_from_data(parsed_json):
                 results = parsed_json["data"]
         except Exception:
             pass

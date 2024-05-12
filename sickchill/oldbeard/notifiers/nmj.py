@@ -1,5 +1,10 @@
 import re
-import telnetlib
+
+try:
+    import telnetlib
+except (ImportError, ModuleNotFoundError):
+    telnetlib = None
+
 import urllib.parse
 import urllib.request
 from xml.etree import ElementTree
@@ -19,6 +24,9 @@ class Notifier(object):
         """
 
         # establish a terminal session to the PC
+
+        if telnetlib is None:
+            logger.info("telnetlib was removed in python 3.13, use python 3.12, disable nmj, or update this script to use a new library")
         try:
             terminal = telnetlib.Telnet(host)
         except Exception:
@@ -152,7 +160,7 @@ class Notifier(object):
 
     def _notifyNMJ(self, host=None, database=None, mount=None, force=False):
         """
-        Sends a NMJ update command based on the SB config settings
+        Sends a NMJ update command based on the SC config settings
 
         host: The host to send the command to (optional, defaults to the host in the config)
         database: The database to use (optional, defaults to the database in the config)

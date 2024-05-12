@@ -30,7 +30,7 @@ class FailedProcessor(object):
         """
         self._log(_("Failed download detected: ({release_name}, {directory})").format(release_name=self.release_name, directory=self.directory))
 
-        if self.release_name and validators.url(self.release_name) == True:
+        if self.release_name and validators.url(self.release_name) is True:
             cache_db_con = DBConnection("cache.db")
             cache_result = cache_db_con.select_one("SELECT name FROM results WHERE url = ?", [self.release_name])
             if cache_result:
@@ -56,7 +56,7 @@ class FailedProcessor(object):
         self._log(f"{parsed.air_date}", logger.DEBUG)
 
         for episode in parsed.episode_numbers:
-            segment = parsed.show.getEpisode(parsed.season_number, episode)
+            segment = parsed.show.get_episode(parsed.season_number, episode)
 
             cur_failed_queue_item = search_queue.FailedQueueItem(parsed.show, [segment])
             settings.searchQueueScheduler.action.add_item(cur_failed_queue_item)

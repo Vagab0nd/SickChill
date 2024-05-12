@@ -8,7 +8,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         # Provider Init
         super().__init__("Danishbits")
 
@@ -33,7 +32,7 @@ class Provider(TorrentProvider):
         # Cache
         self.cache = tvcache.TVCache(self, min_time=10)  # Only poll Danishbits every 10 minutes max
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if not self.login():
             return results
@@ -51,7 +50,6 @@ class Provider(TorrentProvider):
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
 
             for search_string in {*search_strings[mode]}:
-
                 if mode != "RSS":
                     logger.debug("Search string: {0}".format(search_string))
 

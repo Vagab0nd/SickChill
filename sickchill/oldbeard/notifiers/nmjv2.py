@@ -42,7 +42,6 @@ class Notifier(object):
         Returns: True if the settings were retrieved successfully, False otherwise
         """
         try:
-
             url = "http://{0}:8008/file_operation?arg0=list_user_storage_file&arg1=&arg2={1}&arg3=20&arg4=true&arg5=true&arg6=true&arg7=all&arg8=name_asc&arg9=false&arg10=false".format(
                 host, instance
             )
@@ -133,7 +132,7 @@ class Notifier(object):
 
     def _notifyNMJ(self, host=None, force=False):
         """
-        Sends a NMJ update command based on the SB config settings
+        Sends a NMJ update command based on the SC config settings
 
         host: The host to send the command to (optional, defaults to the host in the config)
         database: The database to use (optional, defaults to the database in the config)

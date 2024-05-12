@@ -1,13 +1,13 @@
 import re
 
-from twilio.rest import Client, TwilioException
+from twilio.base.exceptions import TwilioRestException
+from twilio.rest import Client
 
 from sickchill import logger, settings
 from sickchill.oldbeard import common
 
 
 class Notifier(object):
-
     number_regex = re.compile(r"^\+1-\d{3}-\d{3}-\d{4}$")
     account_regex = re.compile(r"^AC[a-z0-9]{32}$")
     auth_regex = re.compile(r"^[a-z0-9]{32}$")
@@ -42,12 +42,12 @@ class Notifier(object):
                 return False
 
             return self._notifyTwilio(_("This is a test notification from SickChill"), force=True, allow_raise=True)
-        except TwilioException:
+        except TwilioRestException:
             return False
 
     @property
     def number(self):
-        return self.client.api.incoming_phone_numbers.get(settings.TWILIO_PHONE_SID).fetch()
+        return self.client.api.account.incoming_phone_numbers.get(settings.TWILIO_PHONE_SID).fetch()
 
     @property
     def client(self):
@@ -55,6 +55,7 @@ class Notifier(object):
 
     def _notifyTwilio(self, message="", force=False, allow_raise=False):
         if not (settings.USE_TWILIO or force or self.number_regex.match(settings.TWILIO_TO_NUMBER)):
+            logger.debug("Notification for Twilio not enabled, skipping this notification")
             return False
 
         logger.debug("Sending Twilio SMS: " + message)
@@ -65,7 +66,7 @@ class Notifier(object):
                 to=settings.TWILIO_TO_NUMBER,
                 from_=self.number.phone_number,
             )
-        except TwilioException as error:
+        except TwilioRestException as error:
             logger.exception(f"Twilio notification failed: {error}")
 
             if allow_raise:

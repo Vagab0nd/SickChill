@@ -8,7 +8,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         # Provider Init
         super().__init__("EZTV")
 
@@ -20,13 +19,13 @@ class Provider(TorrentProvider):
         self.minleech = 0
 
         # URLs
-        self.url = "https://eztv.re"
+        self.url = "https://eztvx.to"
         self.api = urljoin(self.url, "api/get-torrents")
 
         # Cache
         self.cache = tvcache.TVCache(self, min_time=30)  # only poll ThePirateBay every 30 minutes max
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         search_params = {"imdb_id": None, "page": 1, "limit": 100}
 
@@ -66,7 +65,9 @@ class Provider(TorrentProvider):
                     if seeders < self.minseed or leechers < self.minleech:
                         if mode != "RSS":
                             logger.debug(
-                                "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(title, seeders, leechers)
+                                _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
+                                    title, seeders, leechers
+                                )
                             )
                         continue
 

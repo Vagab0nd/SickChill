@@ -12,7 +12,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("HDTorrents.it")
 
         self.username = None
@@ -37,7 +36,6 @@ class Provider(TorrentProvider):
         self.cache = tvcache.TVCache(self, min_time=30)  # only poll HDTorrents every 30 minutes ma
 
     def _check_auth(self):
-
         if not self.username or not self.password:
             logger.warning("Invalid username or password. Check your settings")
 
@@ -60,7 +58,7 @@ class Provider(TorrentProvider):
 
         return True
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if not self.login():
             return results
@@ -149,7 +147,7 @@ class Provider(TorrentProvider):
                         if seeders < self.minseed or leechers < self.minleech:
                             if mode != "RSS":
                                 logger.debug(
-                                    "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                    _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                         title, seeders, leechers
                                     )
                                 )

@@ -1,7 +1,6 @@
 import re
+from typing import Dict, List, TYPE_CHECKING
 from urllib.parse import urljoin
-
-import validators
 
 from sickchill import logger, settings
 from sickchill.oldbeard import tvcache
@@ -9,6 +8,9 @@ from sickchill.oldbeard.bs4_parser import BS4Parser
 from sickchill.oldbeard.show_name_helpers import allPossibleShowNames
 
 from .TorrentProvider import TorrentProvider
+
+if TYPE_CHECKING:
+    from sickchill.tv import TVEpisode
 
 
 class FrenchTorrentProvider(TorrentProvider):
@@ -60,18 +62,21 @@ class FrenchTorrentProvider(TorrentProvider):
 
         return ""
 
-    def _get_custom_url(self):
+    @property
+    def custom_url(self):
         return self._custom_url
 
-    def _set_custom_url(self, url):
+    @custom_url.setter
+    def custom_url(self, url):
         if self._custom_url != url:
             self._custom_url = url
             self._recheck_url = True
 
-    def _get_provider_url(self):
+    @property
+    def url(self):
         if self._recheck_url:
             if self.custom_url:
-                if validators.url(self.custom_url):
+                if self.valid_url(self.custom_url):
                     self._used_url = self.custom_url
                 else:
                     logger.warning("Invalid custom url set, please check your settings")
@@ -80,14 +85,12 @@ class FrenchTorrentProvider(TorrentProvider):
 
         return self._used_url
 
-    def _set_provider_url(self, url):
+    @url.setter
+    def url(self, url):
         self._used_url = url
 
-    url = property(_get_provider_url, _set_provider_url)
-    custom_url = property(_get_custom_url, _set_custom_url)
-
-    def get_season_search_strings(self, episode):
-        search_string = {"Season": []}
+    def get_season_search_strings(self, episode: "TVEpisode") -> List[Dict]:
+        search_string = {"Season": set()}
         for show_name in allPossibleShowNames(episode.show, season=episode.scene_season):
             season = int(episode.scene_season)
             if episode.show.air_by_date or episode.show.sports:
@@ -98,6 +101,6 @@ class FrenchTorrentProvider(TorrentProvider):
             else:
                 season_string = f"{show_name} Saison {season:0d}"
 
-            search_string["Season"].append(season_string)
+            search_string["Season"].add(season_string)
 
         return [search_string]

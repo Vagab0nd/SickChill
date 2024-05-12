@@ -120,8 +120,8 @@ class ShowIndexer(object):
                     logger.debug("Failed to find {} on {}".format(search, self.name(i)))
                     continue
 
-                ShowObj = Show.find(settings.showList, result.id)
-                if indexerid and ShowObj and ShowObj.indexerid == result.id:
+                show = Show.find(settings.show_list, result.id)
+                if indexerid and show and show.indexerid == result.id:
                     return i, result
                 elif indexerid and indexerid == result.id:
                     return i, result
@@ -154,6 +154,9 @@ class ShowIndexer(object):
         return self.indexers[show.indexer].episode(show, season, episode, **kwargs)
 
     def series_poster_url_by_id(self, indexerid, language=None, indexer=None, thumb=False):
+        if not indexerid:
+            return ""
+
         class __TVShow(object):
             def __init__(self, __indexerid, __language, __indexer):
                 self.indexerid = __indexerid

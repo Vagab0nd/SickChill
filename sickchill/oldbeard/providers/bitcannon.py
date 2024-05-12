@@ -1,7 +1,5 @@
 from urllib.parse import urljoin
 
-import validators
-
 from sickchill import logger
 from sickchill.helper.common import convert_size, try_int
 from sickchill.oldbeard import tvcache
@@ -10,7 +8,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("BitCannon")
 
         self.minseed = 0
@@ -20,19 +17,19 @@ class Provider(TorrentProvider):
 
         self.cache = tvcache.TVCache(self, search_params={"RSS": ["tv", "anime"]})
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
 
         url = "http://localhost:3000/"
         if self.custom_url:
-            if validators.url(self.custom_url) != True:
+            if self.invalid_url(self.custom_url):
                 logger.warning("Invalid custom url set, please check your settings")
                 return results
             url = self.custom_url
 
         search_params = {}
 
-        anime = ep_obj and ep_obj.show and ep_obj.show.anime
+        anime = self.show and self.show.anime or False
         search_params["category"] = ("tv", "anime")[bool(anime)]
 
         if self.api_key:
@@ -52,7 +49,7 @@ class Provider(TorrentProvider):
                     logger.debug("No data returned from provider")
                     continue
 
-                if not self._check_auth_from_data(parsed_json):
+                if not self.check_auth_from_data(parsed_json):
                     return results
 
                 for result in parsed_json.pop("torrents", {}):
@@ -95,9 +92,8 @@ class Provider(TorrentProvider):
         return results
 
     @staticmethod
-    def _check_auth_from_data(data):
+    def check_auth_from_data(data):
         if not all([isinstance(data, dict), data.pop("status", 200) != 401, data.pop("message", "") != "Invalid API key"]):
-
             logger.warning("Invalid api key. Check your settings")
             return False
 

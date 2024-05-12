@@ -16,7 +16,7 @@ from . import Config
 @Route("/config/postProcessing(/?.*)", name="config:postprocessing")
 class ConfigPostProcessing(Config):
     @addslash
-    def index(self, *args_, **kwargs_):
+    def index(self):
         t = PageTemplate(rh=self, filename="config_postProcessing.mako")
 
         return t.render(
@@ -74,7 +74,6 @@ class ConfigPostProcessing(Config):
         autopostprocessor_frequency=None,
         use_icacls=None,
     ):
-
         results = []
 
         if not config.change_tv_download_dir(tv_download_dir):

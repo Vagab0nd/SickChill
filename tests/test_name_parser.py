@@ -3,8 +3,8 @@ import os
 import sys
 import unittest
 
-from sickchill import tv
-from sickchill.oldbeard import common
+from sickchill import settings, tv
+from sickchill.oldbeard import common, scheduler, show_queue
 from sickchill.oldbeard.name_parser import parser
 from tests import conftest
 
@@ -143,6 +143,7 @@ COMBINATION_TEST_CASES = [
     ("Season 02\\03-04-05 - Ep Name.ext", parser.ParseResult(None, None, 2, [3, 4, 5], extra_info="Ep Name"), ["no_season", "season_only"]),
 ]
 
+# noinspection SpellCheckingInspection
 UNICODE_TEST_CASES = [
     (
         "The.Big.Bang.Theory.2x07.The.Panty.Piñata.Polarization.720p.HDTV.x264.AC3-SHELDON.mkv",
@@ -154,6 +155,7 @@ UNICODE_TEST_CASES = [
     ),
 ]
 
+# noinspection SpellCheckingInspection
 FAILURE_CASES = ["7sins-jfcs01e09-720p-bluray-x264"]
 
 
@@ -176,7 +178,7 @@ class UnicodeTests(conftest.SickChillTestDBCase):
         :param result:
         :return:
         """
-        name_parser = parser.NameParser(True, showObj=self.show)
+        name_parser = parser.NameParser(True, show_object=self.show)
         parse_result = name_parser.parse(name)
 
         # this shouldn't raise an exception
@@ -187,7 +189,7 @@ class UnicodeTests(conftest.SickChillTestDBCase):
         """
         Test str
         """
-        for (name, result) in UNICODE_TEST_CASES:
+        for name, result in UNICODE_TEST_CASES:
             self._test_unicode(name, result)
 
 
@@ -261,7 +263,7 @@ class ComboTests(conftest.SickChillTestDBCase):
         """
         Perform combination tests
         """
-        for (name, result, which_regexes) in COMBINATION_TEST_CASES:
+        for name, result, which_regexes in COMBINATION_TEST_CASES:
             # Normalise the paths. Converts UNIX-style paths into Windows-style
             # paths when test is run on Windows.
             self._test_combo(os.path.normpath(name), result, which_regexes)
@@ -303,7 +305,7 @@ class BasicTests(conftest.SickChillTestDBCase):
             result = SIMPLE_TEST_CASES[section][cur_test_base]
 
             self.show.name = result.series_name if result else None
-            name_parser.showObj = self.show
+            name_parser.show_object = self.show
             if not result:
                 self.assertRaises(parser.InvalidNameException, name_parser.parse, cur_test)
                 return
@@ -444,8 +446,9 @@ class AnimeTests(conftest.SickChillTestDBCase):
     def __init__(self, something):
         super().__init__(something)
         super().setUp()
-        self.show = tv.TVShow(1, 1, "en")
-        self.show.anime = True
+        self.show: tv.TVShow = tv.TVShow(1, 1, "en")
+        self.show.paused = True
+        self.show.anime = 1
 
     def tearDown(self):
         parser.name_parser_cache.data.clear()
@@ -475,7 +478,7 @@ class AnimeTests(conftest.SickChillTestDBCase):
             result = ANIME_TEST_CASES[section][cur_test_base]
 
             self.show.name = result.series_name if result else None
-            name_parser.showObj = self.show
+            name_parser.show_object = self.show
             if not result:
                 self.assertRaises(parser.InvalidNameException, name_parser.parse, cur_test)
                 return
@@ -554,7 +557,7 @@ class BasicFailedTests(conftest.SickChillTestDBCase):
             result = SIMPLE_TEST_CASES[section][cur_test_base]
 
             self.show.name = result.series_name if result else None
-            name_parser.showObj = self.show
+            name_parser.show_object = self.show
             if not result:
                 self.assertRaises(parser.InvalidNameException, name_parser.parse, cur_test)
                 return

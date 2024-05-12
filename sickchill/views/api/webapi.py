@@ -14,10 +14,10 @@ from tornado.web import RequestHandler
 import sickchill
 from sickchill import logger, settings
 from sickchill.helper.common import dateFormat, dateTimeFormat, pretty_file_size, sanitize_filename, timeFormat, try_int
-from sickchill.helper.exceptions import CantUpdateShowException, ShowDirectoryNotFoundException
+from sickchill.helper.exceptions import ShowDirectoryNotFoundException
 from sickchill.helper.quality import get_quality_string
 from sickchill.init_helpers import get_current_version
-from sickchill.oldbeard import classes, db, helpers, network_timezones, sbdatetime, search_queue, ui
+from sickchill.oldbeard import classes, db, helpers, network_timezones, scdatetime, search_queue, ui
 from sickchill.oldbeard.common import (
     ARCHIVED,
     DOWNLOADED,
@@ -61,6 +61,7 @@ result_type_map = {
 
 # basically everything except RESULT_SUCCESS / success is bad
 
+
 # noinspection PyAbstractClass
 class ApiHandler(RequestHandler):
     """api class that returns json results"""
@@ -72,7 +73,8 @@ class ApiHandler(RequestHandler):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "content-type")
         self.set_header("Access-Control-Allow-Methods", "GET")
-        # self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.set_header("X-Robots-Tag", "noindex")
+        # self.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 
     def get(self, *args, **kwargs):
         # kwargs = self.request.arguments
@@ -104,7 +106,7 @@ class ApiHandler(RequestHandler):
 
         try:
             out_dict = _call_dispatcher(args, kwargs)
-        except Exception as error:  # real internal error oohhh nooo :(
+        except Exception as error:  # real internal error oh no :(
             logger.info(traceback.format_exc())
             logger.exception(f"API :: {error}")
             error_data = {"error_msg": f"{error}", "args": args, "kwargs": kwargs}
@@ -215,7 +217,7 @@ class ApiHandler(RequestHandler):
 
         cmd are separated by "|" e.g. &cmd=shows|future
         kwargs are name-spaced with "." e.g. show.indexerid=101501
-        if a kwarg has no namespace asking it anyways (global)
+        if a kwarg has no namespace asking it anyway (global)
 
         full e.g.
         /api?apikey=1234&cmd=show.seasonlist_asd|show.seasonlist_2&show.seasonlist_asd.indexerid=101501&show.seasonlist_2.indexerid=79488&sort=asc
@@ -260,7 +262,6 @@ class ApiCall(ApiHandler):
 
     def return_help(self):
         for paramDict, paramType in [(self._requiredParams, "requiredParameters"), (self._optionalParams, "optionalParameters")]:
-
             if paramType in self._help:
                 for paramName in paramDict:
                     if paramName not in self._help[paramType]:
@@ -461,14 +462,14 @@ def _rename_element(dict_obj, old_key, new_key):
 def _responds(result_type, data=None, msg=""):
     """
     result is a string of given "type" (success/failure/timeout/error)
-    message is a human readable string, can be empty
-    data is either a dict or a array, can be a empty dict or empty array
+    message is a human-readable string, can be empty
+    data is either a dict or an array, can be an empty dict or empty array
     """
     return {"result": result_type_map[result_type], "message": msg, "data": {} if not data else data}
 
 
 def status_to_code(status_string) -> int:
-    # convert the string status to a int
+    # convert the string status to an int
     if isinstance(status_string, int):
         return status_string
 
@@ -588,38 +589,24 @@ def _map_quality(show_quality):
 
 
 def _get_root_dirs():
-    if settings.ROOT_DIRS == "":
+    if not settings.ROOT_DIRS:
         return {}
 
-    root_dir = {}
     root_dirs = settings.ROOT_DIRS.split("|")
-    default_index = int(settings.ROOT_DIRS.split("|")[0])
 
-    root_dir["default_index"] = int(settings.ROOT_DIRS.split("|")[0])
-    # remove default_index value from list (this fixes the offset)
-    root_dirs.pop(0)
-
-    if len(root_dirs) < default_index:
+    try:
+        default_index = int(root_dirs[0])
+    except ValueError:
         return {}
 
-    # clean up the list - replace %xx escapes by their single-character equivalent
-    root_dirs = [urllib.parse.unquote_plus(x) for x in root_dirs]
+    if default_index > len(root_dirs) - 1:
+        return {}
 
     default_dir = root_dirs[default_index]
 
     dir_list = []
-    for root_dir in root_dirs:
-        valid = 1
-        # noinspection PyBroadException
-        try:
-            os.listdir(root_dir)
-        except Exception:
-            valid = 0
-        default = 0
-        if root_dir is default_dir:
-            default = 1
-
-        cur_dir = {"valid": valid, "location": root_dir, "default": default}
+    for root_dir in root_dirs[1:]:
+        cur_dir = {"valid": int(Path(root_dir).resolve().is_dir()), "location": root_dir, "default": int(root_dir is default_dir)}
         dir_list.append(cur_dir)
 
     return dir_list
@@ -678,7 +665,6 @@ class CMDComingEpisodes(ApiCall):
         grouped_coming_episodes = ComingEpisodes.get_coming_episodes(self.type, self.sort, True, self.paused)
         data = {section: [] for section in grouped_coming_episodes.keys()}
 
-        # noinspection PyCompatibility
         for section, coming_episodes in grouped_coming_episodes.items():
             for coming_episode in coming_episodes:
                 data[section].append(
@@ -727,7 +713,7 @@ class CMDEpisode(ApiCall):
 
     def run(self):
         """Get detailed information about an episode"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -752,13 +738,13 @@ class CMDEpisode(ApiCall):
             episode["location"] = ""
         elif not self.fullPath:
             # using the length because lstrip() removes to much
-            show_path_length = len(show_path) + 1  # the / or \ yeah not that nice i know
+            show_path_length = len(show_path) + 1  # the / or \ yeah not that nice I know
             episode["location"] = episode["location"][show_path_length:]
 
         # convert stuff to human form
         if try_int(episode["airdate"], 1) > 693595:  # 1900
-            episode["airdate"] = sbdatetime.sbdatetime.sbfdate(
-                sbdatetime.sbdatetime.convert_to_setting(network_timezones.parse_date_time(int(episode["airdate"]), show_obj.airs, show_obj.network)),
+            episode["airdate"] = scdatetime.scdatetime.scfdate(
+                scdatetime.scdatetime.convert_to_setting(network_timezones.parse_date_time(int(episode["airdate"]), show_obj.airs, show_obj.network)),
                 d_preset=dateFormat,
             )
         else:
@@ -794,17 +780,17 @@ class CMDEpisodeSearch(ApiCall):
 
     def run(self):
         """Search for an episode"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
         # retrieve the episode object and fail if we can't get one
-        ep_obj = show_obj.getEpisode(self.s, self.e)
-        if isinstance(ep_obj, str):
+        episode_object = show_obj.get_episode(self.s, self.e)
+        if isinstance(episode_object, str):
             return _responds(RESULT_FAILURE, msg="Episode not found")
 
         # make a queue item for it and put it on the queue
-        ep_queue_item = search_queue.ManualSearchQueueItem(show_obj, ep_obj)
+        ep_queue_item = search_queue.ManualSearchQueueItem(show_obj, episode_object)
         settings.searchQueueScheduler.action.add_item(ep_queue_item)  # @UndefinedVariable
 
         # wait until the queue item tells us whether it worked or not
@@ -813,7 +799,7 @@ class CMDEpisodeSearch(ApiCall):
 
         # return the correct json value
         if ep_queue_item.success:
-            status, quality = Quality.splitCompositeStatus(ep_obj.status)
+            status, quality = Quality.splitCompositeStatus(episode_object.status)
             # TODO: split quality and status?
             return _responds(RESULT_SUCCESS, {"quality": get_quality_string(quality)}, "Snatched (" + get_quality_string(quality) + ")")
 
@@ -931,20 +917,20 @@ class CMDEpisodeSetStatus(ApiCall):
 
     def run(self):
         """Set the status of an episode or a season (when no episode is provided)"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
         self.status = status_to_code(self.status)
 
         if self.e:
-            ep_obj = show_obj.getEpisode(self.s, self.e)
-            if not ep_obj:
+            episode_object = show_obj.get_episode(self.s, self.e)
+            if not episode_object:
                 return _responds(RESULT_FAILURE, msg="Episode not found")
-            ep_list = [ep_obj]
+            ep_list = [episode_object]
         else:
             # get all episode numbers from self, season
-            ep_list = show_obj.getAllEpisodes(season=self.s)
+            ep_list = show_obj.get_all_episodes(season=self.s)
 
         def _ep_result(result_code, ep, msg=""):
             return {"season": ep.season, "episode": ep.episode, "status": statusStrings_bare[ep.status], "result": result_type_map[result_code], "message": msg}
@@ -955,42 +941,44 @@ class CMDEpisodeSetStatus(ApiCall):
         segments = {}
 
         sql_l = []
-        for ep_obj in ep_list:
-            with ep_obj.lock:
+        for episode_object in ep_list:
+            with episode_object.lock:
                 if self.status == WANTED:
                     # figure out what episodes are wanted so we can backlog them
-                    if ep_obj.season in segments:
-                        segments[ep_obj.season].append(ep_obj)
+                    if episode_object.season in segments:
+                        segments[episode_object.season].append(episode_object)
                     else:
-                        segments[ep_obj.season] = [ep_obj]
+                        segments[episode_object.season] = [episode_object]
 
                 # don't let them mess up UN-AIRED episodes
-                if ep_obj.status == UNAIRED:
+                if episode_object.status == UNAIRED:
                     # noinspection PyPep8
                     if (
                         self.e is not None
                     ):  # setting the status of an un-aired is only considered a failure if we directly wanted this episode, but is ignored on a season request
-                        ep_results.append(_ep_result(RESULT_FAILURE, ep_obj, "Refusing to change status because it is UN-AIRED"))
+                        ep_results.append(_ep_result(RESULT_FAILURE, episode_object, "Refusing to change status because it is UN-AIRED"))
                         failure = True
                     continue
 
                 if self.status == FAILED and not settings.USE_FAILED_DOWNLOADS:
-                    ep_results.append(_ep_result(RESULT_FAILURE, ep_obj, "Refusing to change status to FAILED because failed download handling is disabled"))
+                    ep_results.append(
+                        _ep_result(RESULT_FAILURE, episode_object, "Refusing to change status to FAILED because failed download handling is disabled")
+                    )
                     failure = True
                     continue
 
                 # allow the user to force setting the status for an already downloaded episode
-                if ep_obj.status in Quality.DOWNLOADED + Quality.ARCHIVED and not self.force:
-                    ep_results.append(_ep_result(RESULT_FAILURE, ep_obj, "Refusing to change status because it is already marked as DOWNLOADED"))
+                if episode_object.status in Quality.DOWNLOADED + Quality.ARCHIVED and not self.force:
+                    ep_results.append(_ep_result(RESULT_FAILURE, episode_object, "Refusing to change status because it is already marked as DOWNLOADED"))
                     failure = True
                     continue
 
-                ep_obj.status = self.status
-                sql_l.append(ep_obj.get_sql())
+                episode_object.status = self.status
+                sql_l.append(episode_object.get_sql())
 
                 if self.status == WANTED:
                     start_backlog = True
-                ep_results.append(_ep_result(RESULT_SUCCESS, ep_obj))
+                ep_results.append(_ep_result(RESULT_SUCCESS, episode_object))
 
         if sql_l:
             main_db_con = db.DBConnection()
@@ -1035,18 +1023,18 @@ class CMDSubtitleSearch(ApiCall):
 
     def run(self):
         """Search for an episode subtitles"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
         # retrieve the episode object and fail if we can't get one
-        ep_obj = show_obj.getEpisode(self.s, self.e)
-        if isinstance(ep_obj, str):
+        episode_object = show_obj.get_episode(self.s, self.e)
+        if isinstance(episode_object, str):
             return _responds(RESULT_FAILURE, msg="Episode not found")
 
         # noinspection PyBroadException
         try:
-            new_subtitles = ep_obj.download_subtitles()
+            new_subtitles = episode_object.download_subtitles()
         except Exception:
             return _responds(RESULT_FAILURE, msg="Unable to find subtitles")
 
@@ -1092,7 +1080,7 @@ class CMDExceptions(ApiCall):
                 scene_exceptions[indexerid].append(row["show_name"])
 
         else:
-            show_obj = Show.find(settings.showList, int(self.indexerid))
+            show_obj = Show.find(settings.show_list, int(self.indexerid))
             if not show_obj:
                 return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -1214,21 +1202,18 @@ class CMDBacklog(ApiCall):
         shows = []
 
         main_db_con = db.DBConnection(row_type="dict")
-        for curShow in settings.showList:
-
+        for curShow in settings.show_list:
             show_eps = []
 
-            # noinspection PyPep8
             sql_results = main_db_con.select(
                 "SELECT tv_episodes.*, tv_shows.paused FROM tv_episodes INNER JOIN tv_shows ON tv_episodes.showid = tv_shows.indexer_id WHERE showid = ? AND paused = 0 ORDER BY season DESC, episode DESC",
                 [curShow.indexerid],
             )
 
-            for curResult in sql_results:
-
-                cur_ep_cat = curShow.getOverview(curResult["status"])
+            for cur_result in sql_results:
+                cur_ep_cat = curShow.get_overview(cur_result["status"])
                 if cur_ep_cat and cur_ep_cat in (Overview.WANTED, Overview.QUAL):
-                    show_eps.append(curResult)
+                    show_eps.append(cur_result)
 
             if show_eps:
                 shows.append({"indexerid": curShow.indexerid, "show_name": curShow.name, "status": curShow.status, "episodes": show_eps})
@@ -1270,7 +1255,6 @@ class CMDLogs(ApiCall):
         num_to_show = min(50, len(data))
 
         for x in reversed(data):
-
             match = re.match(regex, x)
 
             if match:
@@ -1430,42 +1414,24 @@ class CMDSickChillAddRootDir(ApiCall):
         """Add a new root (parent) directory to SickChill"""
 
         self.location = urllib.parse.unquote_plus(self.location)
-        location_matched = 0
-        index = 0
 
         # disallow adding/setting an invalid dir
-        if not os.path.isdir(self.location):
+        if not Path(self.location).is_dir():
             return _responds(RESULT_FAILURE, msg="Location is invalid")
 
-        root_dirs = []
-
-        if settings.ROOT_DIRS == "":
+        if not settings.ROOT_DIRS:
             self.default = 1
+            root_dirs = []
         else:
             root_dirs = settings.ROOT_DIRS.split("|")
-            index = int(settings.ROOT_DIRS.split("|")[0])
-            root_dirs.pop(0)
-            # clean up the list - replace %xx escapes by their single-character equivalent
-            root_dirs = [urllib.parse.unquote_plus(x) for x in root_dirs]
-            for x in root_dirs:
-                if x == self.location:
-                    location_matched = 1
-                    if self.default == 1:
-                        index = root_dirs.index(self.location)
-                    break
 
-        if location_matched == 0:
-            if self.default == 1:
-                root_dirs.insert(0, self.location)
-            else:
-                root_dirs.append(self.location)
+        if not self.location.lower() in [root_dir.lower() for root_dir in root_dirs[1:]]:
+            root_dirs.append(self.location)
 
-        root_dirs_new = [urllib.parse.unquote_plus(x) for x in root_dirs]
-        root_dirs_new.insert(0, index)
-        # noinspection PyCompatibility
-        root_dirs_new = "|".join(str(x) for x in root_dirs_new)
+        if self.default:
+            root_dirs[0] = [root_dir.lower() for root_dir in root_dirs[1:]].index(self.location.lower())
 
-        settings.ROOT_DIRS = root_dirs_new
+        settings.ROOT_DIRS = "|".join(f"{root_dir}" for root_dir in root_dirs)
         return _responds(RESULT_SUCCESS, _get_root_dirs(), msg="Root directories updated")
 
 
@@ -1479,10 +1445,10 @@ class CMDSickChillCheckVersion(ApiCall):
 
         data = {
             "current_version": {
-                "version": update_manager.get_current_version(),
+                "version": str(update_manager.get_current_version()),
             },
             "latest_version": {
-                "version": update_manager.get_newest_version(),
+                "version": str(update_manager.get_newest_version()),
             },
             "version_delta": update_manager.get_version_delta(),
             "needs_update": needs_update,
@@ -1513,7 +1479,7 @@ class CMDSickChillBackup(ApiCall):
                 os.mkdir(self.location)
 
         logger.info(_("API: sc.backup backing up to {location}").format(location=self.location))
-        result = update_manager._backup(self.location)
+        result = update_manager.backup_to_dir(self.location)
         if result:
             logger.info(_("API: sc.backup successful!"))
             return _responds(RESULT_SUCCESS, msg="Backup successful")
@@ -1559,36 +1525,27 @@ class CMDSickChillDeleteRootDir(ApiCall):
 
     def run(self):
         """Delete a root (parent) directory from SickChill"""
-        if settings.ROOT_DIRS == "":
+        if not settings.ROOT_DIRS:
             return _responds(RESULT_FAILURE, _get_root_dirs(), msg="No root directories detected")
 
-        new_index = 0
-        root_dirs_new = []
         root_dirs = settings.ROOT_DIRS.split("|")
-        index = int(root_dirs[0])
-        root_dirs.pop(0)
-        # clean up the list - replace %xx escapes by their single-character equivalent
-        root_dirs = [urllib.parse.unquote_plus(x) for x in root_dirs]
-        old_root_dir = root_dirs[index]
-        for curRootDir in root_dirs:
-            if not curRootDir == self.location:
-                root_dirs_new.append(curRootDir)
-            else:
-                new_index = 0
 
-        for curIndex, curNewRootDir in enumerate(root_dirs_new):
-            if curNewRootDir is old_root_dir:
-                new_index = curIndex
-                break
+        self.location = urllib.parse.unquote_plus(self.location)
 
-        root_dirs_new = [urllib.parse.unquote_plus(x) for x in root_dirs_new]
-        if root_dirs_new:
-            root_dirs_new.insert(0, new_index)
-        # noinspection PyCompatibility
-        root_dirs_new = "|".join(str(x) for x in root_dirs_new)
+        if self.location.lower() not in [root_dir.lower() for root_dir in root_dirs[1:]]:
+            return _responds(RESULT_FAILURE, _get_root_dirs(), msg="Root directory was not found, not changed")
 
-        settings.ROOT_DIRS = root_dirs_new
-        # what if the root dir was not found?
+        index = [root_dir.lower() for root_dir in root_dirs[1:]].index(self.location.lower())
+
+        root_dirs.pop(index)
+
+        if len(root_dirs) < 2:
+            root_dirs = []
+        elif root_dirs[0] == str(index):
+            root_dirs[0] = 1
+
+        settings.ROOT_DIRS = "|".join(f"{root_dir}" for root_dir in root_dirs)
+
         return _responds(RESULT_SUCCESS, _get_root_dirs(), msg="Root directory deleted")
 
 
@@ -1711,7 +1668,7 @@ class CMDSickChillSearchIndexers(ApiCall):
             for indexer, indexer_results in search_results.items():
                 for result in indexer_results:
                     # Skip it if it's in our show list already, and we only want new shows
-                    in_show_list = sickchill.show.Show.Show.find(settings.showList, int(result["id"])) is not None
+                    in_show_list = Show.find(settings.show_list, int(result["id"])) is not None
                     if in_show_list and self.only_new:
                         continue
 
@@ -1882,7 +1839,7 @@ class CMDShow(ApiCall):
 
     def run(self):
         """Get detailed information about a show"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -1942,12 +1899,12 @@ class CMDShow(ApiCall):
             show_dict["network"] = ""
         show_dict["status"] = show_obj.status
 
-        if try_int(show_obj.nextaired, 1) > 693595:
-            dt_episode_airs = sbdatetime.sbdatetime.convert_to_setting(
-                network_timezones.parse_date_time(show_obj.nextaired, show_dict["airs"], show_dict["network"])
+        if try_int(show_obj.next_airdate, 1) > 693595:
+            dt_episode_airs = scdatetime.scdatetime.convert_to_setting(
+                network_timezones.parse_date_time(show_obj.next_airdate, show_dict["airs"], show_dict["network"])
             )
-            show_dict["airs"] = sbdatetime.sbdatetime.sbftime(dt_episode_airs, t_preset=timeFormat).lstrip("0").replace(" 0", " ")
-            show_dict["next_ep_airdate"] = sbdatetime.sbdatetime.sbfdate(dt_episode_airs, d_preset=dateFormat)
+            show_dict["airs"] = scdatetime.scdatetime.scftime(dt_episode_airs, t_preset=timeFormat).lstrip("0").replace(" 0", " ")
+            show_dict["next_ep_airdate"] = scdatetime.scdatetime.scfdate(dt_episode_airs, d_preset=dateFormat)
         else:
             show_dict["next_ep_airdate"] = ""
 
@@ -1984,7 +1941,7 @@ class CMDShowAddExisting(ApiCall):
 
     def run(self):
         """Add an existing show in SickChill"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if show_obj:
             return _responds(RESULT_FAILURE, msg="An existing indexerid already exists in the database")
 
@@ -2077,20 +2034,22 @@ class CMDShowAddNew(ApiCall):
 
     def run(self):
         """Add a new show to SickChill"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if show_obj:
             return _responds(RESULT_FAILURE, msg="An existing indexerid already exists in database")
 
         if not self.location:
-            if settings.ROOT_DIRS != "":
+            if settings.ROOT_DIRS:
                 root_dirs = settings.ROOT_DIRS.split("|")
-                root_dirs.pop(0)
-                default_index = int(settings.ROOT_DIRS.split("|")[0])
+                default_index = int(root_dirs[0])
+                if default_index > len(root_dirs) - 1:
+                    return _responds(RESULT_FAILURE, msg="Default root directory is not set, please provide a location")
+
                 self.location = root_dirs[default_index]
             else:
                 return _responds(RESULT_FAILURE, msg="Root directory is not set, please provide a location")
 
-        if not os.path.isdir(self.location):
+        if not Path(self.location).is_dir():
             return _responds(RESULT_FAILURE, msg="'" + self.location + "' is not a valid location")
 
         # use default quality as a fail-safe
@@ -2151,12 +2110,12 @@ class CMDShowAddNew(ApiCall):
 
         # don't create show dir if config says not to
         if settings.ADD_SHOWS_WO_DIR:
-            logger.info("Skipping initial creation of " + show_path + " due to config.ini setting")
+            logger.info(f"Skipping initial creation of {'show_path'} due to config.ini setting")
         else:
             dir_exists = helpers.makeDir(show_path)
             if not dir_exists:
-                logger.exception("API :: Unable to create the folder " + show_path + ", can't add the show")
-                return _responds(RESULT_FAILURE, {"path": show_path}, "Unable to create the folder " + show_path + ", can't add the show")
+                logger.exception(f"API :: Unable to create the folder {'show_path'}, can't add the show")
+                return _responds(RESULT_FAILURE, {"path": show_path}, f"Unable to create the folder {'show_path'}, can't add the show")
             else:
                 helpers.chmodAsParent(show_path)
 
@@ -2195,7 +2154,7 @@ class CMDShowCache(ApiCall):
 
     def run(self):
         """Check SickChill's cache to see if the images (poster, banner, fanart) for a show are valid"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -2244,7 +2203,6 @@ class CMDShowDelete(ApiCall):
     def run(self):
         """Delete a show in SickChill"""
         error, show = Show.delete(self.indexerid, self.removefiles)
-
         if error:
             return _responds(RESULT_FAILURE, msg=error)
 
@@ -2269,7 +2227,7 @@ class CMDShowGetQuality(ApiCall):
 
     def run(self):
         """Get the quality setting of a show"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -2355,7 +2313,7 @@ class CMDShowGetNetworkLogo(ApiCall):
         """
         :return: Get the network logo of a show
         """
-        show = Show.find(settings.showList, self.tvdbid or self.indexerid)
+        show = Show.find(settings.show_list, self.tvdbid or self.indexerid)
         path = Path(settings.PROG_DIR) / "gui" / settings.GUI_NAME / "images" / "network"
         path /= show.network_logo_name + ".png"
         return {"outputType": "image", "image": path.resolve()}
@@ -2407,7 +2365,6 @@ class CMDShowPause(ApiCall):
     def run(self):
         """Pause or un-pause a show"""
         error, show = Show.pause(self.indexerid, self.pause)
-
         if error:
             return _responds(RESULT_FAILURE, msg=error)
 
@@ -2433,7 +2390,6 @@ class CMDShowRefresh(ApiCall):
     def run(self):
         """Refresh a show in SickChill"""
         error, show = Show.refresh(self.indexerid)
-
         if error:
             return _responds(RESULT_FAILURE, msg=error)
 
@@ -2457,13 +2413,13 @@ class CMDShowSeasonList(ApiCall):
 
     def run(self):
         """Get the list of seasons of a show"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
         main_db_con = db.DBConnection(row_type="dict")
         if self.sort == "asc":
-            sql_results = main_db_con.select("SELECT DISTINCT season FROM tv_episodes WHERE showid = ? ORDER BY season ASC", [self.indexerid])
+            sql_results = main_db_con.select("SELECT DISTINCT season FROM tv_episodes WHERE showid = ? ORDER BY season", [self.indexerid])
         else:
             sql_results = main_db_con.select("SELECT DISTINCT season FROM tv_episodes WHERE showid = ? ORDER BY season DESC", [self.indexerid])
         season_list = []  # a list with all season numbers
@@ -2493,7 +2449,7 @@ class CMDShowSeasons(ApiCall):
 
     def run(self):
         """Get the list of episodes for one or all seasons of a show"""
-        sho_obj = Show.find(settings.showList, int(self.indexerid))
+        sho_obj = Show.find(settings.show_list, int(self.indexerid))
         if not sho_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -2510,8 +2466,8 @@ class CMDShowSeasons(ApiCall):
                 row["status"] = statusStrings_bare[status]
                 row["quality"] = get_quality_string(quality)
                 if try_int(row["airdate"], 1) > 693595:  # 1900
-                    dt_episode_airs = sbdatetime.sbdatetime.convert_to_setting(network_timezones.parse_date_time(row["airdate"], sho_obj.airs, sho_obj.network))
-                    row["airdate"] = sbdatetime.sbdatetime.sbfdate(dt_episode_airs, d_preset=dateFormat)
+                    dt_episode_airs = scdatetime.scdatetime.convert_to_setting(network_timezones.parse_date_time(row["airdate"], sho_obj.airs, sho_obj.network))
+                    row["airdate"] = scdatetime.scdatetime.scfdate(dt_episode_airs, d_preset=dateFormat)
                 else:
                     row["airdate"] = "Never"
                 cur_season = int(row["season"])
@@ -2537,8 +2493,8 @@ class CMDShowSeasons(ApiCall):
                 row["status"] = statusStrings_bare[status]
                 row["quality"] = get_quality_string(quality)
                 if try_int(row["airdate"], 1) > 693595:  # 1900
-                    dt_episode_airs = sbdatetime.sbdatetime.convert_to_setting(network_timezones.parse_date_time(row["airdate"], sho_obj.airs, sho_obj.network))
-                    row["airdate"] = sbdatetime.sbdatetime.sbfdate(dt_episode_airs, d_preset=dateFormat)
+                    dt_episode_airs = scdatetime.scdatetime.convert_to_setting(network_timezones.parse_date_time(row["airdate"], sho_obj.airs, sho_obj.network))
+                    row["airdate"] = scdatetime.scdatetime.scfdate(dt_episode_airs, d_preset=dateFormat)
                 else:
                     row["airdate"] = "Never"
                 if cur_episode not in seasons:
@@ -2570,7 +2526,7 @@ class CMDShowSetQuality(ApiCall):
 
     def run(self):
         """Set the quality setting of a show. If no quality is provided, the default user setting is used."""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -2613,7 +2569,7 @@ class CMDShowStats(ApiCall):
 
     def run(self):
         """Get episode statistics for a given show"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
+        show_obj = Show.find(settings.show_list, int(self.indexerid))
         if not show_obj:
             return _responds(RESULT_FAILURE, msg="Show not found")
 
@@ -2713,16 +2669,11 @@ class CMDShowUpdate(ApiCall):
 
     def run(self):
         """Update a show in SickChill"""
-        show_obj = Show.find(settings.showList, int(self.indexerid))
-        if not show_obj:
-            return _responds(RESULT_FAILURE, msg="Show not found")
+        error, show = Show.update(self.indexerid, True)
+        if error:
+            _responds(RESULT_FAILURE, msg=f"Unable to update {show.name}")
 
-        try:
-            settings.showQueueScheduler.action.update_show(show_obj, True)  # @UndefinedVariable
-            return _responds(RESULT_SUCCESS, msg=str(show_obj.name) + " has queued to be updated")
-        except CantUpdateShowException as error:
-            logger.debug("API::Unable to update show: {0}".format(error))
-            return _responds(RESULT_FAILURE, msg=f"Unable to update {show_obj.name}")
+        return _responds(RESULT_SUCCESS, msg=str(show.name) + " has queued to be updated")
 
 
 # noinspection PyAbstractClass
@@ -2743,7 +2694,7 @@ class CMDShows(ApiCall):
     def run(self):
         """Get all shows in SickChill"""
         shows = {}
-        for curShow in settings.showList:
+        for curShow in settings.show_list:
             # If self.paused is None: show all, 0: show un-paused, 1: show paused
             if self.paused is not None and self.paused != curShow.paused:
                 continue
@@ -2763,11 +2714,11 @@ class CMDShows(ApiCall):
                 "subtitles": (0, 1)[curShow.subtitles],
             }
 
-            if try_int(curShow.nextaired, 1) > 693595:  # 1900
-                dt_episode_airs = sbdatetime.sbdatetime.convert_to_setting(
-                    network_timezones.parse_date_time(curShow.nextaired, curShow.airs, show_dict["network"])
+            if try_int(curShow.next_airdate, 1) > 693595:  # 1900
+                dt_episode_airs = scdatetime.scdatetime.convert_to_setting(
+                    network_timezones.parse_date_time(curShow.next_airdate, curShow.airs, show_dict["network"])
                 )
-                show_dict["next_ep_airdate"] = sbdatetime.sbdatetime.sbfdate(dt_episode_airs, d_preset=dateFormat)
+                show_dict["next_ep_airdate"] = scdatetime.scdatetime.scfdate(dt_episode_airs, d_preset=dateFormat)
             else:
                 show_dict["next_ep_airdate"] = ""
 

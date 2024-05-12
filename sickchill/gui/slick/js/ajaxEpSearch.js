@@ -2,7 +2,6 @@ const searchStatusUrl = scRoot + '/home/getManualSearchStatus';
 let failedDownload = false;
 let qualityDownload = false;
 let selectedEpisode = '';
-PNotify.prototype.options.maxonscreen = 5;
 
 $.fn.manualSearches = [];
 
@@ -103,7 +102,7 @@ function updateImages(data) {
 
                     if (actionElement.length > 0) {
                         // Remove any listing-* classes and add listing-snatched (keeping non listing-* classes)
-                        actionElement.attr('class', (i, value) => value.replace(/(^|\s)listing-\S+/g, '')).addClass('listing-snatched');
+                        actionElement.attr('class', (i, value) => value.replaceAll(/(^|\s)listing-\S+/g, '')).addClass('listing-snatched');
                     }
                 }
 
@@ -116,7 +115,7 @@ function updateImages(data) {
 function checkManualSearches() {
     let pollInterval = 5000;
     const showId = $('#showID').val();
-    const url = showId !== undefined ? searchStatusUrl + '?show=' + showId : searchStatusUrl; // eslint-disable-line no-negated-condition
+    const url = showId ? searchStatusUrl + '?show=' + showId : searchStatusUrl;
     $.ajax({
         url,
         success(data) {

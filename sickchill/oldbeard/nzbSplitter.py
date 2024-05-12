@@ -108,9 +108,8 @@ def strip_xmlns(element, xmlns):
     :param xmlns: xml namespace to be removed
     :return: processed element
     """
-    element.tag = element.tag.replace("{" + xmlns + "}", "")
-    for cur_child in element.getchildren():
-        strip_xmlns(cur_child, xmlns)
+    for subelement in element.iter():
+        subelement.tag = subelement.tag.replace("{" + xmlns + "}", "")
 
     return element
 
@@ -123,13 +122,13 @@ def split_result(obj):
     :return: a list of episode objects or an empty list
     """
     url_data = helpers.getURL(obj.url, session=helpers.make_session(), returns="content")
-    if url_data is None:
+    if not url_data:
         logger.warning("Unable to load url " + obj.url + ", can't download season NZB")
         return []
 
     # parse the season ep name
     try:
-        parsed_obj = NameParser(False, showObj=obj.show).parse(obj.name)
+        parsed_obj = NameParser(False, show_object=obj.show).parse(obj.name)
     except (InvalidNameException, InvalidShowException) as error:
         logger.debug(f"{error}")
         return []
@@ -150,24 +149,22 @@ def split_result(obj):
 
         # parse the name
         try:
-            parsed_obj = NameParser(False, showObj=obj.show).parse(new_nzb)
+            parsed_obj = NameParser(False, show_object=obj.show).parse(new_nzb)
         except (InvalidNameException, InvalidShowException) as error:
             logger.debug(f"{error}")
             return []
 
         # make sure the result is sane
         if (parsed_obj.season_number != season) or (parsed_obj.season_number is None and season != 1):
-
             logger.warning("Found " + new_nzb + " inside " + obj.name + " but it doesn't seem to belong to the same season, ignoring it")
             continue
         elif not parsed_obj.episode_numbers:
-
             logger.warning("Found " + new_nzb + " inside " + obj.name + " but it doesn't seem to be a valid episode NZB, ignoring it")
             continue
 
         want_ep = True
         for ep_num in parsed_obj.episode_numbers:
-            if not obj.extraInfo[0].wantEpisode(season, ep_num, obj.quality):
+            if not obj.show.want_episode(season, ep_num, obj.quality):
                 logger.debug("Ignoring result: " + new_nzb)
                 want_ep = False
                 break
@@ -175,7 +172,7 @@ def split_result(obj):
             continue
 
         # get all the associated episode objects
-        ep_obj_list = [obj.extraInfo[0].getEpisode(season, ep) for ep in parsed_obj.episode_numbers]
+        ep_obj_list = [obj.show.get_episode(season, ep) for ep in parsed_obj.episode_numbers]
 
         # make a result
         cur_obj = classes.NZBDataSearchResult(ep_obj_list)

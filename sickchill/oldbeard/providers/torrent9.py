@@ -8,9 +8,9 @@ from sickchill.providers.torrent.FrenchProvider import FrenchTorrentProvider
 
 class Provider(FrenchTorrentProvider):
     def __init__(self):
-        super().__init__("Torrent9", "https://ww1.torrent9.re")
+        super().__init__("Torrent9", "https://www.torrent9.rs")
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         for mode in search_strings:
             items = []
@@ -32,7 +32,6 @@ class Provider(FrenchTorrentProvider):
                 with BS4Parser(data) as html:
                     for result in html.select("div.table-responsive tr"):
                         try:
-
                             link = result.select_one("a")
                             title = link.get_text(strip=False).replace("HDTV", "HDTV x264-Torrent9")
                             title = re.sub(r" Saison", " Season", title, flags=re.I)

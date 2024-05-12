@@ -14,14 +14,19 @@ from .index import Config
 @Route("/config/anime(/?.*)", name="config:anime")
 class ConfigAnime(Config):
     @addslash
-    def index(self, *args_, **kwargs_):
-
+    def index(self):
         t = PageTemplate(rh=self, filename="config_anime.mako")
 
-        return t.render(submenu=self.ConfigMenu(), title=_("Config - Anime"), header=_("Anime"), topmenu="config", controller="config", action="anime")
+        return t.render(
+            submenu=self.ConfigMenu(),
+            title=_("Config - Anime"),
+            header=_("Anime"),
+            topmenu="config",
+            controller="config",
+            action="anime",
+        )
 
     def saveAnime(self, use_anidb=None, anidb_username=None, anidb_password=None, anidb_use_mylist=None, split_home=None, split_home_in_tabs=None):
-
         settings.USE_ANIDB = config.checkbox_to_value(use_anidb)
         settings.ANIDB_USERNAME = anidb_username
         settings.ANIDB_PASSWORD = filters.unhide(settings.ANIDB_PASSWORD, anidb_password)

@@ -1,8 +1,6 @@
 import re
 from urllib.parse import urljoin
 
-import validators
-
 from sickchill import logger
 from sickchill.helper.common import convert_size, try_int
 from sickchill.oldbeard import tvcache
@@ -12,7 +10,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         # Provider Init
         super().__init__("YggTorrent")
 
@@ -39,9 +36,9 @@ class Provider(TorrentProvider):
         if custom and not new_url:
             return True
 
-        if validators.url(new_url) != True:
+        if self.invalid_url(new_url):
             if custom:
-                logger.warning("Invalid custom url: {0}".format(self.custom_url))
+                logger.warning(_("Invalid custom url: {0}").format(self.custom_url))
             else:
                 logger.debug("Url changing has failed!")
 
@@ -85,7 +82,7 @@ class Provider(TorrentProvider):
 
         return True
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         self.login()
 
         results = []
@@ -95,7 +92,6 @@ class Provider(TorrentProvider):
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
 
             for search_string in {*search_strings[mode]}:
-
                 if mode != "RSS":
                     logger.debug(_("Search String: {search_string}").format(search_string=search_string))
                 # search string needs to be normalized, single quotes are apparently not allowed on the site
@@ -150,7 +146,7 @@ class Provider(TorrentProvider):
                             if seeders < self.minseed or leechers < self.minleech:
                                 if mode != "RSS":
                                     logger.debug(
-                                        "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                        _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                             title, seeders, leechers
                                         )
                                     )

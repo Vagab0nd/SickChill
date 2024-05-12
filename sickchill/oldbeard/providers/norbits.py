@@ -26,14 +26,13 @@ class Provider(TorrentProvider):
         self.urls = {"search": self.url + "/api2.php?action=torrents", "download": self.url + "/download.php?"}
 
     def _check_auth(self):
-
         if not self.username or not self.passkey:
-            raise AuthException(("Your authentication credentials for {} are " "missing, check your config.").format(self.name))
+            raise AuthException(f"Your authentication credentials for {self.name} are missing, check your config.")
 
         return True
 
     @staticmethod
-    def _check_auth_from_data(parsed_json):
+    def check_auth_from_data(parsed_json):
         """Check that we are authenticated."""
 
         if "status" in parsed_json and "message" in parsed_json and parsed_json.get("status") == 3:
@@ -41,16 +40,16 @@ class Provider(TorrentProvider):
 
         return True
 
-    def search(self, search_params, age=0, ep_obj=None):
+    def search(self, search_strings):
         """Do the actual searching and JSON parsing"""
 
         results = []
 
-        for mode in search_params:
+        for mode in search_strings:
             items = []
             logger.debug(_("Search Mode: {mode}").format(mode=mode))
 
-            for search_string in search_params[mode]:
+            for search_string in search_strings[mode]:
                 if mode != "RSS":
                     logger.debug(_("Search String: {search_string}").format(search_string=search_string))
 
@@ -67,7 +66,7 @@ class Provider(TorrentProvider):
                 if not parsed_json:
                     return results
 
-                if self._check_auth_from_data(parsed_json):
+                if self.check_auth_from_data(parsed_json):
                     json_items = parsed_json.get("data", "")
                     if not json_items:
                         logger.exception("Resulting JSON from provider is not correct, " "not parsing it")

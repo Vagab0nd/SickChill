@@ -1,7 +1,8 @@
 import datetime
 import os
 
-from sickchill import logger, settings, tv
+from sickchill import logger, settings
+from sickchill.tv import TVEpisode
 
 from . import common
 from .common import DOWNLOADED, Quality
@@ -51,9 +52,9 @@ class TVShow(object):
         return self.scene > 0
 
 
-class TVEpisode(tv.TVEpisode):
+class SampleEpisode(TVEpisode):
     def __init__(self, season, episode, absolute_number, name):
-        self.relatedEps = []
+        self.related_episodes = []
         self.name = name
         self.season = season
         self.episode = episode
@@ -161,7 +162,7 @@ def validate_name(pattern, multi=None, anime_type=None, file_only=False, abd=Fal
     logger.debug("Trying to parse " + new_name)
 
     try:
-        result = NameParser(True, showObj=ep.show, naming_pattern=True).parse(new_name)
+        result = NameParser(True, show_object=ep.show, naming_pattern=True).parse(new_name)
     except (InvalidNameException, InvalidShowException) as error:
         logger.debug(f"{error}")
         return False
@@ -173,14 +174,14 @@ def validate_name(pattern, multi=None, anime_type=None, file_only=False, abd=Fal
             logger.debug("Air date incorrect in parsed episode, pattern isn't valid")
             return False
     elif anime_type != 3:
-        if result.ab_episode_numbers and result.ab_episode_numbers != [x.absolute_number for x in [ep] + ep.relatedEps]:
+        if result.ab_episode_numbers and result.ab_episode_numbers != [x.absolute_number for x in [ep] + ep.related_episodes]:
             logger.debug("Absolute numbering incorrect in parsed episode, pattern isn't valid")
             return False
     else:
         if result.season_number != ep.season:
             logger.debug("Season number incorrect in parsed episode, pattern isn't valid")
             return False
-        if result.episode_numbers != [x.episode for x in [ep] + ep.relatedEps]:
+        if result.episode_numbers != [x.episode for x in [ep] + ep.related_episodes]:
             logger.debug("Episode numbering incorrect in parsed episode, pattern isn't valid")
             return False
 
@@ -189,7 +190,7 @@ def validate_name(pattern, multi=None, anime_type=None, file_only=False, abd=Fal
 
 def generate_sample_ep(multi=None, abd=False, sports=False, anime_type=None):
     # make a fake episode object
-    ep = TVEpisode(2, 3, 3, "Ep Name")
+    ep = SampleEpisode(2, 3, 3, "Ep Name")
 
     ep._status = Quality.compositeStatus(DOWNLOADED, Quality.HDTV)
     ep._airdate = datetime.date(2011, 3, 9)
@@ -215,24 +216,24 @@ def generate_sample_ep(multi=None, abd=False, sports=False, anime_type=None):
 
             ep._release_name = "Show.Name.003-004.HDTV.XviD-SICKCHILL"
 
-            secondEp = TVEpisode(2, 4, 4, "Ep Name (2)")
+            secondEp = SampleEpisode(2, 4, 4, "Ep Name (2)")
             secondEp._status = Quality.compositeStatus(DOWNLOADED, Quality.HDTV)
             secondEp._release_name = ep._release_name
 
-            ep.relatedEps.append(secondEp)
+            ep.related_episodes.append(secondEp)
         else:
             ep._release_name = "Show.Name.S02E03E04E05.HDTV.XviD-SICKCHILL"
 
-            secondEp = TVEpisode(2, 4, 4, "Ep Name (2)")
+            secondEp = SampleEpisode(2, 4, 4, "Ep Name (2)")
             secondEp._status = Quality.compositeStatus(DOWNLOADED, Quality.HDTV)
             secondEp._release_name = ep._release_name
 
-            thirdEp = TVEpisode(2, 5, 5, "Ep Name (3)")
+            thirdEp = SampleEpisode(2, 5, 5, "Ep Name (3)")
             thirdEp._status = Quality.compositeStatus(DOWNLOADED, Quality.HDTV)
             thirdEp._release_name = ep._release_name
 
-            ep.relatedEps.append(secondEp)
-            ep.relatedEps.append(thirdEp)
+            ep.related_episodes.append(secondEp)
+            ep.related_episodes.append(thirdEp)
 
     return ep
 

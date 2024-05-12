@@ -82,7 +82,7 @@ def create_test_cache_folder():
 # =================
 
 
-settings.showList = []
+settings.show_list = []
 settings.QUALITY_DEFAULT = 4  # hdtv
 settings.SEASON_FOLDERS_DEFAULT = 0
 
@@ -101,9 +101,6 @@ settings.CONFIG_FILE = os.path.join(settings.DATA_DIR, "config.ini")
 settings.CFG = ConfigObj(settings.CONFIG_FILE, encoding="UTF-8", indent_type="  ")
 settings.GUI_NAME = "slick"
 
-settings.GIT_USERNAME = sickchill.oldbeard.config.check_setting_str(settings.CFG, "General", "git_username")
-settings.GIT_TOKEN = sickchill.oldbeard.config.check_setting_str(settings.CFG, "General", "git_token_password", censor_log=True)
-
 settings.LOG_DIR = os.path.join(TEST_DIR, "Logs")
 sickchill.logger.log_file = os.path.join(settings.LOG_DIR, "test_sickchill.log")
 create_test_log_folder()
@@ -114,6 +111,7 @@ create_test_cache_folder()
 sickchill.logger.init_logging(False, True)
 
 sickchill.indexer = ShowIndexer()
+
 
 # =================
 #  dummy functions
@@ -144,7 +142,7 @@ def _fake_specify_ep(self, season, episode):
 
 
 # the real one tries to contact TVDB just stop it from getting more info on the ep
-TVEpisode.specifyEpisode = _fake_specify_ep
+TVEpisode.specify_episode = _fake_specify_ep
 
 
 # =================
@@ -160,13 +158,13 @@ class SickChillTestDBCase(unittest.TestCase):
     """
 
     def setUp(self):
-        settings.showList = []
+        settings.show_list = []
         setup_test_db()
         setup_test_episode_file()
         setup_test_show_dir()
 
     def tearDown(self):
-        settings.showList = []
+        settings.show_list = []
         teardown_test_db()
         teardown_test_episode_file()
         teardown_test_show_dir()
@@ -182,7 +180,7 @@ class SickChillTestPostProcessorCase(unittest.TestCase):
     """
 
     def setUp(self):
-        settings.showList = []
+        settings.show_list = []
         setup_test_db()
         setup_test_episode_file()
         setup_test_show_dir()
@@ -202,14 +200,14 @@ class SickChillTestPostProcessorCase(unittest.TestCase):
                 else:
                     episode = TVEpisode(self.show, season, episode)
                 self.show.episodes[season][episode] = episode
-                episode.saveToDB()
+                episode.save_to_db()
 
-        self.show.saveToDB()
-        settings.showList = [self.show]
+        self.show.save_to_db()
+        settings.show_list = [self.show]
 
     def tearDown(self):
-        settings.showList = []
-        self.show.deleteShow(True)
+        settings.show_list = []
+        self.show.delete_show(True)
         teardown_test_db()
         teardown_test_episode_file()
         teardown_test_show_dir()

@@ -68,7 +68,7 @@ $(document).ready(function () {
             url = 'http://' + url;
         }
 
-        if (url.match('/$') === null) {
+        if (url.match('/$') === null && url.match(/morethantv/i) === null) {
             url += '/';
         }
 
@@ -79,7 +79,7 @@ $(document).ready(function () {
 
         if ($('#provider_order_list > #' + id).length === 0) {
             const providerOrderList = $('#provider_order_list');
-            providerOrderList.append('<li class="ui-state-default" id="' + id + '"> <input type="checkbox" id="enable_' + id + '" class="provider_enabler" CHECKED> <a href="' + anonURL + url + '" class="imgLink" target="_new"><img src="' + scRoot + '/images/providers/newznab.png" alt="' + name + '" width="16" height="16"></a> ' + name + '</li>');
+            providerOrderList.append('<li class="ui-state-default" id="' + id + '"> <input type="checkbox" id="enable_' + id + '" class="provider_enabler" checked> <a href="' + anonURL + url + '" class="imgLink" target="_new"><img src="' + scRoot + '/images/providers/newznab.png" alt="' + name + '" width="16" height="16"></a> ' + name + '</li>');
             providerOrderList.sortable('refresh');
         }
 
@@ -94,7 +94,7 @@ $(document).ready(function () {
 
         if ($('#provider_order_list > #' + id).length === 0) {
             const providerOrderList = $('#provider_order_list');
-            providerOrderList.append('<li class="ui-state-default" id="' + id + '"> <input type="checkbox" id="enable_' + id + '" class="provider_enabler" CHECKED> <a href="' + anonURL + url + '" class="imgLink" target="_new"><img src="' + scRoot + '/images/providers/torrentrss.png" alt="' + name + '" width="16" height="16"></a> ' + name + '</li>');
+            providerOrderList.append('<li class="ui-state-default" id="' + id + '"> <input type="checkbox" id="enable_' + id + '" class="provider_enabler" checked> <a href="' + anonURL + url + '" class="imgLink" target="_new"><img src="' + scRoot + '/images/providers/torrentrss.png" alt="' + name + '" width="16" height="16"></a> ' + name + '</li>');
             providerOrderList.sortable('refresh');
         }
 
@@ -245,7 +245,7 @@ $(document).ready(function () {
     $.fn.makeNewznabProviderString = function () {
         const provStrings = [];
         for (const id in newznabProviders) {
-            if (Object.prototype.hasOwnProperty.call(newznabProviders, id)) {
+            if (Object.hasOwn(newznabProviders, id)) {
                 provStrings.push(newznabProviders[id][1].join('|'));
             }
         }
@@ -289,12 +289,12 @@ $(document).ready(function () {
     $.fn.makeTorrentRssProviderString = function () {
         const provStrings = [];
         for (const id in torrentRssProviders) {
-            if (Object.prototype.hasOwnProperty.call(torrentRssProviders, id)) {
+            if (Object.hasOwn(torrentRssProviders, id)) {
                 provStrings.push(torrentRssProviders[id].join('|'));
             }
         }
 
-        $('#torrentrss_string').val(provStrings.join('!!!'));
+        $('#torrent_rss_string').val(provStrings.join('!!!'));
     };
 
     $.fn.refreshProviderList = function () {
@@ -323,7 +323,7 @@ $(document).ready(function () {
         if (finalArray.length > 0) {
             $('<select>').prop('id', 'editAProvider').addClass('form-control input-sm').appendTo('#provider-list');
             for (const id in finalArray) {
-                if (Object.prototype.hasOwnProperty.call(finalArray, id)) {
+                if (Object.hasOwn(finalArray, id)) {
                     const provider = finalArray[id];
                     $('#editAProvider').append($('<option>').prop('value', provider).text($.trim($('#' + provider).text()).replace(/\s\*$/, '').replace(/\s\*\*$/, '')));
                 }
@@ -461,7 +461,9 @@ $(document).ready(function () {
         const url = $('#torrentrss_url').val();
         const cookies = $('#torrentrss_cookies').val();
         const titleTAG = $('#torrentrss_titleTAG').val();
-        const parameters = {name, url, cookies, titleTAG};
+        const parameters = {
+            name, url, cookies, titleTAG,
+        };
 
         // Send to the form with ajax, get a return value
         $.getJSON(scRoot + '/config/providers/canAddTorrentRssProvider', parameters, function (data) {

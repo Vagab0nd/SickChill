@@ -21,8 +21,12 @@ class Notifier(object):
         url = urljoin(host or settings.EMBY_HOST, "emby/Notifications/Admin")
         params = {"Name": "SickChill", "Description": message, "ImageUrl": settings.LOGO_URL}
 
+        if not settings.USE_EMBY:
+            logger.debug("Notification for Emby not enabled, skipping this notification")
+            return False
+
         try:
-            response = requests.get(url, params=params, headers=self._make_headers(emby_apikey))
+            response = requests.post(url, params=params, headers=self._make_headers(emby_apikey))
             if response:
                 logger.debug(_("EMBY: HTTP response: {content}").format(content=response.content))
             response.raise_for_status()
@@ -56,7 +60,7 @@ class Notifier(object):
             if show:
                 params.update({"TvdbId": show.indexerid})
                 # Endpoint emby/Library/Series/Added is deprecated http://swagger.emby.media/?staticview=true#/LibraryService/postLibrarySeriesAdded
-                url = urljoin(settings.EMBY_HOST, "emby/Library/Series/Added")
+                url = urljoin(settings.EMBY_HOST, "emby/Library/Media/Updated")
             else:
                 url = urljoin(settings.EMBY_HOST, "emby/Library/Refresh")
 

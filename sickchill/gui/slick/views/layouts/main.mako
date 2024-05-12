@@ -3,7 +3,9 @@
     import datetime
     from urllib.parse import urljoin
     from sickchill.oldbeard.filters import hide
+    from sickchill.oldbeard.helpers import anon_url
     from sickchill.helper.common import pretty_file_size
+
     from sickchill.init_helpers import get_current_version
     from sickchill.show.Show import Show
     from sickchill import settings, logger
@@ -92,15 +94,15 @@
         <link rel="manifest" href="${static_url('images/ico/site.webmanifest')}">
 
 
-        <link rel="stylesheet" type="text/css" href="${static_url('css/vendor.min.css')}"/>
+        <link rel="stylesheet" type="text/css" href="${static_url('css/vendor.min.css')}" />
         <link rel="stylesheet" type="text/css" href="${static_url('css/browser.css')}" />
         <link rel="stylesheet" type="text/css" href="${static_url('css/font-awesome.min.css')}" />
         <link rel="stylesheet" type="text/css" href="${static_url('css/fork-awesome.min.css')}" />
         <link rel="stylesheet" type="text/css" href="${static_url('css/lib/jquery-ui-1.10.4.custom.min.css')}" />
-        <link rel="stylesheet" type="text/css" href="${static_url('css/lib/jquery.qtip-2.2.1.min.css')}"/>
-        <link rel="stylesheet" type="text/css" href="${static_url('css/style.css')}"/>
+        <link rel="stylesheet" type="text/css" href="${static_url('css/lib/jquery.qtip-2.2.1.min.css')}" />
+        <link rel="stylesheet" type="text/css" href="${static_url('css/style.css')}" />
         <link rel="stylesheet" type="text/css" href="${static_url('css/print.css')}" />
-        <link rel="stylesheet" type="text/css" href="${static_url('css/country-flags.css')}"/>
+        <link rel="stylesheet" type="text/css" href="${static_url('css/country-flags.css')}" />
         <link rel="stylesheet" type="text/css" href="${static_url('css/jquery-ui-custom.css')}" />
 
         % if settings.THEME_NAME != "light":
@@ -118,122 +120,121 @@
         <nav class="navbar navbar-default navbar-fixed-top hidden-print">
             <div class="container-fluid">
                 <%
-                    numCombined = numErrors + numWarnings + settings.NEWS_UNREAD
-                    if numCombined:
-                        if numErrors:
+                    total_warning_error_count = error_count + warning_count + settings.NEWS_UNREAD
+                    if total_warning_error_count:
+                        if error_count:
                             toolsBadgeClass = ' btn-danger'
-                        elif numWarnings:
+                        elif warning_count:
                             toolsBadgeClass = ' btn-warning'
                         else:
                             toolsBadgeClass = ''
                 %>
                 <div class="navbar-header">
                     <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#collapsible-navbar">
-                        % if numCombined:
-                            <span class="floating-badge${ toolsBadgeClass }">${ str(numCombined) }</span>
+                        % if total_warning_error_count:
+                            <span class="floating-badge${ toolsBadgeClass }">${ str(total_warning_error_count) }</span>
                         % endif
                         <span class="sr-only">Toggle navigation</span>
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </button>
-                    <a class="navbar-brand" href="${static_url("home/", include_version=False)}" title="SickChill"><img alt="SickChill" src="${static_url('images/sickchill.png')}"
-                                                                                         style="height: 50px;padding: 3px;"
+                    <a class="navbar-brand" href="${static_url('home/', include_version=False)}" title="SickChill"><img alt="SickChill" src="${static_url('images/sickchill.png')}"
                                                                                  class="img-responsive pull-left" /></a>
                 </div>
-                % if srLogin:
+                % if current_user:
                     <div class="collapse navbar-collapse" id="collapsible-navbar">
                         <ul class="nav navbar-nav navbar-right">
                             <%block name="navbar" />
                             <li id="NAVhome" class="navbar-split dropdown${('', ' active')[topmenu == 'home']}">
-                                <a href="${static_url("home/", include_version=False)}" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown"><span>${_('Shows')}</span>
+                                <a href="${static_url('home/', include_version=False)}" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown"><span>${_('Shows')}</span>
                                     <b class="caret"></b>
                                 </a>
                                 <ul class="dropdown-menu">
-                                    <li><a href="${static_url("home/", include_version=False)}"><i class="fa fa-fw fa-home"></i>&nbsp;${_('Show List')}</a></li>
-                                    <li><a href="${static_url("addShows/", include_version=False)}"><i class="fa fa-fw fa-television"></i>&nbsp;${_('Add Shows')}</a></li>
-                                    <li><a href="${static_url("home/postprocess/", include_version=False)}"><i class="fa fa-fw fa-refresh"></i>&nbsp;${_('Manual Post-Processing')}</a></li>
+                                    <li><a href="${static_url('home/', include_version=False)}"><i class="fa fa-fw fa-home"></i>&nbsp;${_('Show List')}</a></li>
+                                    <li><a href="${static_url('addShows/', include_version=False)}"><i class="fa fa-fw fa-television"></i>&nbsp;${_('Add Shows')}</a></li>
+                                    <li><a href="${static_url('home/postprocess/', include_version=False)}"><i class="fa fa-fw fa-refresh"></i>&nbsp;${_('Manual Post-Processing')}</a></li>
                                     % if settings.SHOWS_RECENT:
                                         <li role="separator" class="divider"></li>
                                         % for recentShow in settings.SHOWS_RECENT:
-                                            <li><a href="${static_url("home/displayShow?show={}".format(recentShow['indexerid']), include_version=False)}"><i class="fa fa-fw fa-television"></i>&nbsp;${recentShow['name']|trim,h}</a></li>
+                                            <li><a href="${static_url('home/displayShow?show={}'.format(recentShow['indexerid']), include_version=False)}"><i class="fa fa-fw fa-television"></i>&nbsp;${recentShow['name']|trim,h}</a></li>
                                         % endfor
                                     % endif
                                 </ul>
-                                <div style="clear:both;"></div>
+                                <i class="clearfix"></i>
                             </li>
                             % if settings.DEVELOPER:
                             <li id="NAVmovies" class="navbar-split dropdown${('', ' active')[topmenu == 'movies']}">
-                                <a href="${reverse_url("movies", "")}" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown"><span>${_('Movies')}</span>
+                                <a href="${reverse_url('movies', '')}" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown"><span>${_('Movies')}</span>
                                     <b class="caret"></b>
                                 </a>
                                 <ul class="dropdown-menu">
-                                    <li><a href="${reverse_url("movies", "")}"><i class="fa fa-fw fa-home"></i>&nbsp;${_('Movie List')}</a></li>
-                                    <li><a href="${reverse_url("movies-search", "search")}"><i class="fa fa-fw fa-television"></i>&nbsp;${_('Add Movies')}</a></li>
+                                    <li><a href="${reverse_url('movies', '')}"><i class="fa fa-fw fa-home"></i>&nbsp;${_('Movie List')}</a></li>
+                                    <li><a href="${reverse_url('movies-search', 'search')}"><i class="fa fa-fw fa-television"></i>&nbsp;${_('Add Movies')}</a></li>
                                 </ul>
-                                <div style="clear:both;"></div>
+                                <i class="clearfix"></i>
                             </li>
                             % endif
                             <li id="NAVschedule"${('', ' class="active"')[topmenu == 'schedule']}>
-                                <a href="${static_url("schedule/", include_version=False)}">${_('Schedule')}</a>
+                                <a href="${static_url('schedule/', include_version=False)}">${_('Schedule')}</a>
                             </li>
 
                             <li id="NAVhistory"${('', ' class="active"')[topmenu == 'history']}>
-                                <a href="${static_url("history/", include_version=False)}">${_('History')}</a>
+                                <a href="${static_url('history/', include_version=False)}">${_('History')}</a>
                             </li>
 
                             <li id="NAVmanage" class="navbar-split dropdown${('', ' active')[topmenu == 'manage']}">
-                                <a href="${static_url("manage/episodeStatuses/", include_version=False)}" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown"><span>${_('Manage')}</span>
+                                <a href="${static_url('manage/episodeStatuses/', include_version=False)}" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown"><span>${_('Manage')}</span>
                                     <b class="caret"></b>
                                 </a>
                                 <ul class="dropdown-menu">
-                                    <li><a href="${static_url("manage/", include_version=False)}"><i class="fa fa-fw fa-pencil"></i>&nbsp;${_('Mass Update')}</a></li>
-                                    <li><a href="${static_url("manage/backlogOverview/", include_version=False)}"><i class="fa fa-fw fa-binoculars"></i>&nbsp;${_('Backlog Overview')}</a></li>
-                                    <li><a href="${static_url("manage/manageSearches/", include_version=False)}"><i class="fa fa-fw fa-search"></i>&nbsp;${_('Manage Searches')}</a></li>
-                                    <li><a href="${static_url("manage/episodeStatuses/", include_version=False)}"><i class="fa fa-fw fa-gavel"></i>&nbsp;${_('Episode Status Management')}</a></li>
+                                    <li><a href="${static_url('manage/', include_version=False)}"><i class="fa fa-fw fa-pencil"></i>&nbsp;${_('Mass Update')}</a></li>
+                                    <li><a href="${static_url('manage/backlogOverview/', include_version=False)}"><i class="fa fa-fw fa-binoculars"></i>&nbsp;${_('Backlog Overview')}</a></li>
+                                    <li><a href="${static_url('manage/manageSearches/', include_version=False)}"><i class="fa fa-fw fa-search"></i>&nbsp;${_('Manage Searches')}</a></li>
+                                    <li><a href="${static_url('manage/episodeStatuses/', include_version=False)}"><i class="fa fa-fw fa-gavel"></i>&nbsp;${_('Episode Status Management')}</a></li>
                                     % if settings.USE_PLEX_SERVER and settings.PLEX_SERVER_HOST != "":
-                                        <li><a href="${static_url("home/updatePLEX/", include_version=False)}"><i class="menu-icon-plex"></i>&nbsp;${_('Update PLEX')}</a></li>
+                                        <li><a href="${static_url('home/updatePLEX/', include_version=False)}"><i class="menu-icon-plex"></i>&nbsp;${_('Update PLEX')}</a></li>
                                     % endif
                                     % if settings.USE_KODI and settings.KODI_HOST != "":
-                                        <li><a href="${static_url("home/updateKODI/", include_version=False)}"><i class="menu-icon-kodi"></i>&nbsp;${_('Update KODI')}</a></li>
+                                        <li><a href="${static_url('home/updateKODI/', include_version=False)}"><i class="menu-icon-kodi"></i>&nbsp;${_('Update KODI')}</a></li>
                                     % endif
                                     % if settings.USE_EMBY and settings.EMBY_HOST != "" and settings.EMBY_APIKEY != "":
-                                        <li><a href="${static_url("home/updateEMBY/", include_version=False)}"><i class="menu-icon-emby"></i>&nbsp;${_('Update Emby')}</a></li>
+                                        <li><a href="${static_url('home/updateEMBY/', include_version=False)}"><i class="menu-icon-emby"></i>&nbsp;${_('Update Emby')}</a></li>
                                     % endif
                                     % if manage_torrents_url:
                                         <li><a href="${manage_torrents_url}" target="_blank"><i class="fa fa-fw fa-download"></i>&nbsp;${_('Manage Torrents')}</a></li>
                                     % endif
                                     % if settings.USE_FAILED_DOWNLOADS:
-                                        <li><a href="${static_url("manage/failedDownloads/", include_version=False)}"><i class="fa fa-fw fa-thumbs-o-down"></i>&nbsp;${_('Failed Downloads')}</a></li>
+                                        <li><a href="${static_url('manage/failedDownloads/', include_version=False)}"><i class="fa fa-fw fa-thumbs-o-down"></i>&nbsp;${_('Failed Downloads')}</a></li>
                                     % endif
                                     % if settings.USE_SUBTITLES:
-                                        <li><a href="${static_url("manage/subtitleMissed/", include_version=False)}"><i class="fa fa-fw fa-language"></i>&nbsp;${_('Missed Subtitle Management')}</a></li>
+                                        <li><a href="${static_url('manage/subtitleMissed/', include_version=False)}"><i class="fa fa-fw fa-language"></i>&nbsp;${_('Missed Subtitle Management')}</a></li>
                                     % endif
                                 </ul>
-                                <div style="clear:both;"></div>
+                                <i class="clearfix"></i>
                             </li>
 
                             <li id="NAVconfig" class="navbar-split dropdown${('', ' active')[topmenu == 'config']}">
-                                <a href="${static_url("config/", include_version=False) }" class="dropdown-toggle" aria-haspopup="true"
+                                <a href="${static_url('config/', include_version=False)}" class="dropdown-toggle" aria-haspopup="true"
                                    data-toggle="dropdown" data-hover="dropdown">
                                     <span class="visible-xs-inline">Config</span>
                                     <img src="${ static_url('images/menu/system18.png')}" alt="Config" class="navbaricon hidden-xs" />
                                     <b class="caret"></b>
                                 </a>
                                 <ul class="dropdown-menu">
-                                    <li><a href="${static_url("config/", include_version=False)}"><i class="fa fa-fw fa-question"></i>&nbsp;${_('Help &amp; Info')}</a></li>
-                                    <li><a href="${static_url("config/general/", include_version=False)}"><i class="fa fa-fw fa-cog"></i>&nbsp;${_('General')}</a></li>
-                                    <li><a href="${static_url("config/backuprestore/", include_version=False)}"><i class="fa fa-fw fa-floppy-o"></i>&nbsp;${_('Backup &amp; Restore')}</a></li>
-                                    <li><a href="${static_url("config/search/", include_version=False)}"><i class="fa fa-fw fa-search"></i>&nbsp;${_('Search Settings')}</a></li>
-                                    <li><a href="${static_url("config/providers/", include_version=False)}"><i class="fa fa-fw fa-plug"></i>&nbsp;${_('Search Providers')}</a></li>
-                                    <li><a href="${static_url("config/subtitles/", include_version=False)}"><i class="fa fa-fw fa-language"></i>&nbsp;${_('Subtitles Settings')}</a></li>
-                                    <li><a href="${static_url("config/postProcessing/", include_version=False)}"><i class="fa fa-fw fa-refresh"></i>&nbsp;${_('Post Processing')}</a></li>
-                                    <li><a href="${static_url("config/notifications/", include_version=False)}"><i class="fa fa-fw fa-bell-o"></i>&nbsp;${_('Notifications')}</a></li>
-                                    <li><a href="${static_url("config/anime/", include_version=False)}"><i class="fa fa-fw fa-eye"></i>&nbsp;${_('Anime')}</a></li>
+                                    <li><a href="${static_url('config/', include_version=False)}"><i class="fa fa-fw fa-question"></i>&nbsp;${_('Help &amp; Info')}</a></li>
+                                    <li><a href="${static_url('config/general/', include_version=False)}"><i class="fa fa-fw fa-cog"></i>&nbsp;${_('General')}</a></li>
+                                    <li><a href="${static_url('config/backuprestore/', include_version=False)}"><i class="fa fa-fw fa-floppy-o"></i>&nbsp;${_('Backup &amp; Restore')}</a></li>
+                                    <li><a href="${static_url('config/search/', include_version=False)}"><i class="fa fa-fw fa-search"></i>&nbsp;${_('Search Settings')}</a></li>
+                                    <li><a href="${static_url('config/providers/', include_version=False)}"><i class="fa fa-fw fa-plug"></i>&nbsp;${_('Search Providers')}</a></li>
+                                    <li><a href="${static_url('config/subtitles/', include_version=False)}"><i class="fa fa-fw fa-language"></i>&nbsp;${_('Subtitles Settings')}</a></li>
+                                    <li><a href="${static_url('config/postProcessing/', include_version=False)}"><i class="fa fa-fw fa-refresh"></i>&nbsp;${_('Post Processing')}</a></li>
+                                    <li><a href="${static_url('config/notifications/', include_version=False)}"><i class="fa fa-fw fa-bell-o"></i>&nbsp;${_('Notifications')}</a></li>
+                                    <li><a href="${static_url('config/anime/', include_version=False)}"><i class="fa fa-fw fa-eye"></i>&nbsp;${_('Anime')}</a></li>
                                     <li role="separator" class="divider"></li>
-                                    <li><a href="${static_url("apibuilder", include_version=False)}"><i class="fa fa-fw fa-info-circle"></i>&nbsp;${_('API Builder')}</a></li>
+                                    <li><a href="${static_url('apibuilder', include_version=False)}"><i class="fa fa-fw fa-info-circle"></i>&nbsp;${_('API Builder')}</a></li>
                                 </ul>
-                                <div style="clear:both;"></div>
+                                <i class="clearfix"></i>
                             </li>
 
                             <%
@@ -242,50 +243,49 @@
                                 else:
                                     newsBadge = ''
 
-                                if numCombined:
-                                    toolsBadge = ' <span class="badge'+toolsBadgeClass+'">'+str(numCombined)+'</span>'
+                                if total_warning_error_count:
+                                    toolsBadge = ' <span class="badge'+toolsBadgeClass+'">'+str(total_warning_error_count)+'</span>'
                                 else:
                                     toolsBadge = ''
                             %>
                             <li id="NAVsystem" class="navbar-split dropdown${('', ' active')[topmenu == 'system']}">
-                                <a href="${static_url("home/status/", include_version=False) }" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown">
+                                <a href="${static_url('home/status/', include_version=False) }" class="dropdown-toggle" aria-haspopup="true" data-toggle="dropdown" data-hover="dropdown">
                                     <span class="visible-xs-inline">${_('Tools')}</span>
                                     <img src="${ static_url('images/menu/system18-2.png')}" alt="Tools" class="navbaricon hidden-xs" />${toolsBadge}
                                     <b class="caret"></b>
                                 </a>
                                 <ul class="dropdown-menu">
-                                    <li><a href="${static_url("news/", include_version=False)}"><i class="fa fa-fw fa-newspaper-o"></i>&nbsp;${_('News')}${newsBadge}</a></li>
-                                    <li><a href="${static_url("IRC/", include_version=False)}"><i class="fa fa-fw fa-hashtag"></i>&nbsp;${_('IRC')}</a></li>
-                                    <li><a href="https://discord.gg/U8WPBdf"><i class="fa fa-fw fa-discord-alt"></i>&nbsp;${_('Discord')}</a></li>
-                                    <li><a href="https://sickchill.slack.com"><i class="fa fa-fw fa-slack"></i>&nbsp;${_('Slack')}</a></li>
-                                    <li><a href="https://t.me/sickchill"><i class="fa fa-fw fa-telegram"></i>&nbsp;${_('Telegram')}</a></li>
-                                    <li><a href="${static_url("changes/", include_version=False)}"><i class="fa fa-fw fa-globe"></i>&nbsp;${_('Changelog')}</a></li>
-                                    <li><a href="https://github.com/SickChill/SickChill/wiki/Donations" rel="noreferrer" onclick="window.open('${settings.ANON_REDIRECT}' + this.href); return false;"><i class="fa fa-fw fa-life-ring"></i>&nbsp;${_('Support SickChill')}</a></li>
+                                    <li><a href="${static_url('news/', include_version=False)}"><i class="fa fa-fw fa-newspaper-o"></i>&nbsp;${_('News')}${newsBadge}</a></li>
+                                    <li><a href="${anon_url('https://discord.gg/U8WPBdf')}"><i class="fa fa-fw fa-discord-alt"></i>&nbsp;${_('Discord')}</a></li>
+                                    <li><a href="${static_url('changes/', include_version=False)}"><i class="fa fa-fw fa-globe"></i>&nbsp;${_('Changelog')}</a></li>
+                                    <li><a href="${anon_url('https://github.com/SickChill/SickChill/wiki/Donations')}" rel="noreferrer" target="_blank"><i class="fa fa-fw fa-life-ring"></i>&nbsp;${_('Support SickChill')}</a></li>
                                     <li role="separator" class="divider"></li>
-                                    %if numErrors:
-                                        <li><a href="${static_url("errorlogs/", include_version=False)}"><i class="fa fa-fw fa-exclamation-circle"></i>&nbsp;${_('View Errors')} <span class="badge btn-danger">${numErrors}</span></a></li>
+                                    %if error_count:
+                                        <li><a href="${static_url('errorlogs/', include_version=False)}"><i class="fa fa-fw fa-exclamation-circle"></i>&nbsp;${_('View Errors')} <span class="badge btn-danger">${error_count}</span></a></li>
                                     %endif
-                                    %if numWarnings:
+                                    %if warning_count:
                                         <li>
-                                          <a href="${static_url("errorlogs/?level={}".format(logger.WARNING), include_version=False)}">
-                                            <i class="fa fa-fw fa-exclamation-triangle"></i>&nbsp;${_('View Warnings')} <span class="badge btn-warning">${numWarnings}</span>
+                                          <a href="${static_url('errorlogs/?level={}'.format(logger.WARNING), include_version=False)}">
+                                            <i class="fa fa-fw fa-exclamation-triangle"></i>&nbsp;${_('View Warnings')} <span class="badge btn-warning">${warning_count}</span>
                                           </a>
                                         </li>
                                     %endif
-                                    <li><a href="${static_url("errorlogs/viewlog/", include_version=False)}"><i class="fa fa-fw fa-file-text-o"></i>&nbsp;${_('View Log')}</a></li>
+                                    <li><a href="${static_url('errorlogs/viewlog/', include_version=False)}"><i class="fa fa-fw fa-file-text-o"></i>&nbsp;${_('View Log')}</a></li>
                                     <li role="separator" class="divider"></li>
-                                    <li><a href="${static_url("home/updateCheck?pid={}".format(sbPID), include_version=False)}"><i class="fa fa-fw fa-wrench"></i>&nbsp;${_('Check For Updates')}</a></li>
-                                    <li><a href="${static_url("home/restart/?pid={}".format(sbPID), include_version=False)}" class="confirm restart"><i
+                                    % if hasattr(settings, "DISABLE_UPDATER") and not settings.DISABLE_UPDATER:
+                                    <li><a href="${static_url('home/updateCheck?pid={}'.format(process_id), include_version=False)}"><i class="fa fa-fw fa-wrench"></i>&nbsp;${_('Check For Updates')}</a></li>
+                                    % endif
+                                    <li><a href="${static_url('home/restart/?pid={}'.format(process_id), include_version=False)}" class="confirm restart"><i
                                         class="fa fa-fw fa-repeat"></i>&nbsp;${_('Restart')}</a></li>
-                                    <li><a href="${static_url("home/shutdown/?pid={}".format(sbPID), include_version=False)}" class="confirm shutdown"><i
+                                    <li><a href="${static_url('home/shutdown/?pid={}'.format(process_id), include_version=False)}" class="confirm shutdown"><i
                                         class="fa fa-fw fa-power-off"></i>&nbsp;${_('Shutdown')}</a></li>
-                                    % if srLogin:
-                                        <li><a href="${static_url("logout", include_version=False)}" class="confirm logout"><i class="fa fa-fw fa-sign-out"></i>&nbsp;${_('Logout')}</a></li>
+                                    % if current_user:
+                                        <li><a href="${static_url('logout', include_version=False)}" class="confirm logout"><i class="fa fa-fw fa-sign-out"></i>&nbsp;${_('Logout')}</a></li>
                                     % endif
                                     <li role="separator" class="divider"></li>
-                                    <li><a href="${static_url("home/status/", include_version=False)}"><i class="fa fa-fw fa-info-circle"></i>&nbsp;${_('Server Status')}</a></li>
+                                    <li><a href="${static_url('home/status/', include_version=False)}"><i class="fa fa-fw fa-info-circle"></i>&nbsp;${_('Server Status')}</a></li>
                                 </ul>
-                                <div style="clear:both;"></div>
+                                <i class="clearfix"></i>
                             </li>
                         </ul>
                     </div>
@@ -311,7 +311,7 @@
                                     % endfor
                                 % else:
                                     <a href="${static_url(menuItem['path'], include_version=False)}" class="btn ${('', ' confirm ')['confirm' in menuItem] + menuItem.get('class', '')}">
-                                        <i class='${menuItem.get('icon', '')}'></i> ${menuItem['title']}
+                                        <i class="${menuItem.get('icon', '')}"></i> ${menuItem['title']}
                                     </a>
                                     <% first = False %>
                                 % endif
@@ -320,7 +320,7 @@
                     </div>
                 % endif
                 <div class="clearfix"></div>
-                % if srLogin:
+                % if current_user:
                     <div id="site-messages"></div>
                 % endif
             </div>
@@ -349,7 +349,7 @@
                 </div>
             </div>
 
-            % if srLogin:
+            % if current_user:
                 <div class="row">
                     <div class="footer clearfix col-lg-10 col-lg-offset-1 col-md-10 col-md-offset-1 col-sm-12 col-xs-12">
                         <%
@@ -367,7 +367,7 @@
                                 <span class="footerhighlight">${ep_downloaded}</span>
                                 % if ep_snatched:
                                     <span class="footerhighlight">
-                                      <a href="${static_url("manage/episodeStatuses?whichStatus=2", include_version=False)}" title="${_('View overview of snatched episodes')}">
+                                      <a href="${static_url('manage/episodeStatuses?whichStatus=2', include_version=False)}" title="${_('View overview of snatched episodes')}">
                                         +${ep_snatched}
                                       </a>
                                     </span>&nbsp;${_('Snatched')}
@@ -382,8 +382,8 @@
                             % if resource:
                                 <span class="footer-item">${_('Memory used')}: <span class="footerhighlight">${pretty_file_size(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024)}</span></span> |
                             % endif
-                            <span class="footer-item">${_('Load time')}: <span class="footerhighlight">${"{:.4f}".format(time() - sbStartTime)}s</span></span> |
-                            <span class="footer-item">Mako: <span class="footerhighlight">${"{:.4f}".format(time() - makoStartTime)}s</span></span> |
+                            <span class="footer-item">${_('Load time')}: <span class="footerhighlight">${"{:.4f}".format(time() - page_load_start_time)}s</span></span> |
+                            <span class="footer-item">Mako: <span class="footerhighlight">${"{:.4f}".format(time() - mako_load_start_time)}s</span></span> |
                             <span class="footer-item">${_('Version')}: <span class="footerhighlight">${get_current_version()}</span></span> |
                             <span class="footer-item">${_('Now')}: <span class="footerhighlight">${datetime.datetime.now().strftime(settings.DATE_PRESET+" "+settings.TIME_PRESET)}</span></span>
                         </div>

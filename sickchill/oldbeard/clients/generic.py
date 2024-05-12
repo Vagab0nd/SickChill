@@ -6,7 +6,7 @@ from hashlib import sha1
 from typing import Dict, Iterable, Union
 from urllib.parse import urlencode
 
-import bencodepy
+import bencode
 import requests
 
 from sickchill import logger, settings
@@ -150,27 +150,30 @@ class GenericClient(object):
                 raise Exception("Torrent without content")
 
             try:
-                torrent_bdecode: Union[Iterable, Dict] = bencodepy.decode(result.content)
-            except (bencodepy.BencodeDecodeError, Exception) as error:
+                # Remove \n from end if it exists (bytes) primarily for TorrentLeech
+                result.content = result.content.strip(b"\n")
+
+                torrent_bdecode: Union[Iterable, Dict] = bencode.decode(result.content)
+            except (bencode.BencodeDecodeError, Exception) as error:
                 logger.exception("Unable to bdecode torrent")
-                logger.info("Error is: {0}".format(error))
-                logger.info("Torrent bencoded data: {0!r}".format(result.content))
+                logger.info(f"Error is: {error}")
+                logger.info(f"Torrent bencoded data: {result.content!r}")
                 raise
 
             try:
-                info = torrent_bdecode[b"info"]
+                info = torrent_bdecode["info"]
             except Exception:
                 logger.exception("Unable to find info field in torrent")
-                logger.info("Torrent bencoded data: {0!r}".format(result.content))
+                logger.info(f"Torrent bencoded data: {result.content!r}")
                 raise
 
             try:
-                result.hash = sha1(bencodepy.encode(info)).hexdigest()
-                logger.debug("Result Hash is {0}".format(result.hash))
-            except (bencodepy.BencodeDecodeError, Exception) as error:
+                result.hash = sha1(bencode.encode(info)).hexdigest()
+                logger.debug(f"Result Hash is {result.hash}")
+            except (bencode.BencodeDecodeError, Exception) as error:
                 logger.exception("Unable to bencode torrent info")
-                logger.info("Error is: {0}".format(error))
-                logger.info("Torrent bencoded data: {0!r}".format(result.content))
+                logger.info(f"Error is: {error}")
+                logger.info(f"Torrent bencoded data: {result.content!r}")
                 raise
 
         return result
@@ -231,7 +234,7 @@ class GenericClient(object):
 
         return r_code
 
-    def testAuthentication(self):
+    def test_client_connection(self):
         """
         Tests the parameters the user has provided in the ui to see if they are correct
         """

@@ -55,16 +55,11 @@ class Notifier(object):
             try:
                 bus = dbus.SessionBus()
             except dbus.DBusException as error:
-                return ("<p>Error: unable to connect to D-Bus session bus: <code>{}</code>." "<p>Are you running SickChill in a desktop session?").format(
-                    html.escape(error)
-                )
+                return f"<p>Error: unable to connect to D-Bus session bus: <code>{html.escape(error)}</code>.<p>Are you running SickChill in a desktop session?"
             try:
                 bus.get_object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
             except dbus.DBusException as error:
-                return (
-                    "<p>Error: there doesn't seem to be a notification daemon available: <code>{}</code> "
-                    "<p>Try installing notification-daemon or notify-osd."
-                ).format(html.escape(error))
+                return f"<p>Error: there doesn't seem to be a notification daemon available: <code>{html.escape(error)}</code>.<p>Try installing notification-daemon or notify-osd."
 
         return "<p>Error: Unable to send notification."
 
@@ -96,6 +91,10 @@ class Notifier(object):
         return self._notify("Test notification", "This is a test notification from SickChill", force=True)
 
     def _notify(self, title, message, force=False):
+        if not settings.USE_LIBNOTIFY and not force:
+            logger.debug("Notification for libnotify not enabled, skipping this notification")
+            return False
+
         if self.notify_initialized and settings.USE_LIBNOTIFY | force:
             icon = os.path.join(settings.PROG_DIR, "gui", settings.GUI_NAME, "images", "ico", "favicon-120.png")
             # noinspection PyBroadException

@@ -17,16 +17,6 @@ from sickchill.views.api import ApiHandler, KeyHandler
 
 from .routes import Route
 
-# class Custom404Handler(RequestHandler):
-#     startTime = 0.
-#
-#     def prepare(self):
-#         return self.redirect(self.reverse_url('home', ''))
-#
-#         self.set_status(404)
-#         t = PageTemplate(rh=self, filename="404.mako")
-#         return self.finish(t.render(title='404', header=_('Oops')))
-
 
 class SickChillStaticFileHandler(StaticFileHandler):
     @classmethod
@@ -46,7 +36,7 @@ class SickChillStaticFileHandler(StaticFileHandler):
         return "%s?v=%s" % (url, version_hash)
 
 
-class SRWebServer(threading.Thread):
+class SCWebServer(threading.Thread):
     def __init__(self, options=None):
         super().__init__()
         self.daemon = True
@@ -76,13 +66,6 @@ class SRWebServer(threading.Thread):
         self.options.setdefault("port", settings.WEB_PORT or 8081)
 
         self.server = None
-
-        # video root
-        if settings.ROOT_DIRS:
-            root_dirs = settings.ROOT_DIRS.split("|")
-            self.video_root = root_dirs[int(root_dirs[0]) + 1]
-        else:
-            self.video_root = None
 
         # web root
         if self.options["web_root"]:
@@ -124,16 +107,14 @@ class SRWebServer(threading.Thread):
         # Load the app
         self.app = Application(
             [],
-            debug=False,  # enables autoreload, compiled_template_cache, static_hash_cache, serve_traceback - This fixes the 404 page and fixes autoreload for
-            #  devs. We could now update without restart possibly if we check DB version hasnt changed!
-            autoreload=False,
+            debug=self.options.get("debug"),
+            autoreload=True,
             gzip=settings.WEB_USE_GZIP,
             cookie_secret=settings.WEB_COOKIE_SECRET,
             login_url=f'{self.options["web_root"]}/login/',
             static_path=self.options["data_root"],
             static_url_prefix=f'{self.options["web_root"]}/',
-            static_handler_class=SickChillStaticFileHandler
-            # default_handler_class=Custom404Handler
+            static_handler_class=SickChillStaticFileHandler,
         )
 
         # Static File Handlers
@@ -165,10 +146,7 @@ class SRWebServer(threading.Thread):
                     SickChillStaticFileHandler,
                     {"path": os.path.join(self.options["data_root"], "fonts")},
                     name="fonts",
-                )
-                # TODO: WTF is this?
-                # url(rf'{self.options["web_root"]}/videos/(.*)', SickChillStaticFileHandler,
-                #     {"path": self.video_root}, name='videos')
+                ),
             ],
         )
 

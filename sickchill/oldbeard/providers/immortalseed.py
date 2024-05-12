@@ -13,7 +13,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         # Provider Init
         super().__init__("Immortalseed")
 
@@ -42,13 +41,12 @@ class Provider(TorrentProvider):
         self.cache = ImmortalseedCache(self, min_time=20)
 
     def _check_auth(self):
-
         if not self.username or not self.password:
             raise AuthException("Your authentication credentials for " + self.name + " are missing, check your config.")
 
         return True
 
-    def _check_auth_from_data(self, data):
+    def check_auth_from_data(self, data):
         if not self.passkey:
             logger.warning("Invalid passkey. Check your settings")
 
@@ -74,7 +72,7 @@ class Provider(TorrentProvider):
 
         return True
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if not self.login():
             return results
@@ -170,4 +168,4 @@ class ImmortalseedCache(tvcache.TVCache):
         return self.get_rss_feed(self.provider.urls["rss"], params=params)
 
     def _check_auth(self, data):
-        return self.provider._check_auth_from_data(data)
+        return self.provider.check_auth_from_data(data)

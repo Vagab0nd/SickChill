@@ -4,20 +4,17 @@ import datetime
 import json
 import os
 import time
-import traceback
 import urllib.parse
-from operator import attrgetter
 from pathlib import Path
 from urllib.parse import unquote_plus
 
 import requests
-from tornado.escape import xhtml_unescape
 
 import sickchill.oldbeard
 from sickchill import adba, logger, settings
 from sickchill.helper import try_int
 from sickchill.helper.common import episode_num, pretty_file_size
-from sickchill.helper.exceptions import CantRefreshShowException, CantUpdateShowException, NoNFOException, ShowDirectoryNotFoundException
+from sickchill.helper.exceptions import CantUpdateShowException, NoNFOException, ShowDirectoryNotFoundException
 from sickchill.oldbeard.blackandwhitelist import BlackAndWhiteList, short_group_names
 from sickchill.oldbeard.common import cpu_presets, FAILED, IGNORED, Overview, Quality, SKIPPED, SNATCHED_BEST, statusStrings, UNAIRED, WANTED
 from sickchill.oldbeard.scene_numbering import (
@@ -56,70 +53,130 @@ class Home(WebRoot):
         if not show:
             return None, _("Invalid show parameters")
 
-        show_obj = Show.find(settings.showList, int(show))
+        show_obj = Show.find(settings.show_list, int(show))
 
         if not show_obj:
             return None, _("Invalid show parameters")
 
         if absolute:
-            ep_obj = show_obj.getEpisode(absolute_number=absolute)
+            episode_object = show_obj.get_episode(absolute_number=absolute)
         elif season and episode:
-            ep_obj = show_obj.getEpisode(season, episode)
+            episode_object = show_obj.get_episode(season, episode)
         else:
             return None, _("Invalid parameters")
 
-        if not ep_obj:
+        if not episode_object:
             return None, _("Episode couldn't be retrieved")
 
-        return ep_obj, ""
+        return episode_object, ""
 
     def index(self):
         t = PageTemplate(rh=self, filename="home.mako")
+        selected_root = self.get_body_argument("root", "")
 
-        selected_root = self.get_body_argument("root", None)
         if selected_root and settings.ROOT_DIRS:
-            backend_pieces = settings.ROOT_DIRS.split("|")
-            backend_dirs = backend_pieces[1:]
+            backend_dirs = settings.ROOT_DIRS.split("|")[1:]
             try:
                 assert selected_root != "-1"
                 selected_root_dir = backend_dirs[int(selected_root)]
-                if selected_root_dir[-1] not in ("/", "\\"):
-                    selected_root_dir += os.sep
             except (IndexError, ValueError, TypeError, AssertionError):
                 selected_root_dir = ""
         else:
             selected_root_dir = ""
 
-        if settings.ANIME_SPLIT_HOME:
-            shows = []
-            anime = []
-            for show in settings.showList:
-                # noinspection PyProtectedMember
-                if selected_root_dir in show._location:
-                    if show.is_anime:
-                        anime.append(show)
-                    else:
-                        shows.append(show)
-
-            sortedShowLists = [
-                ["Shows", sorted(shows, key=lambda mbr: attrgetter("sort_name")(mbr))],
-                ["Anime", sorted(anime, key=lambda mbr: attrgetter("sort_name")(mbr))],
-            ]
-        else:
-            shows = []
-            for show in settings.showList:
-                # noinspection PyProtectedMember
-                if selected_root_dir in show._location:
+        shows = []
+        anime = []
+        for show in settings.show_list:
+            if show.get_location.startswith(selected_root_dir):
+                if settings.ANIME_SPLIT_HOME and show.is_anime:
+                    anime.append(show)
+                else:
                     shows.append(show)
-
-            sortedShowLists = [["Shows", sorted(shows, key=lambda mbr: attrgetter("sort_name")(mbr))]]
 
         stats = self.show_statistics()
         return t.render(
             title=_("Home"),
             header=_("Show List"),
             topmenu="home",
-            sortedShowLists=sortedShowLists,
+            sorted_show_lists=[["Shows", shows], ["Anime", anime]],
+            show_stat=stats[0],
+            max_download_count=stats[1],
+            controller="home",
+            action="index",
+            selected_root=selected_root or "-1",
+        )
+
+    def filter(self):
+        t = PageTemplate(rh=self, filename="home.mako")
+
+        selected_root = self.get_body_argument("root", "")
+        page = try_int(self.get_argument("p", default="0"))
+        limit = try_int(self.get_argument("limit", default=None))
+        kind = self.get_argument("type", "all")
+        genre = self.get_argument("genre", "")
+        if kind not in ("all", "series", "anime"):
+            kind = "all"
+
+        if selected_root and settings.ROOT_DIRS:
+            backend_dirs = settings.ROOT_DIRS.split("|")[1:]
+            try:
+                assert selected_root != "-1"
+                selected_root_dir = backend_dirs[int(selected_root)]
+            except (IndexError, ValueError, TypeError, AssertionError):
+                selected_root_dir = ""
+        else:
+            selected_root_dir = ""
+
+        shows_to_show = []
+        skipped = 0
+        for show in settings.show_list:
+            if not show.get_location.startswith(selected_root_dir):
+                continue
+
+            if kind == "anime" and not show.is_anime:
+                skipped += 1
+                continue
+
+            if kind == "series" and show.is_anime:
+                skipped += 1
+                continue
+
+            if genre and genre.lower() not in show.genre:
+                skipped += 1
+                continue
+
+            shows_to_show.append(show)
+            if limit and len(shows_to_show) == limit:
+                break
+
+        logger.debug(f"skipped {skipped} shows due to filters: genre: {genre}, limit: {limit}, kind: {kind}")
+        if limit:
+            upper_slice = min(page * limit + limit, len(shows_to_show))
+            lower_slice = min(page * limit, len(shows_to_show) - limit)
+
+            number_of_pages = len(shows_to_show) // limit
+            if len(shows_to_show) % limit:
+                number_of_pages += 1
+
+            logger.info(f"Split home into {number_of_pages} pages")
+        else:
+            upper_slice = len(shows_to_show) - 1
+            lower_slice = 0
+
+        shows = []
+        anime = []
+        for show in shows_to_show[lower_slice:upper_slice]:
+            if settings.ANIME_SPLIT_HOME and show.is_anime:
+                anime.append(show)
+            else:
+                shows.append(show)
+
+        stats = self.show_statistics()
+        return t.render(
+            title=_("Home"),
+            header=_("Show List"),
+            topmenu="home",
+            sorted_show_lists=[["Shows", shows], ["Anime", anime]],
             show_stat=stats[0],
             max_download_count=stats[1],
             controller="home",
@@ -218,20 +275,20 @@ class Home(WebRoot):
         apikey = filters.unhide(settings.SAB_APIKEY, self.get_body_argument("apikey"))
 
         host = config.clean_url(self.get_body_argument("host"))
-        connection, accesMsg = sab.getSabAccesMethod(host)
+        connection, access_msg = sab.get_sab_acces_method(host)
         if connection:
-            authed, authMsg = sab.testAuthentication(host, username, password, apikey)
+            authed, auth_msg = sab.test_client_connection(host, username, password, apikey)
             if authed:
                 return _("Success. Connected and authenticated")
             else:
-                return _("Authentication failed. SABnzbd expects") + " '" + accesMsg + "' " + _("as authentication method") + ", '" + authMsg + "'"
+                return _("Authentication failed. SABnzbd expects") + " '" + access_msg + "' " + _("as authentication method") + ", '" + auth_msg + "'"
         else:
             return _("Unable to connect to host")
 
     @staticmethod
     def __torrent_test(host, username, password, method):
         client = clients.getClientInstance(method)
-        result, message = client(host, username, password).testAuthentication()
+        result, message = client(host, username, password).test_client_connection()
         return message
 
     def testDSM(self):
@@ -291,7 +348,6 @@ class Home(WebRoot):
             return _("Registration and Testing of growl failed {growl_host}").format(growl_host=unquote_plus(host)) + pw_append
 
     def testProwl(self):
-
         prowl_api = self.get_query_argument("prowl_api")
         prowl_priority = self.get_query_argument("prowl_priority")
         result = notifiers.prowl_notifier.test_notify(prowl_api, prowl_priority)
@@ -301,22 +357,33 @@ class Home(WebRoot):
             return _("Test prowl notice failed")
 
     def testBoxcar2(self):
-        accesstoken = self.get_query_argument("accesstoken")
-        result = notifiers.boxcar2_notifier.test_notify(accesstoken)
+        access_token = self.get_query_argument("accesstoken")
+        result = notifiers.boxcar2_notifier.test_notify(access_token)
         if result:
             return _("Boxcar2 notification succeeded. Check your Boxcar2 clients to make sure it worked")
         else:
             return _("Error sending Boxcar2 notification")
 
     def testPushover(self):
-        userKey = self.get_query_argument("userKey")
-        apiKey = self.get_query_argument("apiKey")
+        user_key = self.get_query_argument("userKey")
+        api_key = self.get_query_argument("apiKey")
 
-        result = notifiers.pushover_notifier.test_notify(userKey, apiKey)
+        result = notifiers.pushover_notifier.test_notify(user_key, api_key)
         if result:
             return _("Pushover notification succeeded. Check your Pushover clients to make sure it worked")
         else:
             return _("Error sending Pushover notification")
+
+    def testGotify(self):
+        host = self.get_body_argument("host")
+        host = config.clean_url(host)
+        authorization_token = self.get_body_argument("authorizationToken")
+        result, message = notifiers.gotify_notifier.test_notify(host, authorization_token)
+        logger.debug(f"Gotify result: {result} {message}")
+        if result:
+            return _("Gotify notification succeeded. Check your Gotify clients to make sure it worked.")
+        else:
+            return _("Error sending Gotify notification. {message}".format(message=message))
 
     @staticmethod
     def twitterStep1():
@@ -335,7 +402,6 @@ class Home(WebRoot):
 
     @staticmethod
     def testTwitter():
-
         result = notifiers.twitter_notifier.test_notify()
         if result:
             return _("Tweet successful, check your twitter to make sure it worked")
@@ -371,6 +437,22 @@ class Home(WebRoot):
             return _("Slack message failed")
 
     @staticmethod
+    def testMattermost():
+        result = notifiers.mattermost_notifier.test_notify()
+        if result:
+            return _("Mattermost message successful")
+        else:
+            return _("Mattermost message failed")
+
+    @staticmethod
+    def testMattermostBot():
+        result = notifiers.mattermostbot_notifier.test_notify()
+        if result:
+            return _("Mattermost Bot message successful")
+        else:
+            return _("Mattermost Bot message failed")
+
+    @staticmethod
     def testRocketChat():
         result = notifiers.rocketchat_notifier.test_notify()
         if result:
@@ -387,14 +469,12 @@ class Home(WebRoot):
             return _("Matrix message failed")
 
     def testDiscord(self):
-        webhook = self.get_query_argument("webhook")
-        name = self.get_query_argument("name")
-        avatar = self.get_query_argument("avatar")
-        tts = self.get_query_argument("tts")
+        webhook = self.get_body_argument("webhook")
+        name = self.get_body_argument("name")
+        avatar = self.get_body_argument("avatar")
+        tts = self.get_body_argument("tts")
 
-        import validators
-
-        if validators.url(webhook) != True:
+        if GenericProvider.invalid_url(webhook):
             return _("Invalid URL for webhook")
 
         result = notifiers.discord_notifier.test_notify(webhook, name, avatar, tts)
@@ -423,18 +503,18 @@ class Home(WebRoot):
         host = config.clean_hosts(self.get_query_argument("host"))
         password = filters.unhide(settings.PLEX_CLIENT_PASSWORD, self.get_query_argument("password"))
 
-        finalResult = ""
-        for curHost in [x.strip() for x in host.split(",")]:
-            curResult = notifiers.plex_notifier.test_notify_pht(unquote_plus(curHost), username, password)
-            if len(curResult.split(":")) > 2 and "OK" in curResult.split(":")[2]:
-                finalResult += _("Successful test notice sent to Plex Home Theater ... {plex_clients}").format(plex_clients=unquote_plus(curHost))
+        final_result = ""
+        for cur_host in [x.strip() for x in host.split(",")]:
+            cur_result = notifiers.plex_notifier.test_notify_pht(unquote_plus(cur_host), username, password)
+            if len(cur_result.split(":")) > 2 and "OK" in cur_result.split(":")[2]:
+                final_result += _("Successful test notice sent to Plex Home Theater ... {plex_clients}").format(plex_clients=unquote_plus(cur_host))
             else:
-                finalResult += _("Test failed for Plex Home Theater ... {plex_clients}").format(plex_clients=unquote_plus(curHost))
-            finalResult += "<br>" + "\n"
+                final_result += _("Test failed for Plex Home Theater ... {plex_clients}").format(plex_clients=unquote_plus(cur_host))
+            final_result += "<br>" + "\n"
 
         ui.notifications.message(_("Tested Plex Home Theater(s)") + ":", unquote_plus(host.replace(",", ", ")))
 
-        return finalResult
+        return final_result
 
     def testPMS(self):
         self.set_header("Cache-Control", "max-age=0,no-cache,no-store")
@@ -444,20 +524,20 @@ class Home(WebRoot):
         password = filters.unhide(settings.PLEX_SERVER_PASSWORD, self.get_query_argument("password"))
         plex_server_token = self.get_query_argument("plex_server_token")
 
-        finalResult = ""
+        final_result = ""
 
-        curResult = notifiers.plex_notifier.test_notify_pms(unquote_plus(host), username, password, plex_server_token)
-        if curResult is None:
-            finalResult += _("Successful test of Plex Media Server(s) ... {plex_servers}").format(plex_servers=unquote_plus(host.replace(",", ", ")))
-        elif curResult is False:
-            finalResult += _("Test failed, No Plex Media Server host specified")
+        cur_result = notifiers.plex_notifier.test_notify_pms(unquote_plus(host), username, password, plex_server_token)
+        if cur_result is None:
+            final_result += _("Successful test of Plex Media Server(s) ... {plex_servers}").format(plex_servers=unquote_plus(host.replace(",", ", ")))
+        elif cur_result is False:
+            final_result += _("Test failed, No Plex Media Server host specified")
         else:
-            finalResult += _("Test failed for Plex Media Server(s) ... {plex_servers}").format(plex_servers=unquote_plus(str(curResult).replace(",", ", ")))
-        finalResult += "<br>" + "\n"
+            final_result += _("Test failed for Plex Media Server(s) ... {plex_servers}").format(plex_servers=unquote_plus(str(cur_result).replace(",", ", ")))
+        final_result += "<br>" + "\n"
 
         ui.notifications.message(_("Tested Plex Media Server host(s)") + ":", unquote_plus(host.replace(",", ", ")))
 
-        return finalResult
+        return final_result
 
     @staticmethod
     def testLibnotify():
@@ -546,12 +626,10 @@ class Home(WebRoot):
 
     @staticmethod
     def loadShowNotifyLists():
-
         main_db_con = db.DBConnection()
-        rows = main_db_con.select("SELECT show_id, show_name, notify_list FROM tv_shows ORDER BY show_name ASC")
+        rows = main_db_con.select("SELECT indexer_id, show_name, notify_list FROM tv_shows ORDER BY show_name")
 
         data = {}
-        size = 0
         for r in rows:
             notify_list = {"emails": "", "prowlAPIs": ""}
             if r["notify_list"] and len(r["notify_list"]) > 0:
@@ -561,15 +639,19 @@ class Home(WebRoot):
                 else:
                     notify_list = dict(ast.literal_eval(r["notify_list"]))
 
-            data[r["show_id"]] = {"id": r["show_id"], "name": r["show_name"], "list": notify_list["emails"], "prowl_notify_list": notify_list["prowlAPIs"]}
+            data[r["indexer_id"]] = {
+                "id": r["indexer_id"],
+                "name": r["show_name"],
+                "list": notify_list["emails"],
+                "prowl_notify_list": notify_list["prowlAPIs"],
+            }
         data["_size"] = len(data)
         return json.dumps(data)
 
     def saveShowNotifyList(self):
-
         show = self.get_body_argument("show")
         main_db_con = db.DBConnection()
-        rows = main_db_con.select("SELECT show_id, notify_list FROM tv_shows WHERE show_id = ?", [show])
+        rows = main_db_con.select("SELECT indexer_id, notify_list FROM tv_shows WHERE indexer_id = ?", [show])
         # Get existing data from db for both email and prowl
         data = {}
 
@@ -581,22 +663,22 @@ class Home(WebRoot):
                     notify_list["emails"] = r["notify_list"]
                 else:
                     notify_list = dict(ast.literal_eval(r["notify_list"]))
-            data = {"id": r["show_id"], "email_list": notify_list["emails"], "prowl_list": notify_list["prowlAPIs"]}
+            data = {"id": r["indexer_id"], "email_list": notify_list["emails"], "prowl_list": notify_list["prowlAPIs"]}
 
         show_email = data["email_list"]
         show_prowl = data["prowl_list"]
 
         # Change email or prowl with new or keep the existing
         emails = self.get_body_argument("emails", show_email)
-        prowlAPIs = self.get_body_argument("prowlAPIs", show_prowl)
+        prowl_apis = self.get_body_argument("prowlAPIs", show_prowl)
 
-        entries = {"emails": emails, "prowlAPIs": prowlAPIs}
+        entries = {"emails": emails, "prowlAPIs": prowl_apis}
 
         # TODO: Split emails and do validators.email
-        if emails or prowlAPIs:
-            result = main_db_con.action("UPDATE tv_shows SET notify_list = ? WHERE show_id = ?", [str(entries), show])
+        if emails or prowl_apis:
+            result = main_db_con.action("UPDATE tv_shows SET notify_list = ? WHERE indexer_id = ?", [str(entries), show])
         else:
-            result = main_db_con.action("UPDATE tv_shows SET notify_list = Null WHERE show_id = ?", [show])
+            result = main_db_con.action("UPDATE tv_shows SET notify_list = Null WHERE indexer_id = ?", [show])
 
         if not result:
             return "ERROR"
@@ -618,8 +700,8 @@ class Home(WebRoot):
             return _("ERROR: {last_error}").format(last_error=notifiers.email_notifier.last_err)
 
     def testPushalot(self):
-        authorizationToken = self.get_body_argument("authorizationToken")
-        result = notifiers.pushalot_notifier.test_notify(authorizationToken)
+        authorization_token = self.get_body_argument("authorizationToken")
+        result = notifiers.pushalot_notifier.test_notify(authorization_token)
         if result:
             return _("Pushalot notification succeeded. Check your Pushalot clients to make sure it worked")
         else:
@@ -652,21 +734,28 @@ class Home(WebRoot):
             return _("Error sending Pushbullet notification")
 
     def status(self):
-        tvdirFree = helpers.disk_usage_hr(settings.TV_DOWNLOAD_DIR)
-        rootDir = {}
+        tvdir_free = helpers.disk_usage_hr(settings.TV_DOWNLOAD_DIR)
+        root_dir = {}
 
         if settings.ROOT_DIRS:
-            backend_pieces = settings.ROOT_DIRS.split("|")
-            backend_dirs = backend_pieces[1:]
+            backend_dirs = settings.ROOT_DIRS.split("|")[1:]
         else:
             backend_dirs = []
 
         if backend_dirs:
             for subject in backend_dirs:
-                rootDir[subject] = helpers.disk_usage_hr(subject)
+                root_dir[subject] = helpers.disk_usage_hr(subject)
 
         t = PageTemplate(rh=self, filename="status.mako")
-        return t.render(title=_("Status"), header=_("Status"), topmenu="system", tvdirFree=tvdirFree, rootDir=rootDir, controller="home", action="status")
+        return t.render(
+            title=_("Status"),
+            header=_("Status"),
+            topmenu="system",
+            tvdirFree=tvdir_free,
+            rootDir=root_dir,
+            controller="home",
+            action="status",
+        )
 
     def shutdown(self):
         pid = self.get_query_argument("pid")
@@ -685,21 +774,27 @@ class Home(WebRoot):
 
         t = PageTemplate(rh=self, filename="restart.mako")
 
-        return t.render(title=_("Home"), header=_("Restarting SickChill"), topmenu="system", controller="home", action="restart")
+        return t.render(
+            title=_("Home"),
+            header=_("Restarting SickChill"),
+            topmenu="system",
+            controller="home",
+            action="restart",
+        )
 
     def updateCheck(self):
         pid = self.get_query_argument("pid")
-        if str(pid) != str(settings.PID):
-            return self.redirect("/home/")
+        if settings.DISABLE_UPDATER or str(pid) != str(settings.PID):
+            return self.redirect("/" + settings.DEFAULT_PAGE + "/")
 
         settings.versionCheckScheduler.action.check_for_new_version(force=True)
         settings.versionCheckScheduler.action.check_for_new_news()
 
         return self.redirect("/" + settings.DEFAULT_PAGE + "/")
 
-    def update(self, pid, branch=None):
-        if str(pid) != str(settings.PID):
-            return self.redirect("/home/")
+    def update(self, pid):
+        if settings.DISABLE_UPDATER or str(pid) != str(settings.PID):
+            return self.redirect("/" + settings.DEFAULT_PAGE + "/")
 
         updater = UpdateManager()
         if updater.backup():
@@ -708,7 +803,13 @@ class Home(WebRoot):
                 settings.events.put(settings.events.SystemEvent.RESTART)
 
                 t = PageTemplate(rh=self, filename="restart.mako")
-                return t.render(title=_("Home"), header=_("Restarting SickChill"), topmenu="home", controller="home", action="restart")
+                return t.render(
+                    title=_("Home"),
+                    header=_("Restarting SickChill"),
+                    topmenu="home",
+                    controller="home",
+                    action="restart",
+                )
             else:
                 return self._genericMessage(_("Update Failed"), _("Update wasn't successful, not restarting. Check your log for more information."))
         else:
@@ -716,7 +817,6 @@ class Home(WebRoot):
 
     @staticmethod
     def compare_db_version():
-
         update_manager = UpdateManager()
         db_status = update_manager.compare_db_version()
 
@@ -735,9 +835,10 @@ class Home(WebRoot):
 
     def displayShow(self):
         show = self.get_query_argument("show")
+
         # todo: add more comprehensive show validation
         try:
-            show_obj = Show.find(settings.showList, int(show))
+            show_obj = Show.find(settings.show_list, int(show))
         except (ValueError, TypeError):
             return self._genericMessage(_("Error"), _("Invalid show ID: {show}").format(show=str(show)))
 
@@ -745,7 +846,7 @@ class Home(WebRoot):
             return self._genericMessage(_("Error"), _("Show not in show list"))
 
         main_db_con = db.DBConnection()
-        seasonResults = main_db_con.select(
+        season_results = main_db_con.select(
             "SELECT DISTINCT season FROM tv_episodes WHERE showid = ? AND season IS NOT NULL ORDER BY season DESC", [show_obj.indexerid]
         )
 
@@ -756,13 +857,12 @@ class Home(WebRoot):
         )
 
         t = PageTemplate(rh=self, filename="displayShow.mako")
-        submenu = [{"title": _("Edit"), "path": "home/editShow?show={0:d}".format(show_obj.indexerid), "icon": "fa fa-pencil"}]
+        submenu = [{"title": _("Edit"), "path": f"home/editShow?show={show_obj.indexerid}", "icon": "fa fa-pencil"}]
 
         try:
-            showLoc = (show_obj.location, True)
+            show_location = (show_obj.location, True)
         except ShowDirectoryNotFoundException:
-            # noinspection PyProtectedMember
-            showLoc = (show_obj._location, False)
+            show_location = (show_obj.get_location, False)
 
         show_message = ""
 
@@ -790,32 +890,28 @@ class Home(WebRoot):
         if not settings.showQueueScheduler.action.is_being_added(show_obj):
             if not settings.showQueueScheduler.action.is_being_updated(show_obj):
                 if show_obj.paused:
-                    submenu.append({"title": _("Resume"), "path": "home/togglePause?show={0:d}".format(show_obj.indexerid), "icon": "fa fa-play"})
+                    submenu.append({"title": _("Resume"), "path": f"home/togglePause?show={show_obj.indexerid}", "icon": "fa fa-play"})
                 else:
-                    submenu.append({"title": _("Pause"), "path": "home/togglePause?show={0:d}".format(show_obj.indexerid), "icon": "fa fa-pause"})
+                    submenu.append({"title": _("Pause"), "path": f"home/togglePause?show={show_obj.indexerid}", "icon": "fa fa-pause"})
 
                 # noinspection PyPep8
                 submenu.append(
                     {
                         "title": _("Remove"),
-                        "path": "home/deleteShow?show={0:d}".format(show_obj.indexerid),
+                        "path": f"home/deleteShow?show={show_obj.indexerid}",
                         "class": "removeshow",
                         "confirm": True,
                         "icon": "fa fa-trash",
                     }
                 )
-                submenu.append(
-                    {"title": _("Re-scan files"), "path": "home/refreshShow?show={0:d}&amp;force=1".format(show_obj.indexerid), "icon": "fa fa-refresh"}
-                )
+                submenu.append({"title": _("Re-scan files"), "path": f"home/refreshShow?show={show_obj.indexerid}&amp;force=1", "icon": "fa fa-refresh"})
                 # noinspection PyPep8
-                submenu.append(
-                    {"title": _("Force Full Update"), "path": "home/updateShow?show={0:d}&amp;force=1".format(show_obj.indexerid), "icon": "fa fa-exchange"}
-                )
+                submenu.append({"title": _("Force Full Update"), "path": f"home/updateShow?show={show_obj.indexerid}&amp;force=1", "icon": "fa fa-exchange"})
                 # noinspection PyPep8
                 submenu.append(
                     {
                         "title": _("Update show in KODI"),
-                        "path": "home/updateKODI?show={0:d}".format(show_obj.indexerid),
+                        "path": f"home/updateKODI?show={show_obj.indexerid}",
                         "requires": self.haveKODI(),
                         "icon": "menu-icon-kodi",
                     }
@@ -824,18 +920,18 @@ class Home(WebRoot):
                 submenu.append(
                     {
                         "title": _("Update show in Emby"),
-                        "path": "home/updateEMBY?show={0:d}".format(show_obj.indexerid),
+                        "path": f"home/updateEMBY?show={show_obj.indexerid}",
                         "requires": self.haveEMBY(),
                         "icon": "menu-icon-emby",
                     }
                 )
-                if seasonResults and int(seasonResults[-1]["season"]) == 0:
+                if season_results and int(season_results[-1]["season"]) == 0:
                     if settings.DISPLAY_SHOW_SPECIALS:
                         # noinspection PyPep8
                         submenu.append(
                             {
                                 "title": _("Hide specials"),
-                                "path": "home/toggleDisplayShowSpecials/?show={0:d}".format(show_obj.indexerid),
+                                "path": f"home/toggleDisplayShowSpecials/?show={show_obj.indexerid}",
                                 "confirm": True,
                                 "icon": "fa fa-times",
                             }
@@ -845,21 +941,19 @@ class Home(WebRoot):
                         submenu.append(
                             {
                                 "title": _("Show specials"),
-                                "path": "home/toggleDisplayShowSpecials/?show={0:d}".format(show_obj.indexerid),
+                                "path": f"home/toggleDisplayShowSpecials/?show={show_obj.indexerid}",
                                 "confirm": True,
                                 "icon": "fa fa-check",
                             }
                         )
 
-                submenu.append({"title": _("Preview Rename"), "path": "home/testRename?show={0:d}".format(show_obj.indexerid), "icon": "fa fa-tag"})
+                submenu.append({"title": _("Preview Rename"), "path": f"home/testRename?show={show_obj.indexerid}", "icon": "fa fa-tag"})
 
                 if settings.USE_SUBTITLES and show_obj.subtitles and not settings.showQueueScheduler.action.is_being_subtitled(show_obj):
                     # noinspection PyPep8
-                    submenu.append(
-                        {"title": _("Download Subtitles"), "path": "home/subtitleShow?show={0:d}".format(show_obj.indexerid), "icon": "fa fa-language"}
-                    )
+                    submenu.append({"title": _("Download Subtitles"), "path": f"home/subtitleShow?show={show_obj.indexerid}", "icon": "fa fa-language"})
 
-        epCounts = {
+        ep_counts = {
             Overview.SKIPPED: 0,
             Overview.WANTED: 0,
             Overview.QUAL: 0,
@@ -869,28 +963,21 @@ class Home(WebRoot):
             Overview.SNATCHED_PROPER: 0,
             Overview.SNATCHED_BEST: 0,
         }
-        epCats = {}
+        episode_categories = {}
 
-        for curResult in sql_results:
-            curEpCat = show_obj.getOverview(curResult["status"])
-            if curEpCat:
-                epCats[str(curResult["season"]) + "x" + str(curResult["episode"])] = curEpCat
-                epCounts[curEpCat] += 1
+        for current_result in sql_results:
+            current_episode_category = show_obj.get_overview(current_result["status"])
+            if current_episode_category:
+                episode_categories[str(current_result["season"]) + "x" + str(current_result["episode"])] = current_episode_category
+                ep_counts[current_episode_category] += 1
 
-        if settings.ANIME_SPLIT_HOME:
-            shows = []
-            anime = []
-            for show in settings.showList:
-                if show.is_anime:
-                    anime.append(show)
-                else:
-                    shows.append(show)
-            sortedShowLists = [
-                ["Shows", sorted(shows, key=lambda mbr: attrgetter("sort_name")(mbr))],
-                ["Anime", sorted(anime, key=lambda mbr: attrgetter("sort_name")(mbr))],
-            ]
-        else:
-            sortedShowLists = [["Shows", sorted(settings.showList, key=lambda mbr: attrgetter("sort_name")(mbr))]]
+        shows = []
+        anime = []
+        for show in settings.show_list:
+            if settings.ANIME_SPLIT_HOME and show.is_anime:
+                anime.append(show)
+            else:
+                shows.append(show)
 
         bwl = None
         if show_obj.is_anime:
@@ -920,15 +1007,15 @@ class Home(WebRoot):
 
         return t.render(
             submenu=submenu,
-            showLoc=showLoc,
+            show_location=show_location,
             show_message=show_message,
             show=show_obj,
             sql_results=sql_results,
-            seasonResults=seasonResults,
-            sortedShowLists=sortedShowLists,
+            seasonResults=season_results,
+            sorted_show_lists=[["Shows", shows], ["Anime", anime]],
             bwl=bwl,
-            epCounts=epCounts,
-            epCats=epCats,
+            ep_counts=ep_counts,
+            epCats=episode_categories,
             all_scene_exceptions=show_obj.exceptions,
             scene_numbering=get_scene_numbering_for_show(indexerid, indexer),
             xem_numbering=get_xem_numbering_for_show(indexerid, indexer),
@@ -977,7 +1064,7 @@ class Home(WebRoot):
         dvdorder=None,
         indexerLang=None,
         subtitles=None,
-        subtitles_sr_metadata=None,
+        subtitles_sc_metadata=None,
         rls_ignore_words=None,
         rls_require_words=None,
         rls_prefer_words=None,
@@ -992,24 +1079,21 @@ class Home(WebRoot):
         banner=None,
         fanart=None,
     ):
-
         anidb_failed = False
 
-        try:
-            show_obj = Show.find(settings.showList, int(show))
-        except (ValueError, TypeError):
-            errString = _("Invalid show ID") + ": {show}".format(show=str(show))
+        error, show_obj = Show.validate_indexer_id(show)
+        if error:
             if directCall:
-                return [errString]
+                return [error]
             else:
-                return self._genericMessage(_("Error"), errString)
+                return self._genericMessage(_("Error"), error)
 
         if not show_obj:
-            errString = _("Unable to find the specified show") + ": {show}".format(show=str(show))
+            error_string = _("Unable to find the specified show") + f": {show}"
             if directCall:
-                return [errString]
+                return [error_string]
             else:
-                return self._genericMessage(_("Error"), errString)
+                return self._genericMessage(_("Error"), error_string)
 
         show_obj.exceptions = sickchill.oldbeard.scene_exceptions.get_all_scene_exceptions(show_obj.indexerid)
 
@@ -1072,7 +1156,7 @@ class Home(WebRoot):
         sports = config.checkbox_to_value(sports)
         anime = config.checkbox_to_value(anime)
         subtitles = config.checkbox_to_value(subtitles)
-        subtitles_sr_metadata = config.checkbox_to_value(subtitles_sr_metadata)
+        subtitles_sc_metadata = config.checkbox_to_value(subtitles_sc_metadata)
 
         if indexerLang and indexerLang in show_obj.idxr.languages:
             indexer_lang = indexerLang
@@ -1126,34 +1210,36 @@ class Home(WebRoot):
         def get_images(image):
             if image.startswith("data:image"):
                 start = image.index("base64,") + 7
-                img_data = base64.b64decode(image[start:])
-                return img_data, img_data
+                _img_data = base64.b64decode(image[start:])
+                return _img_data, _img_data
             else:
                 image_parts = image.split("|")
-                img_url = image_parts[0]
-                img_data = getShowImage(img_url)
+                _img_data = getShowImage(image_parts[0])
                 if len(image_parts) > 1:
-                    img_thumb_url = image_parts[1]
-                    img_thumb_data = getShowImage(img_thumb_url)
-                    return img_data, img_thumb_data
+                    return _img_data, getShowImage(image_parts[1])
                 else:
-                    return img_data, img_data
+                    return _img_data, _img_data
 
         if poster:
             img_data, img_thumb_data = get_images(poster)
             dest_path = settings.IMAGE_CACHE.poster_path(show_obj.indexerid)
             dest_thumb_path = settings.IMAGE_CACHE.poster_thumb_path(show_obj.indexerid)
+            # noinspection PyProtectedMember
             metadata_generator._write_image(img_data, dest_path, overwrite=True)
+            # noinspection PyProtectedMember
             metadata_generator._write_image(img_thumb_data, dest_thumb_path, overwrite=True)
         if banner:
             img_data, img_thumb_data = get_images(banner)
             dest_path = settings.IMAGE_CACHE.banner_path(show_obj.indexerid)
             dest_thumb_path = settings.IMAGE_CACHE.banner_thumb_path(show_obj.indexerid)
+            # noinspection PyProtectedMember
             metadata_generator._write_image(img_data, dest_path, overwrite=True)
+            # noinspection PyProtectedMember
             metadata_generator._write_image(img_thumb_data, dest_thumb_path, overwrite=True)
         if fanart:
             img_data, img_thumb_data = get_images(fanart)
             dest_path = settings.IMAGE_CACHE.fanart_path(show_obj.indexerid)
+            # noinspection PyProtectedMember
             metadata_generator._write_image(img_data, dest_path, overwrite=True)
 
         # If directCall from mass_edit_update no scene exceptions handling or blackandwhite list handling
@@ -1182,9 +1268,8 @@ class Home(WebRoot):
 
             if bool(show_obj.season_folders) != season_folders:
                 show_obj.season_folders = season_folders
-                try:
-                    settings.showQueueScheduler.action.refresh_show(show_obj)
-                except CantRefreshShowException as error:
+                error, show = Show.refresh(show_obj)
+                if error:
                     errors.append(_("Unable to refresh this show: {error}").format(error=error))
 
             show_obj.paused = paused
@@ -1192,7 +1277,7 @@ class Home(WebRoot):
             show_obj.anime = anime
             show_obj.sports = sports
             show_obj.subtitles = subtitles
-            show_obj.subtitles_sr_metadata = subtitles_sr_metadata
+            show_obj.subtitles_sc_metadata = subtitles_sc_metadata
             show_obj.air_by_date = air_by_date
             show_obj.default_ep_status = int(defaultEpStatus)
             # words added to mass update so moved from directCall to here.
@@ -1203,10 +1288,12 @@ class Home(WebRoot):
             if not directCall:
                 show_obj.lang = indexer_lang
                 show_obj.dvdorder = dvdorder
+                location = self.get_argument("location", show_obj.get_location)
 
-            location = os.path.normpath(xhtml_unescape(location))
+            location = os.path.normpath(location)
+
             # noinspection PyProtectedMember
-            old_location = os.path.normpath(show_obj._location)
+            old_location = os.path.normpath(show_obj.get_location)
             # if we change location clear the db of episodes, change it, write to db, and rescan
             if old_location != location:
                 logger.debug(old_location + " != " + location)
@@ -1216,40 +1303,35 @@ class Home(WebRoot):
                     # change it
                     try:
                         show_obj.location = location
-                        try:
-                            settings.showQueueScheduler.action.refresh_show(show_obj, True)
-                        except CantRefreshShowException as error:
+                        error, show = Show.refresh(show_obj, True)
+                        if error:
                             errors.append(_("Unable to refresh this show: {error}").format(error=error))
                             # grab updated info from TVDB
                             # show_obj.loadEpisodesFromIndexer()
                             # rescan the episodes in the new folder
                     except NoNFOException:
-                        # noinspection PyPep8
                         errors.append(
-                            "The folder at <tt>{0}</tt> doesn't contain a tvshow.nfo - copy your files to that folder before you change the directory in SickChill.".format(
-                                location
-                            )
+                            f"The folder at <tt>{location}</tt> doesn't contain a tvshow.nfo - "
+                            + "copy your files to that folder before you change the directory in SickChill."
                         )
 
             # save it to the DB
-            show_obj.saveToDB()
+            show_obj.save_to_db()
 
         # force the update
         if do_update:
-            try:
-                settings.showQueueScheduler.action.update_show(show_obj, True)
-                time.sleep(cpu_presets[settings.CPU_PRESET])
-            except CantUpdateShowException as error:
+            error, show = Show.update(show_obj, True)
+            if error:
                 errors.append(_("Unable to update show: {error}").format(error=error))
 
-        import traceback
+            time.sleep(cpu_presets[settings.CPU_PRESET])
 
         logger.debug("Updating show exceptions")
         try:
             sickchill.oldbeard.scene_exceptions.update_custom_scene_exceptions(show_obj.indexerid, exceptions)
             time.sleep(cpu_presets[settings.CPU_PRESET])
         except CantUpdateShowException:
-            logger.debug(traceback.format_exc())
+            logger.debug("Error updating scene exceptions", exc_info=True)
             errors.append(_("Unable to force an update on scene exceptions of the show."))
 
         if do_update_scene_numbering:
@@ -1265,14 +1347,14 @@ class Home(WebRoot):
         if errors:
             ui.notifications.error(
                 _("{num_errors:d} error{plural} while saving changes:").format(num_errors=len(errors), plural="" if len(errors) == 1 else "s"),
-                "<ul>" + "\n".join(["<li>{0}</li>".format(error) for error in errors]) + "</ul>",
+                "<ul>" + "\n".join([f"<li>{error}</li>" for error in errors]) + "</ul>",
             )
 
         return self.redirect("/home/displayShow?show=" + show)
 
-    def togglePause(self, show=None):
+    def togglePause(self):
+        show = self.get_query_argument("show")
         error, show = Show.pause(show)
-
         if error:
             return self._genericMessage(_("Error"), error)
 
@@ -1280,24 +1362,25 @@ class Home(WebRoot):
             _("{show_name} has been {paused_resumed}").format(show_name=show.name, paused_resumed=(_("resumed"), _("paused"))[show.paused])
         )
 
-        return self.redirect("/home/displayShow?show={0:d}".format(show.indexerid))
+        return self.redirect(f"/home/displayShow?show={show.indexerid}")
 
-    def deleteShow(self, show=None, full=0):
-        if show:
-            error, show = Show.delete(show, full)
+    def deleteShow(self):
+        show = self.get_query_argument("show")
+        full = bool(try_int(self.get_query_argument("full")))
 
-            if error:
-                return self._genericMessage(_("Error"), error)
+        error, show = Show.delete(show, full)
+        if error:
+            return self._genericMessage(_("Error"), error)
 
-            ui.notifications.message(
-                _("{show_name} has been {deleted_trashed} {was_deleted}").format(
-                    show_name=show.name,
-                    deleted_trashed=(_("deleted"), _("trashed"))[settings.TRASH_REMOVE_SHOW],
-                    was_deleted=(_("(media untouched)"), _("(with all related media)"))[bool(full)],
-                )
+        ui.notifications.message(
+            _("{show_name} has been {deleted_trashed} {was_deleted}").format(
+                show_name=show.name,
+                deleted_trashed=(_("deleted"), _("trashed"))[settings.TRASH_REMOVE_SHOW],
+                was_deleted=(_("(media untouched)"), _("(with all related media)"))[full],
             )
+        )
 
-            time.sleep(cpu_presets[settings.CPU_PRESET])
+        time.sleep(cpu_presets[settings.CPU_PRESET])
 
         # Remove show from 'RECENT SHOWS' in 'Shows' menu
         settings.SHOWS_RECENT = [x for x in settings.SHOWS_RECENT if x["indexerid"] != show.indexerid]
@@ -1305,7 +1388,10 @@ class Home(WebRoot):
         # Don't redirect to the default page, so the user can confirm that the show was deleted
         return self.redirect("/home/")
 
-    def refreshShow(self, show=None, force=False):
+    def refreshShow(self):
+        show = self.get_query_argument("show")
+        force = bool(try_int(self.get_query_argument("force", default="0")))
+
         error, show = Show.refresh(show, force)
 
         # This is a show validation error
@@ -1320,39 +1406,34 @@ class Home(WebRoot):
 
         return self.redirect(f"/home/displayShow?show={show.indexerid}")
 
-    def updateShow(self, show=None, force=0):
-
-        if not show:
-            return self._genericMessage(_("Error"), _("Invalid show ID"))
-
-        show_obj = Show.find(settings.showList, int(show))
-
-        if not show_obj:
-            return self._genericMessage(_("Error"), _("Unable to find the specified show"))
+    def updateShow(self):
+        show = self.get_query_argument("show")
+        force = bool(try_int(self.get_query_argument("force", default="0")))
 
         # force the update
-        try:
-            settings.showQueueScheduler.action.update_show(show_obj, bool(force))
-        except CantUpdateShowException as error:
+        error, show = Show.update(show, force)
+
+        # This is a show validation error
+        if error and not show:
+            return self._genericMessage(_("Error"), error)
+
+        if error:
             ui.notifications.error(_("Unable to update this show."), f"{error}")
 
         # just give it some time
         time.sleep(cpu_presets[settings.CPU_PRESET])
 
-        return self.redirect(f"/home/displayShow?show={show_obj.indexerid}")
+        return self.redirect(f"/home/displayShow?show={show.indexerid}")
 
-    def subtitleShow(self, show=None, force=0):
-
-        if not show:
-            return self._genericMessage(_("Error"), _("Invalid show ID"))
-
-        show_obj = Show.find(settings.showList, int(show))
+    def subtitleShow(self):
+        show = self.get_query_argument("show")
+        show_obj = Show.find(settings.show_list, int(show))
 
         if not show_obj:
             return self._genericMessage(_("Error"), _("Unable to find the specified show"))
 
         # search and download subtitles
-        settings.showQueueScheduler.action.download_subtitles(show_obj, bool(force))
+        settings.showQueueScheduler.action.download_subtitles(show_obj)
 
         time.sleep(cpu_presets[settings.CPU_PRESET])
 
@@ -1363,7 +1444,7 @@ class Home(WebRoot):
         show_obj = None
 
         if show:
-            show_obj = Show.find(settings.showList, int(show))
+            show_obj = Show.find(settings.show_list, int(show))
             if show_obj:
                 showName = urllib.parse.quote_plus(show_obj.name)
 
@@ -1393,7 +1474,7 @@ class Home(WebRoot):
         show_obj = None
 
         if show:
-            show_obj = Show.find(settings.showList, int(show))
+            show_obj = Show.find(settings.show_list, int(show))
 
         if notifiers.emby_notifier.update_library(show_obj):
             ui.notifications.message(_("Library update command sent to Emby host: {emby_host}").format(emby_host=settings.EMBY_HOST))
@@ -1405,17 +1486,18 @@ class Home(WebRoot):
         else:
             return self.redirect("/home/")
 
-    def setStatus(self, show=None, eps=None, status=None, direct=False):
+    def setStatus(self, direct=False):
+        if direct is True:
+            # noinspection PyUnresolvedReferences
+            show = self.to_change_show
+            # noinspection PyUnresolvedReferences
+            eps = self.to_change_eps
+            status = self.get_body_argument("newStatus")
+        else:
+            show = self.get_body_argument("show")
+            eps = self.get_body_arguments("eps[]")
+            status = self.get_body_argument("status")
 
-        if not all([show, eps, status]):
-            errMsg = _("You must specify a show and at least one episode")
-            if direct:
-                ui.notifications.error(_("Error"), errMsg)
-                return json.dumps({"result": "error"})
-            else:
-                return self._genericMessage(_("Error"), errMsg)
-
-        # Use .has_key() since it is overridden for statusStrings in common.py
         if status not in statusStrings:
             errMsg = _("Invalid status")
             if direct:
@@ -1424,7 +1506,7 @@ class Home(WebRoot):
             else:
                 return self._genericMessage(_("Error"), errMsg)
 
-        show_obj = Show.find(settings.showList, int(show))
+        show_obj = Show.find(settings.show_list, int(show))
 
         if not show_obj:
             errMsg = _("Show not in show list")
@@ -1438,65 +1520,66 @@ class Home(WebRoot):
         if eps:
             trakt_data = []
             sql_l = []
-            for cur_ep in eps.split("|"):
-
+            for cur_ep in eps:
                 if not cur_ep:
                     logger.debug("cur_ep was empty when trying to setStatus")
 
-                logger.debug("Attempting to set status on episode " + cur_ep + " to " + status)
+                logger.debug(f"Attempting to set status of {show} episode {cur_ep} to {status}")
 
-                epInfo = cur_ep.split("x")
+                # if mako changes from epStr to episode_object.episode_number see line 1600
+                ep_info = cur_ep.split("x")
 
-                if not all(epInfo):
-                    logger.debug("Something went wrong when trying to setStatus, epInfo[0]: {0}, epInfo[1]: {1}".format(epInfo[0], epInfo[1]))
+                if not all(ep_info):
+                    logger.debug(f"Something went wrong when trying to setStatus, {episode_num(*ep_info)}")
                     continue
 
-                ep_obj = show_obj.getEpisode(epInfo[0], epInfo[1])
+                episode_object = show_obj.get_episode(ep_info[0], ep_info[1])
 
-                if not ep_obj:
+                if not episode_object:
                     return self._genericMessage(_("Error"), _("Episode couldn't be retrieved"))
 
                 if int(status) in [WANTED, FAILED]:
                     # figure out what episodes are wanted so we can backlog them
-                    if ep_obj.season in segments:
-                        segments[ep_obj.season].append(ep_obj)
+                    if episode_object.season in segments:
+                        segments[episode_object.season].append(episode_object)
                     else:
-                        segments[ep_obj.season] = [ep_obj]
+                        segments[episode_object.season] = [episode_object]
 
-                with ep_obj.lock:
+                with episode_object.lock:
                     # don't let them mess up UNAIRED episodes
-                    if ep_obj.status == UNAIRED:
-                        logger.warning("Refusing to change status of " + cur_ep + " because it is UNAIRED")
+                    if episode_object.status == UNAIRED:
+                        logger.warning(f"Refusing to change status of {cur_ep} because it is UNAIRED")
                         continue
 
                     if (
                         int(status) in Quality.DOWNLOADED
-                        and ep_obj.status not in Quality.SNATCHED + Quality.SNATCHED_PROPER + Quality.SNATCHED_BEST + Quality.DOWNLOADED + [IGNORED]
-                        and not os.path.isfile(ep_obj.location)
+                        and episode_object.status not in Quality.SNATCHED + Quality.SNATCHED_PROPER + Quality.SNATCHED_BEST + Quality.DOWNLOADED + [IGNORED]
+                        and not os.path.isfile(episode_object.location)
                     ):
-                        logger.warning("Refusing to change status of " + cur_ep + " to DOWNLOADED because it's not SNATCHED/DOWNLOADED")
+                        logger.warning(f"Refusing to change status of {cur_ep} to DOWNLOADED because it's not SNATCHED/DOWNLOADED")
                         continue
 
                     if (
                         int(status) == FAILED
-                        and ep_obj.status not in Quality.SNATCHED + Quality.SNATCHED_PROPER + Quality.SNATCHED_BEST + Quality.DOWNLOADED + Quality.ARCHIVED
+                        and episode_object.status
+                        not in Quality.SNATCHED + Quality.SNATCHED_PROPER + Quality.SNATCHED_BEST + Quality.DOWNLOADED + Quality.ARCHIVED
                     ):
-                        logger.warning("Refusing to change status of " + cur_ep + " to FAILED because it's not SNATCHED/DOWNLOADED")
+                        logger.warning(f"Refusing to change status of {cur_ep} to FAILED because it's not SNATCHED/DOWNLOADED")
                         continue
 
-                    if ep_obj.status in Quality.DOWNLOADED + Quality.ARCHIVED and int(status) == WANTED:
+                    if episode_object.status in Quality.DOWNLOADED + Quality.ARCHIVED and int(status) == WANTED:
                         logger.info(
                             "Removing release_name for episode as you want to set a downloaded episode back to wanted, so obviously you want it replaced"
                         )
-                        ep_obj.release_name = ""
+                        episode_object.release_name = ""
 
-                    ep_obj.status = int(status)
+                    episode_object.status = int(status)
 
                     # mass add to database
-                    sql_l.append(ep_obj.get_sql())
+                    sql_l.append(episode_object.get_sql())
 
                     if settings.USE_TRAKT and settings.TRAKT_SYNC_WATCHLIST:
-                        trakt_data.append((ep_obj.season, ep_obj.episode))
+                        trakt_data.append((episode_object.season, episode_object.episode))
 
             if settings.USE_TRAKT and settings.TRAKT_SYNC_WATCHLIST:
                 data = notifiers.trakt_notifier.trakt_episode_data_generate(trakt_data)
@@ -1532,10 +1615,10 @@ class Home(WebRoot):
             if segments:
                 ui.notifications.message(_("Backlog started"), msg)
         elif int(status) == WANTED and show_obj.paused:
-            logger.info("Some episodes were set to wanted, but " + show_obj.name + " is paused. Not adding to Backlog until show is unpaused")
+            logger.info(f"Some episodes were set to wanted, but {show_obj.name} is paused. Not adding to Backlog until show is unpaused")
 
         if int(status) == FAILED:
-            msg = _("Retrying Search was automatically started for the following season of <b>{show_name}</b>").format(show_name=show_obj.name)
+            msg = _(f"Retrying Search was automatically started for the following season of <b>{show_obj.name}</b>")
             msg += ":<br><ul>"
 
             for season, segment in segments.items():
@@ -1553,39 +1636,44 @@ class Home(WebRoot):
         if direct:
             return json.dumps({"result": "success"})
         else:
-            return self.redirect("/home/displayShow?show=" + show)
+            return self.redirect(f"/home/displayShow?show={show}")
 
-    def testRename(self, show=None):
+    def testRename(self):
+        show = self.get_query_argument("show")
 
-        if not show:
-            return self._genericMessage(_("Error"), _("You must specify a show"))
-
-        show_obj = Show.find(settings.showList, int(show))
+        show_obj = Show.find(settings.show_list, show)
 
         if not show_obj:
             return self._genericMessage(_("Error"), _("Show not in show list"))
 
         try:
-            show_obj.location
+            show_obj.location  # noqa
         except ShowDirectoryNotFoundException:
             return self._genericMessage(_("Error"), _("Can't rename episodes when the show dir is missing."))
 
-        show_obj.getAllEpisodes(has_location=True)
+        show_obj.get_all_episodes(has_location=True)
         t = PageTemplate(rh=self, filename="testRename.mako")
-        submenu = [{"title": _("Edit"), "path": "home/editShow?show={0:d}".format(show_obj.indexerid), "icon": "ui-icon ui-icon-pencil"}]
+        submenu = [{"title": _("Edit"), "path": f"home/editShow?show={show_obj.indexerid}", "icon": "ui-icon ui-icon-pencil"}]
 
-        return t.render(submenu=submenu, show=show_obj, title=_("Preview Rename"), header=_("Preview Rename"), controller="home", action="previewRename")
+        return t.render(
+            submenu=submenu,
+            show=show_obj,
+            title=_("Preview Rename"),
+            header=_("Preview Rename"),
+            controller="home",
+            action="previewRename",
+        )
 
     def doRename(self, show=None, eps=None):
         if not (show and eps):
             return self._genericMessage(_("Error"), _("You must specify a show and at least one episode"))
 
-        show_obj = Show.find(settings.showList, int(show))
+        show_obj = Show.find(settings.show_list, int(show))
         if not show_obj:
             return self._genericMessage(_("Error"), _("Show not in show list"))
 
         try:
-            show_obj.location
+            show_obj.location  # noqa
         except ShowDirectoryNotFoundException:
             return self._genericMessage(_("Error"), _("Can't rename episodes when the show dir is missing."))
 
@@ -1594,27 +1682,24 @@ class Home(WebRoot):
 
         main_db_con = db.DBConnection()
         for cur_ep in eps.split("|"):
+            ep_info = cur_ep.split("x")
 
-            epInfo = cur_ep.split("x")
-
-            # this is probably the worst possible way to deal with double eps but I've kinda painted myself into a corner here with this stupid database
-            ep_result = main_db_con.select(
-                "SELECT location FROM tv_episodes WHERE showid = ? AND season = ? AND episode = ? AND 5=5", [show, epInfo[0], epInfo[1]]
-            )
+            # this is probably the worst possible way to deal with double eps, but I've kinda painted myself into a corner here with this stupid database
+            ep_result = main_db_con.select("SELECT location FROM tv_episodes WHERE showid = ? AND season = ? AND episode = ?", [show, ep_info[0], ep_info[1]])
             if not ep_result:
-                logger.warning("Unable to find an episode for " + cur_ep + ", skipping")
+                logger.warning(f"Unable to find an episode for {show}: {cur_ep} , skipping")
                 continue
             related_eps_result = main_db_con.select(
-                "SELECT season, episode FROM tv_episodes WHERE location = ? AND episode != ?", [ep_result[0]["location"], epInfo[1]]
+                "SELECT season, episode FROM tv_episodes WHERE location = ? AND episode != ?", [ep_result[0]["location"], ep_info[1]]
             )
 
-            root_ep_obj = show_obj.getEpisode(epInfo[0], epInfo[1])
-            root_ep_obj.relatedEps = []
+            root_ep_obj = show_obj.get_episode(ep_info[0], ep_info[1])
+            root_ep_obj.related_episodes = []
 
             for cur_related_ep in related_eps_result:
-                related_ep_obj = show_obj.getEpisode(cur_related_ep["season"], cur_related_ep["episode"])
-                if related_ep_obj not in root_ep_obj.relatedEps:
-                    root_ep_obj.relatedEps.append(related_ep_obj)
+                related_ep_obj = show_obj.get_episode(cur_related_ep["season"], cur_related_ep["episode"])
+                if related_ep_obj not in root_ep_obj.related_episodes:
+                    root_ep_obj.related_episodes.append(related_ep_obj)
 
             root_ep_obj.rename()
 
@@ -1628,23 +1713,23 @@ class Home(WebRoot):
         self.set_header("Cache-Control", "max-age=0,no-cache,no-store")
 
         cache_db_con = db.DBConnection("cache.db", row_type="dict")
-        # show_object: TVShow = Show.find(settings.showList, show)
-        # sickchill.oldbeard.search.searchProviders(
+        # show_object: TVShow = Show.find(settings.show_list, show)
+        # sickchill.oldbeard.search.search_providers(
         #     show_object,
-        #     show_object.getEpisode(season=season, episode=episode or 1),
+        #     show_object.get_episode(season=season, episode=episode or 1),
         #     downCurQuality=True,
-        #     manualSearch=True,
-        #     manual_snatch=('sponly', 'eponly')[episode is not None]
+        #     manual=True,
+        #     manual_snatch=('season', 'episode')[episode is not None]
         # )
 
-        if episode:
+        if episode is not None:
             results = cache_db_con.select(
                 "SELECT * FROM results WHERE indexerid = ? AND season = ? AND episodes LIKE ? AND status != ? ORDER BY seeders DESC",
                 [show, season, f"%|{episode}|%", FAILED],
             )
         else:
-            show_object: TVShow = Show.find(settings.showList, show)
-            episodes_sql = "|".join([str(ep.season) for ep in show_object.getAllEpisodes(season=season) if ep.season > 0])
+            show_object: TVShow = Show.find(settings.show_list, show)
+            episodes_sql = "|".join([str(ep.season) for ep in show_object.get_all_episodes(season=season) if ep.season > 0])
             results = cache_db_con.select(
                 "SELECT * FROM results WHERE indexerid = ? AND season = ? AND episodes LIKE ? AND status != ? ORDER BY seeders DESC",
                 [show, season, f"%{episodes_sql}%", FAILED],
@@ -1653,19 +1738,24 @@ class Home(WebRoot):
         for result in results:
             episodes_list = [int(ep) for ep in result["episodes"].split("|") if ep]
             if len(episodes_list) > 1:
-                result["ep_string"] = "S{:02}E{}-{}".format(result["season"], min(episodes_list), max(episodes_list))
+                result["ep_string"] = f"S{result['season']:02}E{min(episodes_list)}-{max(episodes_list)}"
             else:
                 result["ep_string"] = episode_num(result["season"], episodes_list[0])
 
         # TODO: If no cache results do a search on indexers and post back to this method.
 
         t = PageTemplate(rh=self, filename="manual_search_show_releases.mako")
-        submenu = [{"title": _("Edit"), "path": "home/editShow?show={0}".format(show), "icon": "fa fa-pencil"}]
+        submenu = [{"title": _("Edit"), "path": f"home/editShow?show={show}", "icon": "fa fa-pencil"}]
         return t.render(
-            submenu=submenu, title=_("Manual Snatch"), header=_("Manual Snatch"), controller="home", action="manual_search_show_releases", results=results
+            submenu=submenu,
+            title=_("Manual Snatch"),
+            header=_("Manual Snatch"),
+            controller="home",
+            action="manual_search_show_releases",
+            results=results,
         )
 
-    def manual_snatch_show_release(self, *args, **kwargs):
+    def manual_snatch_show_release(self):
         url = self.get_body_argument("url")
         show = self.get_body_argument("show")
 
@@ -1690,24 +1780,23 @@ class Home(WebRoot):
         if isinstance(result, str):
             sickchill.logger.info(_("Could not snatch manually selected result: {result}").format(result=result))
         elif isinstance(result, sickchill.oldbeard.classes.SearchResult):
-            sickchill.oldbeard.search.snatchEpisode(result, SNATCHED_BEST)
+            sickchill.oldbeard.search.snatch_episode(result, SNATCHED_BEST)
 
         return self.redirect("/home/displayShow?show=" + show)
 
     def searchEpisode(self, show=None, season=None, episode=None, downCurQuality=0):
-
         # retrieve the episode object and fail if we can't get one
-        ep_obj, error_msg = self._getEpisode(show, season, episode)
-        if error_msg or not ep_obj:
+        episode_object, error_msg = self._getEpisode(show, season, episode)
+        if error_msg or not episode_object:
             return json.dumps({"result": "failure", "errorMessage": error_msg})
 
         # make a queue item for it and put it on the queue
-        ep_queue_item = search_queue.ManualSearchQueueItem(ep_obj.show, ep_obj, bool(int(downCurQuality)))
+        ep_queue_item = search_queue.ManualSearchQueueItem(episode_object.show, episode_object, bool(int(downCurQuality)))
 
         settings.searchQueueScheduler.action.add_item(ep_queue_item)
 
         if not ep_queue_item.started and ep_queue_item.success is None:
-            return json.dumps({"result": "success"})  # I Actually want to call it queued, because the search hasnt been started yet!
+            return json.dumps({"result": "success"})  # I Actually want to call it queued, because the search hasn't been started yet!
         if ep_queue_item.started and ep_queue_item.success is None:
             return json.dumps({"result": "success"})
         else:
@@ -1716,10 +1805,12 @@ class Home(WebRoot):
     # ## Returns the current ep_queue_item status for the current viewed show.
     # Possible status: Downloaded, Snatched, etc...
     # Returns {'show': 279530, 'episodes' : ['episode' : 6, 'season' : 1, 'searchstatus' : 'queued', 'status' : 'running', 'quality': '4013']
-    def getManualSearchStatus(self, show=None):
+    def getManualSearchStatus(self):
+        show = self.get_query_argument("show", None)
+
         def getEpisodes(search_thread, search_status):
             results = []
-            show_obj = Show.find(settings.showList, int(search_thread.show.indexerid))
+            show_obj = Show.find(settings.show_list, int(search_thread.show.indexerid))
 
             if not show_obj:
                 logger.warning(f"No Show Object found for show with indexerID: {search_thread.show.indexerid}")
@@ -1729,6 +1820,7 @@ class Home(WebRoot):
             def relative_ep_location(ep_loc, show_loc):
                 """Returns the relative location compared to the show's location"""
                 if ep_loc and show_loc and ep_loc.lower().startswith(show_loc.lower()):
+                    # noinspection IncorrectFormatting
                     return ep_loc[len(show_loc) + 1 :]
                 else:
                     return ep_loc
@@ -1744,26 +1836,26 @@ class Home(WebRoot):
                         "searchstatus": search_status,
                         "status": statusStrings[search_thread.segment.status],
                         "quality": self.getQualityClass(search_thread.segment),
-                        "overview": Overview.overviewStrings[show_obj.getOverview(search_thread.segment.status)],
-                        "location": relative_ep_location(search_thread.segment._location, show_obj._location),
+                        "overview": Overview.overviewStrings[show_obj.get_overview(search_thread.segment.status)],
+                        "location": relative_ep_location(search_thread.segment.location, show_obj.get_location),
                         "size": pretty_file_size(search_thread.segment.file_size) if search_thread.segment.file_size else "",
                     }
                 )
             else:
-                for ep_obj in search_thread.segment:
+                for episode_object in search_thread.segment:
                     # noinspection PyProtectedMember
                     results.append(
                         {
-                            "show": ep_obj.show.indexerid,
-                            "episode": ep_obj.episode,
-                            "episodeindexid": ep_obj.indexerid,
-                            "season": ep_obj.season,
+                            "show": episode_object.show.indexerid,
+                            "episode": episode_object.episode,
+                            "episodeindexid": episode_object.indexerid,
+                            "season": episode_object.season,
                             "searchstatus": search_status,
-                            "status": statusStrings[ep_obj.status],
-                            "quality": self.getQualityClass(ep_obj),
-                            "overview": Overview.overviewStrings[show_obj.getOverview(ep_obj.status)],
-                            "location": relative_ep_location(ep_obj._location, show_obj._location),
-                            "size": pretty_file_size(ep_obj.file_size) if ep_obj.file_size else "",
+                            "status": statusStrings[episode_object.status],
+                            "quality": self.getQualityClass(episode_object),
+                            "overview": Overview.overviewStrings[show_obj.get_overview(episode_object.status)],
+                            "location": relative_ep_location(episode_object.location, show_obj.get_location),
+                            "size": pretty_file_size(episode_object.file_size) if episode_object.file_size else "",
                         }
                     )
 
@@ -1807,11 +1899,11 @@ class Home(WebRoot):
         return json.dumps({"episodes": episodes})
 
     @staticmethod
-    def getQualityClass(ep_obj):
+    def getQualityClass(episode_object):
         # return the correct json value
 
         # Find the quality class for the episode
-        ep_status_, ep_quality = Quality.splitCompositeStatus(ep_obj.status)
+        ep_status_, ep_quality = Quality.splitCompositeStatus(episode_object.status)
         if ep_quality in Quality.cssClassStrings:
             quality_class = Quality.cssClassStrings[ep_quality]
         else:
@@ -1821,13 +1913,13 @@ class Home(WebRoot):
 
     def searchEpisodeSubtitles(self, show=None, season=None, episode=None):
         # retrieve the episode object and fail if we can't get one
-        ep_obj, error_msg = self._getEpisode(show, season, episode)
-        if error_msg or not ep_obj:
+        episode_object, error_msg = self._getEpisode(show, season, episode)
+        if error_msg or not episode_object:
             return json.dumps({"result": "failure", "errorMessage": error_msg})
 
         # noinspection PyBroadException
         try:
-            new_subtitles = ep_obj.download_subtitles()
+            new_subtitles = episode_object.download_subtitles()
         except Exception:
             return json.dumps({"result": "failure"})
 
@@ -1837,26 +1929,26 @@ class Home(WebRoot):
         else:
             status = _("No subtitles downloaded")
 
-        ui.notifications.message(ep_obj.show.name, status)
-        return json.dumps({"result": status, "subtitles": ",".join(ep_obj.subtitles)})
+        ui.notifications.message(episode_object.show.name, status)
+        return json.dumps({"result": status, "subtitles": ",".join(episode_object.subtitles)})
 
     def playOnKodi(self, show, season, episode, host):
-        ep_obj, error_msg = self._getEpisode(show, season, episode)
-        if error_msg or not ep_obj:
+        episode_object, error_msg = self._getEpisode(show, season, episode)
+        if error_msg or not episode_object:
             print("error")
             return json.dumps({"result": "failure", "errorMessage": error_msg})
 
-        sickchill.oldbeard.notifiers.kodi_notifier.play_episode(ep_obj, host)
+        sickchill.oldbeard.notifiers.kodi_notifier.play_episode(episode_object, host)
         return json.dumps({"result": "success"})
 
     def retrySearchSubtitles(self, show, season, episode, lang):
         # retrieve the episode object and fail if we can't get one
-        ep_obj, error_msg = self._getEpisode(show, season, episode)
-        if error_msg or not ep_obj:
+        episode_object, error_msg = self._getEpisode(show, season, episode)
+        if error_msg or not episode_object:
             return json.dumps({"result": "failure", "errorMessage": error_msg})
 
         try:
-            new_subtitles = ep_obj.download_subtitles(force_lang=lang)
+            new_subtitles = episode_object.download_subtitles(force_lang=lang)
         except Exception as error:
             return json.dumps({"result": "failure", "errorMessage": error})
 
@@ -1866,11 +1958,10 @@ class Home(WebRoot):
         else:
             status = _("No subtitles downloaded")
 
-        ui.notifications.message(ep_obj.show.name, status)
-        return json.dumps({"result": status, "subtitles": ",".join(ep_obj.subtitles)})
+        ui.notifications.message(episode_object.show.name, status)
+        return json.dumps({"result": status, "subtitles": ",".join(episode_object.subtitles)})
 
     def setSceneNumbering(self, show, indexer, forSeason=None, forEpisode=None, forAbsolute=None, sceneSeason=None, sceneEpisode=None, sceneAbsolute=None):
-
         # sanitize:
         if forSeason in ("null", ""):
             forSeason = None
@@ -1885,7 +1976,7 @@ class Home(WebRoot):
         if sceneAbsolute in ("null", ""):
             sceneAbsolute = None
 
-        show_obj = Show.find(settings.showList, int(show))
+        show_obj = Show.find(settings.show_list, int(show))
 
         if show_obj.is_anime:
             result = {
@@ -1901,15 +1992,15 @@ class Home(WebRoot):
 
         # retrieve the episode object and fail if we can't get one
         if show_obj.is_anime:
-            ep_obj, error_msg = self._getEpisode(show, absolute=forAbsolute)
+            episode_object, error_msg = self._getEpisode(show, absolute=forAbsolute)
         else:
-            ep_obj, error_msg = self._getEpisode(show, forSeason, forEpisode)
+            episode_object, error_msg = self._getEpisode(show, forSeason, forEpisode)
 
-        if error_msg or not ep_obj:
+        if error_msg or not episode_object:
             result["success"] = False
             result["errorMessage"] = error_msg
         elif show_obj.is_anime:
-            logger.debug("setAbsoluteSceneNumbering for {0} from {1} to {2}".format(show, forAbsolute, sceneAbsolute))
+            logger.debug(f"setAbsoluteSceneNumbering for {show} from {forAbsolute} to {sceneAbsolute}")
 
             show = int(show)
             indexer = int(indexer)
@@ -1919,7 +2010,7 @@ class Home(WebRoot):
 
             set_scene_numbering(show, indexer, absolute_number=forAbsolute, sceneAbsolute=sceneAbsolute)
         else:
-            logger.debug("setEpisodeSceneNumbering for {0} from {1}x{2} to {3}x{4}".format(show, forSeason, forEpisode, sceneSeason, sceneEpisode))
+            logger.debug(f"setEpisodeSceneNumbering for {show} from {episode_num(forSeason, forEpisode)} to {episode_num(sceneSeason, sceneEpisode)}")
 
             show = int(show)
             indexer = int(indexer)
@@ -1949,16 +2040,16 @@ class Home(WebRoot):
 
     def retryEpisode(self, show, season, episode, downCurQuality=0):
         # retrieve the episode object and fail if we can't get one
-        ep_obj, error_msg = self._getEpisode(show, season, episode)
-        if error_msg or not ep_obj:
+        episode_object, error_msg = self._getEpisode(show, season, episode)
+        if error_msg or not episode_object:
             return json.dumps({"result": "failure", "errorMessage": error_msg})
 
         # make a queue item for it and put it on the queue
-        ep_queue_item = search_queue.FailedQueueItem(ep_obj.show, [ep_obj], bool(int(downCurQuality)))
+        ep_queue_item = search_queue.FailedQueueItem(episode_object.show, [episode_object], bool(int(downCurQuality)))
         settings.searchQueueScheduler.action.add_item(ep_queue_item)
 
         if not ep_queue_item.started and ep_queue_item.success is None:
-            return json.dumps({"result": "success"})  # I Actually want to call it queued, because the search hasnt been started yet!
+            return json.dumps({"result": "success"})  # I Actually want to call it queued, because the search hasn't been started yet!
         if ep_queue_item.started and ep_queue_item.success is None:
             return json.dumps({"result": "success"})
         else:
@@ -1966,15 +2057,14 @@ class Home(WebRoot):
 
     @staticmethod
     def fetch_releasegroups(show_name):
-        logger.info("ReleaseGroups: {0}".format(show_name))
+        logger.info(f"ReleaseGroups: {show_name}")
         if helpers.set_up_anidb_connection():
             try:
                 anime = adba.Anime(settings.ADBA_CONNECTION, name=show_name, cache_dir=Path(settings.CACHE_DIR))
                 groups = anime.get_groups()
-                logger.info("ReleaseGroups: {0}".format(groups))
+                logger.info(f"ReleaseGroups: {groups}")
                 return json.dumps({"result": "success", "groups": groups})
             except AttributeError as error:
-                logger.debug("Unable to get ReleaseGroups: {0}".format(error))
-                logger.debug(traceback.format_exc())
+                logger.debug(f"Unable to get ReleaseGroups: {error}", exc_info=True)
 
         return json.dumps({"result": "failure"})

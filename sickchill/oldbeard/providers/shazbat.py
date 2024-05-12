@@ -8,13 +8,11 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("Shazbat.tv")
 
         self.supports_backlog = False
 
         self.passkey = None
-        self.options = None
 
         self.cache = ShazbatCache(self, min_time=20)
 
@@ -32,7 +30,7 @@ class Provider(TorrentProvider):
 
         return True
 
-    def _check_auth_from_data(self, data):
+    def check_auth_from_data(self, data):
         if not self.passkey:
             self._check_auth()
         elif data.get("bozo") == 1 and not (data["entries"] and data["feed"]):
@@ -48,4 +46,4 @@ class ShazbatCache(tvcache.TVCache):
         return self.get_rss_feed(self.provider.urls["rss_recent"], params=params)
 
     def _check_auth(self, data):
-        return self.provider._check_auth_from_data(data)
+        return self.provider.check_auth_from_data(data)

@@ -2,10 +2,10 @@ import datetime
 import os.path
 import platform
 import re
+from pathlib import Path
 from urllib import parse
 
 import rarfile
-from tornado.escape import xhtml_unescape
 
 import sickchill.start
 from sickchill import logger, settings
@@ -301,7 +301,9 @@ def change_unpack_dir(unpack_dir):
         return True
 
     if os.path.normpath(settings.UNPACK_DIR) != os.path.normpath(unpack_dir):
-        if bool(settings.ROOT_DIRS) and any(helpers.is_subdirectory(unpack_dir, rd) for rd in settings.ROOT_DIRS.split("|")[1:]):
+        if settings.ROOT_DIRS and any(
+            Path(root_directory).resolve() in Path(unpack_dir).resolve().parents for root_directory in settings.ROOT_DIRS.split("|")[1:]
+        ):
             # don't change if it's in any of the TV root directories
             logger.info("Unable to change unpack directory to a sub-directory of a TV root dir")
             return False
@@ -533,22 +535,21 @@ def change_process_automatically(process_automatically):
     return True
 
 
-def change_log_dir(log_dir):
+def change_log_dir(log_dir: str = ""):
     """
     Change logs directory
 
     :param log_dir: New logs directory
     :return: True on success, False on failure
     """
-    if log_dir == "":
-        settings.LOG_DIR = os.path.normpath(os.path.join(settings.DATA_DIR, "Logs"))
-        return True
+    if log_dir in ("", None):
+        log_dir = os.path.normpath(os.path.join(settings.DATA_DIR, "Logs"))
 
     if os.path.normpath(settings.LOG_DIR) != os.path.normpath(log_dir):
         if helpers.makeDir(os.path.normpath(log_dir)) and os.access(os.path.normpath(log_dir), os.W_OK):
             settings.LOG_DIR = os.path.normpath(log_dir)
-            logger.info(_("Changed logs folder to {directory} sickchill must be restarted for changes de take effect").format(directory=log_dir))
-
+            logger.info(_("Changed logs folder to {directory} and restarting logging").format(directory=log_dir))
+            logger.restart(change_log_dir=True)
         else:
             return False
 
@@ -634,7 +635,7 @@ def clean_url(url):
     """
 
     if url and url.strip():
-        url = xhtml_unescape(url.strip())
+        url = url.strip()
 
         if "://" not in url:
             url = "//" + url
@@ -726,7 +727,6 @@ def check_setting_int(config, cfg_name, item_name, def_val=0, min_val=None, max_
         config[cfg_name][item_name] = my_val
 
     if not silent:
-
         logger.debug(f"{item_name} -> {my_val}")
 
     return my_val
@@ -898,7 +898,7 @@ class ConfigMigrator(object):
     def __init__(self, config_obj):
         """
         Initializes a config migrator that can take the config from the version indicated in the config
-        file up to the version required by SB
+        file up to the version required by SC
         """
 
         self.config_obj = config_obj
@@ -910,7 +910,7 @@ class ConfigMigrator(object):
             1: "Custom naming",
             2: "Sync backup number with version number",
             3: "Rename omgwtfnzb variables",
-            4: "Add newznab catIDs",
+            4: "Add newznab categories",
             5: "Metadata update",
             6: "Convert from XBMC to new KODI variables",
             7: "Use version 2 for password encryption",
@@ -923,7 +923,7 @@ class ConfigMigrator(object):
 
     def migrate_config(self):
         """
-        Calls each successive migration until the config is the same version as SB expects
+        Calls each successive migration until the config is the same version as SC expects
         """
 
         if self.config_version > self.expected_config_version:
@@ -985,7 +985,6 @@ class ConfigMigrator(object):
 
         # if any shows had season folders on then prepend season folder to the pattern
         if season_folder_shows:
-
             old_season_format = check_setting_str(self.config_obj, "General", "season_folders_format", "Season %02d")
 
             if old_season_format:
@@ -1002,7 +1001,6 @@ class ConfigMigrator(object):
 
         # if no shows had it on then don't flatten any shows and don't put season folders in the config
         else:
-
             logger.info("No shows were using season folders before, so I'm disabling flattening on all shows")
 
             # don't flatten any shows at all
@@ -1011,7 +1009,6 @@ class ConfigMigrator(object):
         settings.NAMING_FORCE_FOLDERS = naming.check_force_season_folders()
 
     def _name_to_pattern(self, abd=False):
-
         # get the old settings from the file
         use_periods = check_setting_bool(self.config_obj, "General", "naming_use_periods")
         ep_type = check_setting_int(self.config_obj, "General", "naming_ep_type")
@@ -1077,7 +1074,7 @@ class ConfigMigrator(object):
         settings.OMGWTFNZBS_USERNAME = check_setting_str(self.config_obj, "omgwtfnzbs", "omgwtfnzbs_uid")
         settings.OMGWTFNZBS_APIKEY = check_setting_str(self.config_obj, "omgwtfnzbs", "omgwtfnzbs_key")
 
-    # Migration v4: Add default newznab catIDs
+    # Migration v4: Add default newznab categories
     def _migrate_v4(self):
         """Update newznab providers so that the category IDs can be set independently via the config"""
 
@@ -1098,11 +1095,11 @@ class ConfigMigrator(object):
                     key = "0"
 
                 if name == "NZBs.org":
-                    catIDs = "5030,5040,5060,5070,5090"
+                    categories = "5030,5040,5060,5070,5090"
                 else:
-                    catIDs = "5030,5040,5060"
+                    categories = "5030,5040,5060"
 
-                cur_provider_data_list = [name, url, key, catIDs, enabled]
+                cur_provider_data_list = [name, url, key, categories, enabled]
                 new_newznab_data.append("|".join(cur_provider_data_list))
 
             settings.NEWZNAB_DATA = "!!!".join(new_newznab_data)
@@ -1163,7 +1160,6 @@ class ConfigMigrator(object):
                 logger.info("Upgrading " + metadata_name + " metadata, new value: " + metadata)
 
             elif len(cur_metadata) == 10:
-
                 metadata = "|".join(cur_metadata)
                 logger.info("Keeping " + metadata_name + " metadata, value: " + metadata)
 

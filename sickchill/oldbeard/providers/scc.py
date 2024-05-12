@@ -14,7 +14,6 @@ from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("SceneAccess")
 
         self.username = None
@@ -62,7 +61,7 @@ class Provider(TorrentProvider):
         title = r"<title>.+? \| {0}</title>".format(section)
         return re.search(title, text, re.I)
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if not self.login():
             return results
@@ -96,7 +95,6 @@ class Provider(TorrentProvider):
                         continue
 
                     for result in torrent_table("tr")[1:]:
-
                         try:
                             link = result.find("td", class_="ttr_name").find("a")
                             url = result.find("td", class_="td_dl").find("a")
@@ -123,7 +121,7 @@ class Provider(TorrentProvider):
                         if seeders < self.minseed or leechers < self.minleech:
                             if mode != "RSS":
                                 logger.debug(
-                                    "Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})".format(
+                                    _("Discarding torrent because it doesn't meet the minimum seeders or leechers: {0} (S:{1} L:{2})").format(
                                         title, seeders, leechers
                                     )
                                 )

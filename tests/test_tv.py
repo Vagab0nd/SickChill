@@ -24,19 +24,19 @@ class TVShowTests(conftest.SickChillTestPostProcessorCase):
         """
         test init indexer id
         """
-        self.show.loadFromDB()
+        self.show.load_from_db()
         assert self.show.indexerid == 1
 
     def test_change_indexerid(self):
         """
         test change indexer id
         """
-        self.show.loadFromDB()
+        self.show.load_from_db()
         assert self.show.indexerid == 1
 
         self.show.indexerid = 295759
-        self.show.saveToDB()
-        self.show.loadFromDB()
+        self.show.save_to_db()
+        self.show.load_from_db()
 
         assert self.show.indexerid == 295759
 
@@ -46,15 +46,15 @@ class TVShowTests(conftest.SickChillTestPostProcessorCase):
         """
         self.show.name = "newName"
 
-        self.show.saveToDB()
-        self.show.loadFromDB()
+        self.show.save_to_db()
+        self.show.load_from_db()
         assert self.show.name == "newName"
         assert self.show.show_name == "newName"
 
         self.show.show_name = "show_name"
 
-        self.show.saveToDB()
-        self.show.loadFromDB()
+        self.show.save_to_db()
+        self.show.load_from_db()
         assert self.show.name == "show_name"
 
     def test_show_with_custom_name(self):
@@ -64,8 +64,8 @@ class TVShowTests(conftest.SickChillTestPostProcessorCase):
         self.show.name = "show name"
         self.show.show_name = "show name"
         self.show.custom_name = "newName"
-        self.show.saveToDB()
-        self.show.loadFromDB()
+        self.show.save_to_db()
+        self.show.load_from_db()
 
         assert self.show.show_name == "show name"
 
@@ -83,7 +83,7 @@ class TVEpisodeTests(conftest.SickChillTestDBCase):
         Set up
         """
         super().setUp()
-        settings.showList = []
+        settings.show_list = []
 
     def test_init_empty_db(self):
         """
@@ -92,8 +92,8 @@ class TVEpisodeTests(conftest.SickChillTestDBCase):
         show = TVShow(1, 1, "en")
         episode = TVEpisode(show, 1, 1)
         episode.name = "asdasdasdajkaj"
-        episode.saveToDB()
-        episode.loadFromDB(1, 1)
+        episode.save_to_db()
+        episode.load_from_db(1, 1)
         assert episode.name == "asdasdasdajkaj"
 
 
@@ -107,7 +107,7 @@ class TVTests(conftest.SickChillTestDBCase):
         Set up
         """
         super().setUp()
-        settings.showList = []
+        settings.show_list = []
 
     @staticmethod
     def test_get_episode():
@@ -123,8 +123,8 @@ class TVTests(conftest.SickChillTestDBCase):
         show.default_ep_status = "5"
         show.airs = "monday"
         show.startyear = 1987
-        show.saveToDB()
-        settings.showList = [show]
+        show.save_to_db()
+        settings.show_list = [show]
         # TODO: implement
 
 

@@ -2,6 +2,7 @@
 (function () {
     let method;
     const noop = function () {};
+
     const methods = [
         'assert',
         'clear',
@@ -27,15 +28,14 @@
         'warn',
     ];
     let length = methods.length;
-    const console = (window.console = window.console || {}); // eslint-disable-line no-multi-assign
+    const console = window.console || {};
 
-    while (length--) {
+    while (length > 0) {
+        length--;
         method = methods[length];
 
         // Only stub undefined methods.
-        if (!console[method]) {
-            console[method] = noop;
-        }
+        console[method] ||= noop;
     }
 })();
 
@@ -67,13 +67,14 @@ $(document).ready(() => {
 
     function syncOptionIDs() {
         // Re-sync option ids
-        let i = 0;
+        let index = 0;
         $('#rootDirs option').each(function () {
-            $(this).attr('id', 'rd-' + (i++));
+            index++;
+            $(this).attr('id', 'rd-' + index);
         });
     }
 
-    function refreshRootDirs() {
+    function refreshRootDirectories() {
         if ($('#rootDirs').length === 0) {
             return;
         }
@@ -99,26 +100,31 @@ $(document).ready(() => {
         $('#editRootDir').prop('disabled', doDisable);
 
         let logString = '';
-        let dirString = '';
+        let directoryString = '';
         if ($('#whichDefaultRootDir').val().length >= 4) {
-            dirString = $('#whichDefaultRootDir').val().slice(3);
+            directoryString = $('#whichDefaultRootDir').val().slice(3);
         }
 
         $('#rootDirs option').each(function () {
             logString += $(this).val() + '=' + $(this).text() + '->' + $(this).attr('id') + '\n';
-            if (dirString.length > 0) {
-                dirString += '|' + $(this).val();
+            if (directoryString.length > 0) {
+                directoryString += '|' + $(this).val();
             }
         });
         logString += 'def: ' + $('#whichDefaultRootDir').val();
         console.log(logString);
 
-        $('#rootDirText').val(dirString);
+        $('#rootDirText').val(directoryString);
         $('#rootDirText').change();
         console.log('rootDirText: ' + $('#rootDirText').val());
     }
 
-    function addRootDir(path) {
+    function postRootDirectories() {
+        refreshRootDirectories();
+        $.post(scRoot + '/config/general/saveRootDirs', {rootDirString: $('#rootDirText').val()});
+    }
+
+    function addRootDirectory(path) {
         if (path.length === 0) {
             return;
         }
@@ -137,11 +143,10 @@ $(document).ready(() => {
             setDefault($('#rootDirs option').attr('id'));
         }
 
-        refreshRootDirs();
-        $.get(scRoot + '/config/general/saveRootDirs', {rootDirString: $('#rootDirText').val()});
+        postRootDirectories();
     }
 
-    function editRootDir(path) {
+    function editRootDirectory(path) {
         if (path.length === 0) {
             return;
         }
@@ -158,17 +163,14 @@ $(document).ready(() => {
             $('#rootDirs option:selected').val(path);
         }
 
-        refreshRootDirs();
-        $.get(scRoot + '/config/general/saveRootDirs', {
-            rootDirString: $('#rootDirText').val(),
-        });
+        postRootDirectories();
     }
 
     $('#addRootDir').on('click', function () {
-        $(this).nFileBrowser(addRootDir);
+        $(this).nFileBrowser(addRootDirectory);
     });
     $('#editRootDir').on('click', function () {
-        $(this).nFileBrowser(editRootDir, {
+        $(this).nFileBrowser(editRootDirectory, {
             initialDir: $('#rootDirs option:selected').val(),
         });
     });
@@ -200,8 +202,8 @@ $(document).ready(() => {
             }
         }
 
-        refreshRootDirs();
-        $.get(scRoot + '/config/general/saveRootDirs', {
+        refreshRootDirectories();
+        $.post(scRoot + '/config/general/saveRootDirs', {
             rootDirString: $('#rootDirText').val(),
         });
     });
@@ -211,15 +213,15 @@ $(document).ready(() => {
             setDefault($('#rootDirs option:selected').attr('id'));
         }
 
-        refreshRootDirs();
-        $.get(scRoot + '/config/general/saveRootDirs', {
+        refreshRootDirectories();
+        $.post(scRoot + '/config/general/saveRootDirs', {
             rootDirString: $('#rootDirText').val(),
         });
     });
-    $('#rootDirs').click(refreshRootDirs);
+    $('#rootDirs').click(refreshRootDirectories);
 
     // Set up buttons on page load
     syncOptionIDs();
     setDefault($('#whichDefaultRootDir').val(), true);
-    refreshRootDirs();
+    refreshRootDirectories();
 });

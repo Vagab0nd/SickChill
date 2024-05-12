@@ -2706,15 +2706,6 @@ msgstr ""
 msgid "IP or Hostname of your Deluge Daemon (e.g. http://localhost:58846)"
 msgstr ""
 
-#: sickchill/gui/slick/views/config_general.mako:82
-#: sickchill/gui/slick/views/layouts/main.mako:258 sickchill/views/irc.py:10
-msgid "IRC"
-msgstr ""
-
-#: sickchill/gui/slick/views/config.mako:228
-msgid "IRC Chat"
-msgstr ""
-
 #: sickchill/gui/slick/views/config_general.mako:1076
 msgid ""
 "If checked, broken symbolic links warnings generated when calculating show "
@@ -3906,10 +3897,6 @@ msgstr ""
 
 #: sickchill/gui/slick/views/config_notifications.mako:108
 msgid "Only update first host"
-msgstr ""
-
-#: sickchill/gui/slick/views/config_general.mako:1158
-msgid "Only used for web IRC chat"
 msgstr ""
 
 #: sickchill/views/index.py:58
@@ -5461,7 +5448,7 @@ msgstr ""
 
 #: sickchill/oldbeard/show_queue.py:392
 msgid ""
-"Show in {showDir} has no name on {indexer}, probably searched with the wrong "
+"Show in {show_dir} has no name on {indexer}, probably searched with the wrong "
 "language. Delete .nfo and add manually in the correct language."
 msgstr ""
 
@@ -5653,7 +5640,7 @@ msgid "Skipped"
 msgstr ""
 
 #: sickchill/oldbeard/show_queue.py:379
-msgid "Skipping initial creation of {showDir} due to config.ini setting"
+msgid "Skipping initial creation of {show_dir} due to config.ini setting"
 msgstr ""
 
 #: sickchill/gui/slick/views/config.mako:250
@@ -6234,7 +6221,7 @@ msgid "The old status had a quality in it, using that: "
 msgstr ""
 
 #: sickchill/oldbeard/show_queue.py:480
-msgid "The show in {showDir} is already in your show list, skipping"
+msgid "The show in {show_dir} is already in your show list, skipping"
 msgstr ""
 
 #: sickchill/gui/slick/views/config_notifications.mako:1306
@@ -6782,7 +6769,7 @@ msgid "Unable to create subtitles folder {subs_new_path}"
 msgstr ""
 
 #: sickchill/oldbeard/show_queue.py:383
-msgid "Unable to create the folder {showDir}, can't add the show"
+msgid "Unable to create the folder {show_dir}, can't add the show"
 msgstr ""
 
 #: sickchill/views/manage/add_shows.py:636
@@ -6827,7 +6814,7 @@ msgid "Unable to force an update on scene numbering of the show."
 msgstr ""
 
 #: sickchill/oldbeard/show_queue.py:363
-msgid "Unable to get a show {showDir}, can't add the show"
+msgid "Unable to get a show {show_dir}, can't add the show"
 msgstr ""
 
 #: sickchill/oldbeard/helpers.py:1462
@@ -9162,4 +9149,3 @@ msgstr ""
 #: sickchill/views/home.py:1280
 msgid "{show_name} has been {paused_resumed}"
 msgstr ""
-

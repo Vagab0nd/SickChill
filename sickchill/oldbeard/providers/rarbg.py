@@ -1,6 +1,7 @@
 import datetime
 import re
 import time
+from typing import Dict, List, TYPE_CHECKING
 
 from sickchill import logger, settings
 from sickchill.helper.common import convert_size, try_int
@@ -8,10 +9,12 @@ from sickchill.oldbeard import tvcache
 from sickchill.oldbeard.common import cpu_presets
 from sickchill.providers.torrent.TorrentProvider import TorrentProvider
 
+if TYPE_CHECKING:
+    from sickchill.tv import TVEpisode
+
 
 class Provider(TorrentProvider):
     def __init__(self):
-
         super().__init__("Rarbg")
 
         self.public = True
@@ -25,7 +28,7 @@ class Provider(TorrentProvider):
 
         # Spec: https://torrentapi.org/apidocs_v2.txt
         self.url = "https://rarbg.to"
-        self.urls = {"api": "http://torrentapi.org/pubapi_v2.php"}
+        self.urls = {"api": "https://torrentapi.org/pubapi_v2.php"}
 
         self.proper_strings = ["{{PROPER|REPACK}}"]
 
@@ -46,7 +49,7 @@ class Provider(TorrentProvider):
         self.token_expires = datetime.datetime.now() + datetime.timedelta(minutes=14) if self.token else None
         return self.token is not None
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         results = []
         if not self.login():
             return results
@@ -61,9 +64,9 @@ class Provider(TorrentProvider):
             "token": self.token,
         }
 
-        if ep_obj is not None:
-            ep_indexerid = ep_obj.show.indexerid
-            ep_indexer = ep_obj.idxr.slug
+        if self.show:
+            ep_indexerid = self.show.indexerid
+            ep_indexer = self.show.idxr.slug
         else:
             ep_indexerid = None
             ep_indexer = None
@@ -153,7 +156,7 @@ class Provider(TorrentProvider):
 
         return results
 
-    def get_season_search_strings(self, episode):
+    def get_season_search_strings(self, episode: "TVEpisode") -> List[Dict]:
         search_strings = super(Provider, self).get_season_search_strings(episode)
         if episode and episode.show and episode.show.imdb_id:
             if episode.show.air_by_date or episode.show.sports:
@@ -164,6 +167,6 @@ class Provider(TorrentProvider):
             else:
                 season_string = f"{episode.show.imdb_id}.S{episode.season:02d}"
 
-            search_strings[0]["Season"].append(season_string)
+            search_strings[0]["Season"].add(season_string)
 
         return search_strings

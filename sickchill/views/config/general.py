@@ -4,7 +4,7 @@ from tornado.web import addslash
 
 import sickchill.start
 from sickchill import logger, settings
-from sickchill.helper import setup_github, try_int
+from sickchill.helper import try_int
 from sickchill.init_helpers import setup_gettext
 from sickchill.oldbeard import config, filters, helpers, ui
 from sickchill.oldbeard.common import Quality, WANTED
@@ -28,49 +28,26 @@ class ConfigGeneral(Config):
     def generateApiKey():
         return helpers.generateApiKey()
 
-    @staticmethod
-    def saveRootDirs(rootDirString=None):
-        settings.ROOT_DIRS = rootDirString
+    def saveRootDirs(self):
+        settings.ROOT_DIRS = self.get_body_argument("rootDirString")
 
-    @staticmethod
-    def saveAddShowDefaults(
-        defaultStatus,
-        anyQualities,
-        bestQualities,
-        defaultSeasonFolders,
-        whitelist,
-        blacklist,
-        subtitles=False,
-        anime=False,
-        scene=False,
-        defaultStatusAfter=WANTED,
-    ):
+    def saveAddShowDefaults(self):
+        anyQualities = [int(quality) for quality in self.get_body_arguments("anyQualities[]")]
+        bestQualities = [int(quality) for quality in self.get_body_arguments("bestQualities[]")]
 
-        if anyQualities:
-            anyQualities = anyQualities.split(",")
-        else:
-            anyQualities = []
+        settings.QUALITY_DEFAULT = Quality.combineQualities(anyQualities, bestQualities)
 
-        if bestQualities:
-            bestQualities = bestQualities.split(",")
-        else:
-            bestQualities = []
+        settings.STATUS_DEFAULT = int(self.get_body_argument("defaultStatus", settings.STATUS_DEFAULT_AFTER))
+        settings.STATUS_DEFAULT_AFTER = int(self.get_body_argument("defaultStatusAfter", settings.STATUS_DEFAULT_AFTER))
 
-        newQuality = Quality.combineQualities([int(quality) for quality in anyQualities], [int(quality) for quality in bestQualities])
+        settings.WHITELIST_DEFAULT = self.get_body_arguments("whitelist[]")
+        settings.BLACKLIST_DEFAULT = self.get_body_arguments("blacklist[]")
 
-        settings.WHITELIST_DEFAULT = whitelist
-        settings.BLACKLIST_DEFAULT = blacklist
+        settings.SEASON_FOLDERS_DEFAULT = config.checkbox_to_value(self.get_body_argument("defaultSeasonFolders", settings.SEASON_FOLDERS_DEFAULT))
+        settings.SUBTITLES_DEFAULT = config.checkbox_to_value(self.get_body_argument("subtitles", settings.SUBTITLES_DEFAULT))
+        settings.ANIME_DEFAULT = config.checkbox_to_value(self.get_body_argument("anime", settings.ANIME_DEFAULT))
+        settings.SCENE_DEFAULT = config.checkbox_to_value(self.get_body_argument("scene", settings.SCENE_DEFAULT))
 
-        settings.STATUS_DEFAULT = int(defaultStatus)
-        settings.STATUS_DEFAULT_AFTER = int(defaultStatusAfter)
-        settings.QUALITY_DEFAULT = int(newQuality)
-
-        settings.SEASON_FOLDERS_DEFAULT = config.checkbox_to_value(defaultSeasonFolders)
-        settings.SUBTITLES_DEFAULT = config.checkbox_to_value(subtitles)
-
-        settings.ANIME_DEFAULT = config.checkbox_to_value(anime)
-
-        settings.SCENE_DEFAULT = config.checkbox_to_value(scene)
         sickchill.start.save_config()
 
         ui.notifications.message(_("Saved Defaults"), _('Your "add show" defaults have been set to your current selections.'))
@@ -113,7 +90,9 @@ class ConfigGeneral(Config):
         anon_redirect=None,
         calendar_unprotected=None,
         calendar_icons=None,
-        debug=None,
+        debug=False,
+        dbdebug=False,
+        notify_on_logged_error=None,
         ssl_verify=None,
         no_restart=None,
         coming_eps_missed_range=None,
@@ -133,15 +112,12 @@ class ConfigGeneral(Config):
         sickchill_background_path=None,
         custom_css=None,
         custom_css_path=None,
-        git_username=None,
-        git_token=None,
         display_all_seasons=None,
         gui_language=None,
         ignore_broken_symlinks=None,
         ended_shows_update_interval=None,
-        log_dir=None,
+        log_dir="",
     ):
-
         results = []
 
         if gui_language != settings.GUI_LANG:
@@ -179,19 +155,14 @@ class ConfigGeneral(Config):
             settings.PROXY_SETTING = config.clean_url(settings.PROXY_SETTING).rstrip("/")
         settings.PROXY_INDEXERS = config.checkbox_to_value(proxy_indexers)
 
-        settings.GIT_USERNAME = git_username
-
-        tmp_git_token = filters.unhide(settings.GIT_TOKEN, git_token)
-        if settings.GIT_TOKEN != tmp_git_token:
-            # Re-Initializes oldbeard.gh, so a restart isn't necessary
-            settings.GIT_TOKEN = tmp_git_token
-            setup_github()
-
         settings.CALENDAR_UNPROTECTED = config.checkbox_to_value(calendar_unprotected)
         settings.CALENDAR_ICONS = config.checkbox_to_value(calendar_icons)
         settings.NO_RESTART = config.checkbox_to_value(no_restart)
         settings.DEBUG = config.checkbox_to_value(debug)
-        logger.set_level()
+        settings.DBDEBUG = config.checkbox_to_value(dbdebug)
+        logger.restart()
+
+        settings.NOTIFY_ON_LOGGED_ERROR = config.checkbox_to_value(notify_on_logged_error)
 
         settings.SSL_VERIFY = config.checkbox_to_value(ssl_verify)
         helpers.set_opener(settings.SSL_VERIFY)

@@ -20,8 +20,6 @@ Public Methods:
     fileBitFilter
     chmodAsParent
     fixSetGroupID
-    is_anime_in_show_list
-    update_anime_support
     get_absolute_number_from_season_and_episode
     get_all_episodes_from_absolute_number
     sanitizeSceneName
@@ -35,8 +33,6 @@ Public Methods:
     full_sanitizeSceneName
     get_show
     is_hidden_folder
-    real_path
-    is_subdirectory
     set_up_anidb_connection
     makeZip
     extractZip
@@ -255,20 +251,6 @@ class HelpersDirectoryTests(unittest.TestCase):
         """
         pass
 
-    def test_real_path(self):
-        """
-        Test real_path
-        """
-        assert helpers.real_path("/usr/SickChill/../root/real/path/") == helpers.real_path("/usr/root/real/path/")
-
-    def test_is_subdirectory(self):
-        """
-        Test is_subdirectory
-        """
-        assert helpers.is_subdirectory(subdir_path="/usr/SickChill/Downloads/Unpack", topdir_path="/usr/SickChill/Downloads")
-        assert helpers.is_subdirectory(subdir_path="/usr/SickChill/Downloads/testfile.tst", topdir_path="/usr/SickChill/Downloads/")
-        assert not helpers.is_subdirectory(subdir_path="/usr/SickChill/Unpack", topdir_path="/usr/SickChill/Downloads")
-
 
 class HelpersFileTests(unittest.TestCase):
     """
@@ -423,7 +405,7 @@ class HelpersEncryptionTests(unittest.TestCase):
             self.skipTest("pyOpenSSL is not installed or error importing it")
             return False
         except ImportError as error:
-            self.skipTest("OpenSSL module not available: {}".format(error))
+            self.skipTest(f"OpenSSL module not available: {error}")
             return False
 
         base_path = Path(__file__).parent.absolute()
@@ -492,13 +474,6 @@ class HelpersShowTests(unittest.TestCase):
     def test_search_indexer_for_show_id(self):
         """
         Test searchIndexerForShowID
-        """
-        pass
-
-    @unittest.skip("Not yet implemented")
-    def test_is_anime_in_show_list(self):
-        """
-        Test is_anime_in_show_list
         """
         pass
 
@@ -609,13 +584,6 @@ class HelpersMiscTests(unittest.TestCase):
     def test_fix_set_group_id(self):
         """
         Test fixSetGroupID
-        """
-        pass
-
-    @unittest.skip("Not yet implemented")
-    def test_update_anime_support(self):
-        """
-        Test update_anime_support
         """
         pass
 

@@ -87,7 +87,7 @@ class Connection(threading.Thread):
 
         # thread keep alive stuff
         self.keepAlive = keep_alive
-        self.setDaemon(True)
+        self.daemon = True
         self.lastKeepAliveCheck = 0
         self.lastAuth = 0
         self._username = password
@@ -121,7 +121,6 @@ class Connection(threading.Thread):
                 self.handle(response.req, response.req.callback)
 
     def handle(self, command, callback):
-
         with self.lock:
             if self.counterAge < (time() - 120):  # the last request was older then 2 min reset delay and counter
                 self.counter = 0

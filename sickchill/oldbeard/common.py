@@ -1,23 +1,17 @@
 import operator
-import platform
 import re
-import uuid
 from functools import reduce
 from os import path
+from typing import List
 
 from sickchill.helper import video_screen_size
-from sickchill.init_helpers import get_current_version, setup_gettext
+from sickchill.init_helpers import setup_gettext
 from sickchill.recompiled import tags
 from sickchill.tagger.episode import EpisodeTags
 
 from .numdict import NumDict
 
 setup_gettext()
-
-INSTANCE_ID = str(uuid.uuid1())
-USER_AGENT = "SickChill/{version} ({os} {architecture} {os_version}; {instance})".format(
-    version=get_current_version(), os=platform.system(), architecture=platform.machine(), os_version=platform.release(), instance=INSTANCE_ID
-)
 
 cpu_presets = {"HIGH": 5, "NORMAL": 2, "LOW": 1}
 
@@ -222,7 +216,7 @@ class Quality(object):
         return any_quality | (best_quality << 16)
 
     @staticmethod
-    def splitQuality(quality):
+    def splitQuality(quality) -> (List[int], List[int]):
         if quality is None:
             quality = Quality.NONE
         allowed_qualities = []
@@ -444,9 +438,9 @@ class Quality(object):
 
         # 2 corresponds to SDDVD quality
         if quality == 2:
-            if re.search(r"b(r|d|rd)?(-| |\.)?(rip|mux)", name.lower()):
+            if re.search(r"b(r|d|rd)?([- .])?(rip|mux)", name.lower()):
                 rip_type = " BDRip"
-            elif re.search(r"(dvd)(-| |\.)?(rip|mux)?", name.lower()):
+            elif re.search(r"(dvd)([- .])?(rip|mux)?", name.lower()):
                 rip_type = " DVDRip"
             else:
                 rip_type = ""

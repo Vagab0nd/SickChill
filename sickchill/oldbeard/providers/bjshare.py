@@ -42,25 +42,23 @@ class Provider(TorrentProvider):
         # Cache
         self.cache = tvcache.TVCache(self)
 
-        # One piece and Boruto is the only animes that i'm aware that is in "absolute" numbering, the problem is that
+        # One piece and Boruto are the only anime that I'm aware that is in "absolute" numbering, the problem is that
         # they include the season (wrong season) and episode as absolute, eg: One Piece - S08E836
         # 836 is the latest episode in absolute numbering, that is correct, but S08 is not the current season...
-        # So for this show, i don't see a other way to make it work...
+        # So for this show, I don't see another way to make it work...
         #
-        # All others animes that i tested is with correct season and episode set, so i can't remove the season from all
+        # All others anime that I tested is with correct season and episode set, so I can't remove the season from all
         # or will break everything else
         #
         # In this indexer, it looks that it is added "automatically", so all current and new releases will be broken
         # until they or the source from where they get that info fix it...
         self.absolute_numbering = ["One Piece", "Boruto: Naruto Next Generations"]
 
-    def search(self, search_strings, age=0, ep_obj=None):
+    def search(self, search_strings):
         """
         Search a provider and parse the results.
 
         :param search_strings: A dict with mode (key) and the search value (value)
-        :param age: Not used
-        :param ep_obj: Informations about the episode being searched (when not RSS)
 
         :returns: A list of search results (structure)
         """
@@ -68,9 +66,7 @@ class Provider(TorrentProvider):
         if not self.login():
             return results
 
-        anime = False
-        if ep_obj and ep_obj.show:
-            anime = ep_obj.show.anime == 1
+        anime = self.show and self.show.anime == 1 or False
 
         search_params = {"order_by": "time", "order_way": "desc", "group_results": 0, "action": "basic", "searchsubmit": 1}
 
@@ -125,7 +121,7 @@ class Provider(TorrentProvider):
         :param data: The raw response from a search
         :param mode: The current mode used to search, e.g. RSS
 
-        :return: A KV with a list of items found and if there's an next page to search
+        :return: A KV with a list of items found and if there's a next page to search
         """
 
         def process_column_header(td):
@@ -165,7 +161,7 @@ class Provider(TorrentProvider):
 
                     if "group" in result_class or "torrent" in result_class:
                         # get international title if available
-                        title = re.sub(r".* \[(.*?)\](.*)", r"\1\2", title)
+                        title = re.sub(r".* \[(.*?)](.*)", r"\1\2", title)
 
                     if "group" in result_class:
                         group_title = title

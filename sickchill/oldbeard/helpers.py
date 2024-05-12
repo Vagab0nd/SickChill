@@ -36,8 +36,7 @@ from urllib3 import disable_warnings
 import sickchill
 from sickchill import adba, logger, settings
 from sickchill.helper import episode_num, pretty_file_size, SUBTITLE_EXTENSIONS
-from sickchill.helper.common import is_media_file, replace_extension
-from sickchill.oldbeard.common import USER_AGENT
+from sickchill.helper.common import is_media_file, replace_extension, USER_AGENT
 from sickchill.show.Show import Show
 
 from . import db
@@ -49,7 +48,6 @@ LOCALE_NAMES.update(
         "no_NO": {"name_en": "Norwegian", "name": "Norsk"},
     }
 )
-
 
 _context = None
 
@@ -70,7 +68,7 @@ def set_opener(verify: bool):
     disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     https_handler = HTTPSHandler(context=make_context(verify))
     opener = urllib.request.build_opener(https_handler)
-    opener.addheaders = [("User-agent", sickchill.oldbeard.common.USER_AGENT)]
+    opener.addheaders = [("User-agent", USER_AGENT)]
     urllib.request.install_opener(opener)
 
 
@@ -597,26 +595,6 @@ def fixSetGroupID(childPath):
         )
 
 
-def is_anime_in_show_list():
-    """
-    Check if any shows in list contain anime
-
-    Returns:
-         True if global showlist contains Anime, False if not
-    """
-
-    for show in settings.showList:
-        if show.is_anime:
-            return True
-    return False
-
-
-def update_anime_support():
-    """Check if we need to support anime, and if we do, enable the feature"""
-
-    settings.ANIMESUPPORT = is_anime_in_show_list()
-
-
 def get_absolute_number_from_season_and_episode(show, season, episode):
     """
     Find the absolute number for a show episode
@@ -657,10 +635,10 @@ def get_all_episodes_from_absolute_number(show, absolute_numbers, indexer_id=Non
 
     if absolute_numbers:
         if indexer_id and not show:
-            show = Show.find(settings.showList, indexer_id)
+            show = Show.find(settings.show_list, indexer_id)
 
         for absolute_number in absolute_numbers if show else []:
-            ep = show.getEpisode(None, None, absolute_number=absolute_number)
+            ep = show.get_episode(None, None, absolute_number=absolute_number)
             if ep:
                 episodes.append(ep.episode)
                 season = ep.season  # this will always take the last found season so eps that cross the season border are not handeled well
@@ -715,7 +693,7 @@ def create_https_certificates(ssl_cert, ssl_key):
         from OpenSSL import crypto
 
         from sickchill.certgen import createCertificate, createCertRequest, createKeyPair, TYPE_RSA
-    except (ModuleNotFoundError):
+    except ModuleNotFoundError:
         logger.info(traceback.format_exc())
         logger.warning(_("pyopenssl module missing, please install for https access"))
         return False
@@ -892,57 +870,57 @@ def _check_against_names(nameInQuestion, show, season=-1):
     return False
 
 
-def get_show(name, tryIndexers=False):
-    if not settings.showList:
+def get_show(name, try_indexers=False):
+    if not settings.show_list:
         return
 
-    showObj = None
-    fromCache = False
+    show_object = None
+    from_cache = False
 
     if not name:
-        return showObj
+        return show_object
 
     try:
         # check cache for show
         cache = sickchill.oldbeard.name_cache.get_id_from_name(name)
         if cache:
-            fromCache = True
-            showObj = Show.find(settings.showList, int(cache))
+            from_cache = True
+            show_object = Show.find(settings.show_list, int(cache))
         else:
             check_names = [full_sanitizeSceneName(name), name]
             show_matches = [
                 show
-                for show in settings.showList
+                for show in settings.show_list
                 if (show.show_name and full_sanitizeSceneName(show.show_name) in check_names)
                 or (show.custom_name and full_sanitizeSceneName(show.custom_name) in check_names)
             ]
 
             if len(show_matches) == 1:
-                showObj = show_matches[0]
+                show_object = show_matches[0]
 
         # try indexers
-        if not showObj and tryIndexers:
+        if not show_object and try_indexers:
             result = sickchill.indexer.search_indexers_for_series_id(name=full_sanitizeSceneName(name))[1]
             if result:
-                showObj = Show.find(settings.showList, result.id)
+                show_object = Show.find(settings.show_list, result.id)
 
         # try scene exceptions
-        if not showObj:
+        if not show_object:
             scene_exceptions = sickchill.oldbeard.scene_exceptions.get_scene_exception_by_name_multiple(name)
             for scene_exception in scene_exceptions:
                 if scene_exception[0]:
-                    showObj = Show.find(settings.showList, scene_exception[0])
-                    if showObj:
+                    show_object = Show.find(settings.show_list, scene_exception[0])
+                    if show_object:
                         break
 
         # add show to cache
-        if showObj and not fromCache:
-            sickchill.oldbeard.name_cache.add_name(name, showObj.indexerid)
+        if show_object and not from_cache:
+            sickchill.oldbeard.name_cache.add_name(name, show_object.indexerid)
     except Exception as error:
         logger.debug(_("There was a problem when attempting to find {name} in SickChill. Error: {error}").format(name=name, error=error))
         logger.debug(traceback.format_exc())
 
-    return showObj
+    return show_object
 
 
 def is_hidden_folder(folder):
@@ -970,31 +948,6 @@ def is_hidden_folder(folder):
         return True
 
     return False
-
-
-def real_path(path):
-    """
-    Returns:
-        the canonicalized absolute pathname. The resulting path will have no symbolic link, '/./' or '/../' components.
-    """
-    return os.path.normpath(os.path.normcase(os.path.realpath(path)))
-
-
-def is_subdirectory(subdir_path, topdir_path):
-    """
-    Returns true if a subdir_path is a subdirectory of topdir_path
-    else otherwise.
-
-    Parameters:
-        subdir_path: The full path to the subdirectory
-        topdir_path: The full path to the top directory to check subdir_path against
-    """
-    topdir_path = real_path(topdir_path)
-    subdir_path = real_path(subdir_path)
-
-    # checks if the common prefix of both is equal to directory
-    # e.g. /a/b/c/d.rst and directory is /a/b, the common prefix is /a/b
-    return os.path.commonprefix([subdir_path, topdir_path]) == topdir_path
 
 
 def set_up_anidb_connection():
@@ -1101,7 +1054,7 @@ def backup_config_zip(fileList, archive, arcname=None):
         for f in fileList:
             a.write(f, os.path.relpath(f, arcname))
         a.close()
-        return True
+        return archive
     except Exception as error:
         logger.warning(_("There was a problem creating the zip file. Error: {error}").format(error=error))
         return False
@@ -1192,12 +1145,13 @@ def request_defaults(kwargs):
 def getURL(
     url,
     post_data=None,
+    files=None,
     params=None,
     headers=None,
     timeout=30,
     session: requests.Session = None,
     **kwargs,
-) -> Union[requests.Response, dict]:
+) -> Union[requests.Response, dict, str]:
     """
     Returns data retrieved from the url provider.
     """
@@ -1240,9 +1194,10 @@ def getURL(
             return json_result["response"]
 
         response = session.request(
-            "POST" if post_data else "GET",
+            "POST" if post_data or files else "GET",
             url,
             data=post_data or {},
+            files=files or {},
             params=params or {},
             timeout=timeout,
             allow_redirects=allow_redirects,
@@ -1256,13 +1211,13 @@ def getURL(
         response.raise_for_status()
     except Exception as error:
         handle_requests_exception(error)
-        return None
+        return ""
 
     try:
         return response if response_type in ("response", None) else response.json() if response_type == "json" else getattr(response, response_type, response)
     except ValueError:
         logger.debug(_("Requested a json response but response was not json, check the url: {url}").format(url=url))
-        return None
+        return ""
 
 
 def download_file(url, filename, session=None, headers=None, **kwargs):  # pylint:disable=too-many-return-statements
@@ -1286,7 +1241,6 @@ def download_file(url, filename, session=None, headers=None, **kwargs):  # pylin
         with closing(
             session.get(url, allow_redirects=True, stream=True, verify=verify, headers=headers, cookies=cookies, hooks=hooks, proxies=proxies)
         ) as resp:
-
             resp.raise_for_status()
 
             # Workaround for jackett.
@@ -1661,47 +1615,44 @@ def is_file_locked(checkfile, write_check=False):
     return False
 
 
-def tvdbid_from_remote_id(indexer_id, indexer):  # pylint:disable=too-many-return-statements
-
+def tvdbid_from_remote_id(indexer_id: str, indexer: str):  # pylint:disable=too-many-return-statements
     session = make_session()
     tvdb_id = ""
-    if indexer == "IMDB":
-        url = f"https://www.thetvdb.com/api/GetSeriesByRemoteID.php?imdbid={indexer_id}"
-        data = getURL(url, session=session, returns="content")
-        if data is None:
-            return tvdb_id
-        try:
-            tree = ElementTree.fromstring(data)
-            for show in tree.iter("Series"):
-                tvdb_id = show.findtext("seriesid")
 
-        except SyntaxError:
-            pass
+    indexer = indexer.upper()
+    if indexer in ("IMDB", "ZAP2IT"):
+        if indexer == "IMDB":
+            indexer += "ID"
 
-        return tvdb_id
-    elif indexer == "ZAP2IT":
-        url = f"https://www.thetvdb.com/api/GetSeriesByRemoteID.php?zap2it={indexer_id}"
-        data = getURL(url, session=session, returns="content")
-        if data is None:
-            return tvdb_id
-        try:
-            tree = ElementTree.fromstring(data)
-            for show in tree.iter("Series"):
-                tvdb_id = show.findtext("seriesid")
-
-        except SyntaxError:
-            pass
-
-        return tvdb_id
+        data = getURL(f"https://www.thetvdb.com/api/GetSeriesByRemoteID.php?{indexer.lower()}={indexer_id}", session=session, returns="content")
+        if data:
+            try:
+                tvdb_id = ElementTree.fromstring(data).find("Series").findtext("seriesid")
+            except (SyntaxError, IndexError, ValueError):
+                pass
     elif indexer == "TVMAZE":
-        url = f"https://api.tvmaze.com/shows/{indexer_id}"
-        data = getURL(url, session=session, returns="json")
-        if data is None:
-            return tvdb_id
-        tvdb_id = data["externals"]["thetvdb"]
-        return tvdb_id
-    else:
-        return tvdb_id
+        data = getURL(f"https://api.tvmaze.com/shows/{indexer_id}", session=session, returns="json")
+        if data:
+            try:
+                tvdb_id = data["externals"]["thetvdb"]
+            except (SyntaxError, IndexError, ValueError):
+                pass
+
+    return tvdb_id
+
+
+def imdb_from_tvdbid_on_tvmaze(indexer_id: Union[str, int]) -> str:
+    logger.debug(f"attempting to get imdb id from tvmaze using tvdbid: {indexer_id}")
+    imdb_id = ""
+    session = make_session()
+    data = getURL(f"https://api.tvmaze.com/lookup/shows?thetvdb={indexer_id}", session=session, returns="json")
+    if data:
+        try:
+            imdb_id = data["externals"]["imdb"]
+        except (SyntaxError, IndexError, ValueError):
+            logger.debug(f"attempt to use tvmaze to get imdbid failed")
+
+    return imdb_id
 
 
 def is_ip_local(ip):

@@ -1,5 +1,5 @@
 (function ($) {
-    const SIZES_BY_TYPE = {
+    const imageTypeSizes = {
         poster: {
             minHeight: 269,
             ratio: 40 / 57,
@@ -66,28 +66,31 @@
         imagesContainer.height(scrollableHeight).css('maxHeight', scrollableHeight);
     }
 
-    function createImage(imageSrc, thumbSrc) {
-        const image = $('<img>').on('click', ev => {
-            $('.image-selector-item-selected').removeClass('image-selector-item-selected');
-            $(ev.target).addClass('image-selector-item-selected');
-        }).attr('data-image-type', imageSelectorDialog.data('image-type'))
-            .addClass('image-selector-item');
+    function createImage(imageSource, thumbSource) {
+        const image = $('<img alt="' + $('#showID').attr('value') + ' ' + imageType + '"/>')
+            .attr('data-image-type', imageSelectorDialog.data('image-type'))
+            .addClass('image-selector-item').on('click', event_ => {
+                $('.image-selector-item-selected').removeClass('image-selector-item-selected');
+                $(event_.target).addClass('image-selector-item-selected');
+            });
 
         const wrapUrl = new URL(scRoot + '/imageSelector/url_wrap/', location.href);
-        if (thumbSrc) {
-            wrapUrl.searchParams.append('url', thumbSrc);
-            image.attr('data-thumb', thumbSrc);
+        if (thumbSource) {
+            wrapUrl.searchParams.append('url', thumbSource);
+            image.attr('data-thumb', thumbSource);
         } else {
-            wrapUrl.searchParams.append('url', imageSrc);
+            wrapUrl.searchParams.append('url', imageSource);
         }
 
-        image.attr('src', wrapUrl.href).attr('data-image', imageSrc);
+        image.attr('src', wrapUrl.href).attr('data-image', imageSource);
 
         image.appendTo(imagesContainer);
     }
 
     $.fn.nImageSelector = function (imageSelectorElement) {
         const field = $(this);
+        const margin = 80;
+        const minimumWidth = 650;
         imageType = field.data('image-type');
 
         imageSelectorDialog = imageSelectorElement.dialog({
@@ -97,10 +100,10 @@
             },
             title: _('Choose Image'),
             position: {my: 'center top', at: 'center top+60', of: window},
-            minWidth: Math.min($(document).width() - 80, 650),
-            height: Math.min($(document).height() - 80, $(window).height() - 80),
-            maxHeight: Math.min($(document).height() - 80, $(window).height() - 80),
-            maxWidth: $(document).width() - 80,
+            minWidth: Math.min($(document).width() - margin, minimumWidth),
+            height: Math.min($(document).height() - margin, $(window).height() - margin),
+            maxHeight: Math.min($(document).height() - margin, $(window).height() - margin),
+            maxWidth: $(document).width() - margin,
             modal: true,
             autoOpen: false,
         });
@@ -114,9 +117,9 @@
                 if (selectedImage.length > 0) {
                     const image = selectedImage.data('image');
                     const thumb = selectedImage.data('thumb');
-                    const src = selectedImage.attr('src');
+                    const source = selectedImage.attr('src');
                     $('[name=' + imageType + ']').val((image ? image + '|' : '') + thumb);
-                    field.attr('src', src).addClass('modified');
+                    field.attr('src', source).addClass('modified');
                 }
 
                 $(this).dialog('close');
@@ -141,7 +144,7 @@
     };
 
     $.fn.imageSelector = function () {
-        const $this = $(this);
+        const element = $(this);
 
         const imageSelectorElement = $('.image-selector-dialog');
         imagesContainer = imageSelectorElement.children('.images');
@@ -162,17 +165,17 @@
             imageSelectorElement.children('.error').hide();
 
             if (this.files) {
-                const loadFunction = ev => {
+                const loadFunction = event_ => {
                     const img = new Image();
                     img.addEventListener('load', () => {
-                        if (SIZES_BY_TYPE[imageType].validate(img)) {
+                        if (imageTypeSizes[imageType].validate(img)) {
                             createImage(img.src);
                         } else {
-                            imageSelectorElement.children('.error').text(SIZES_BY_TYPE[imageType].errorMsg);
+                            imageSelectorElement.children('.error').text(imageTypeSizes[imageType].errorMsg);
                             imageSelectorElement.children('.error').show();
                         }
                     });
-                    img.src = ev.target.result;
+                    img.src = event_.target.result;
                 };
 
                 for (const file of this.files) {
@@ -183,11 +186,11 @@
             }
         });
 
-        $this.on('click', function () {
+        element.on('click', function () {
             $(this).nImageSelector(imageSelectorElement);
             return false;
         });
 
-        return $this;
+        return element;
     };
 })(jQuery);

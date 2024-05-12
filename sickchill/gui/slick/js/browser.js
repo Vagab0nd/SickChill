@@ -33,28 +33,37 @@
             fileTypes: fileTypes.join(','),
         }, data => {
             fileBrowserDialog.empty();
-            const firstValue = data[0];
-            let i = 0;
             let list = null;
             let link = null;
-            data = $.grep(data, () => i++ !== 0);
 
+            const innerData = $.grep(data, (value, index) => index !== 0);
             const inputContainer = $('<div class="fileBrowserFieldContainer"></div>');
-            $('<input type="text" class="form-control input-sm">').val(firstValue.currentPath).on('keypress', event_ => {
-                if (event_.which === 13) {
-                    browse(event_.target.value, endpoint, includeFiles, fileTypes);
+
+            $('<input type="text" class="form-control input-sm">').val(currentBrowserPath).on('keypress', event => {
+                if (event.key === 'Enter') {
+                    browse(event.target.value, endpoint, includeFiles, fileTypes);
                 }
             }).appendTo(inputContainer.appendTo(fileBrowserDialog)).fileBrowser({
                 showBrowseButton: false,
-            }).on('autocompleteselect', (event_, ui) => {
+            }).on('autocompleteselect', (event, ui) => {
                 browse(ui.item.value, endpoint, includeFiles, fileTypes);
             });
 
             const listContainer = $('<div class="ui-dialog-scrollable-child">');
             list = $('<ul>').appendTo(listContainer.appendTo(fileBrowserDialog));
-            $.each(data, (i, entry) => {
-                if (entry.isFile && fileTypes && (!entry.isAllowed || fileTypes.includes('images') && !entry.isImage)) { // eslint-disable-line no-mixed-operators
-                    return true;
+            $.each(innerData, (i, entry) => {
+                /**
+                 * @param entry
+                 * @param entry.isFile
+                 * @param entry.isImage
+                 * @param entry.isAllowed
+                 */
+                // noinspection OverlyComplexBooleanExpressionJS
+                if (entry.isFile && fileTypes) {
+                    const isAllowed = (entry.isAllowed || (fileTypes.includes('images') && entry.isImage));
+                    if (!isAllowed) {
+                        return true;
+                    }
                 }
 
                 link = $('<a href="javascript:void(0)">').on('click', () => {
@@ -70,13 +79,11 @@
                 } else if (entry.isFile) {
                     link.prepend('<span class="ui-icon ui-icon-document"></span>');
                 } else {
-                    link.prepend('<span class="ui-icon ui-icon-folder-collapsed"></span>')
-                        .on('mouseenter', function () {
-                            $('span', this).addClass('ui-icon-folder-open');
-                        })
-                        .on('mouseleave', function () {
-                            $('span', this).removeClass('ui-icon-folder-open');
-                        });
+                    link.prepend('<span class="ui-icon ui-icon-folder-collapsed"></span>').on('mouseenter', function () {
+                        $('span', this).addClass('ui-icon-folder-open');
+                    }).on('mouseleave', function () {
+                        $('span', this).removeClass('ui-icon-folder-open');
+                    });
                 }
 
                 link.appendTo(list);
@@ -91,25 +98,26 @@
     }
 
     $.fn.nFileBrowser = function (callback, options) {
-        options = $.extend({}, $.Browser.defaults, options);
+        const newOptions = $.extend({}, $.Browser.defaults, options);
 
         // Make a fileBrowserDialog object if one doesn't exist already
         if (fileBrowserDialog) {
             // The title may change, even if fileBrowserDialog already exists
-            fileBrowserDialog.dialog('option', 'title', options.title);
+            fileBrowserDialog.dialog('option', 'title', newOptions.title);
         } else {
+            const margin = 80;
             // Set up the jquery dialog
-            fileBrowserDialog = $('<div class="fileBrowserDialog" style="display:none"></div>').appendTo('body').dialog({
+            fileBrowserDialog = $('<div class="fileBrowserDialog"></div>').appendTo('body').dialog({
                 dialogClass: 'browserDialog',
                 classes: {
                     'ui-dialog': 'ui-dialog-scrollable-by-child',
                 },
-                title: options.title,
-                position: {my: 'center top', at: 'center top+60', of: window},
-                minWidth: Math.min($(document).width() - 80, 650),
-                height: Math.min($(document).height() - 80, $(window).height() - 80),
-                maxHeight: Math.min($(document).height() - 80, $(window).height() - 80),
-                maxWidth: $(document).width() - 80,
+                title: newOptions.title,
+                position: {my: 'center top', at: 'center top+' + margin, of: window},
+                minWidth: Math.min($(document).width() - margin, $(window).width() - margin),
+                height: Math.min($(document).height() - margin, $(window).height() - margin),
+                maxHeight: Math.min($(document).height() - margin, $(window).height() - margin),
+                maxWidth: Math.min($(document).width() - margin, $(window).width() - margin),
                 modal: true,
                 autoOpen: false,
             });
@@ -120,7 +128,7 @@
             class: 'btn',
             click() {
                 // Store the browsed path to the associated text field
-                callback(options.includeFiles ? currentBrowserPath : $(this).find('.fileBrowserField').val(), options);
+                callback(newOptions.includeFiles ? $(this).find('.fileBrowserField').val() : currentBrowserPath, newOptions);
                 $(this).dialog('close');
             },
         }, {
@@ -132,38 +140,33 @@
         }]);
 
         // Set up the browser and launch the dialog
-        let initialDir = '';
-        if (options.initialDir) {
-            initialDir = options.initialDir;
-        }
-
-        browse(initialDir, options.url, options.includeFiles, options.fileTypes);
+        browse(newOptions.initialDirectory || '', newOptions.url, newOptions.includeFiles, newOptions.fileTypes);
         fileBrowserDialog.dialog('open');
 
         return false;
     };
 
     $.fn.fileBrowser = function (options) {
-        options = $.extend({}, $.Browser.defaults, options);
+        const newOptions = $.extend({}, $.Browser.defaults, options);
         // Text field used for the result
-        options.field = $(this);
+        newOptions.field = $(this);
 
-        if (options.field.autocomplete && options.autocompleteURL) {
+        if (newOptions.field.autocomplete && newOptions.autocompleteURL) {
             let query = '';
-            options.field.autocomplete({
+            newOptions.field.autocomplete({
                 position: {my: 'top', at: 'bottom', collision: 'flipfit'},
                 source(request, response) {
                     // Keep track of user submitted search term
-                    query = $.ui.autocomplete.escapeRegex(request.term, options.includeFiles);
+                    query = $.ui.autocomplete.escapeRegex(request.term, newOptions.includeFiles);
                     $.ajax({
-                        url: options.autocompleteURL,
+                        url: newOptions.autocompleteURL,
                         data: request,
                         dataType: 'json',
                         success(data) {
                             // Implement a startsWith filter for the results
                             const matcher = new RegExp('^' + query, 'i');
-                            const a = $.grep(data, item => matcher.test(item));
-                            response(a);
+                            const match = $.grep(data, item => matcher.test(item));
+                            response(match);
                         },
                     });
                 },
@@ -173,53 +176,52 @@
             }).data('ui-autocomplete')._renderItem = function (ul, item) {
                 // Highlight the matched search term from the item -- note that this is global and will match anywhere
                 let resultItem = item.label;
-                const x = new RegExp('(?![^&;]+;)(?!<[^<>]*)(' + query + ')(?![^<>]*>)(?![^&;]+;)', 'gi');
-                resultItem = resultItem.replace(x, fullMatch => '<b>' + fullMatch + '</b>');
-                return $('<li></li>')
-                    .data('ui-autocomplete-item', item)
-                    .append('<a class="nowrap">' + resultItem + '</a>')
-                    .appendTo(ul);
+                const matcher = new RegExp('(?![^&;]+;)(?!<[^<>]*)(' + query + ')(?![^<>]*>)(?![^&;]+;)', 'gi');
+                resultItem = resultItem.replace(matcher, fullMatch => '<b>' + fullMatch + '</b>');
+                return $('<li></li>').data('ui-autocomplete-item', item).append('<a class="nowrap">' + resultItem + '</a>').appendTo(ul);
             };
         }
 
         let path = false;
         let callback = false;
-        let ls = false;
-        // If the text field is empty and we're given a key then populate it with the last browsed value from localStorage
+        let hasLocalStorage = false;
+        // If the text field is empty, and we're given a key then populate it with the last browsed value from localStorage
         try {
-            ls = Boolean(localStorage.getItem);
-        } catch {}
-
-        if (ls && options.key) {
-            path = localStorage['fileBrowser-' + options.key];
+            hasLocalStorage = Boolean(localStorage.getItem);
+        } catch {
+            console.log('no local storage permissions');
         }
 
-        if (options.key && options.field.val().length === 0 && path) {
-            options.field.val(path);
+        if (hasLocalStorage && newOptions.key) {
+            path = localStorage['fileBrowser-' + newOptions.key];
         }
 
-        callback = function (path, options) {
-            options.field.val(path);
+        if (newOptions.key && newOptions.field.val().length === 0 && path) {
+            newOptions.field.val(path);
+        }
+
+        callback = function (path, newOptions) {
+            newOptions.field.val(path);
 
             // Use a localStorage to remember for next time -- no ie6/7
-            if (ls && options.key) {
-                localStorage['fileBrowser-' + options.key] = path;
+            if (hasLocalStorage && newOptions.key) {
+                localStorage['fileBrowser-' + newOptions.key] = path;
             }
         };
 
-        options.field.addClass('fileBrowserField');
-        if (options.showBrowseButton) {
+        newOptions.field.addClass('fileBrowserField');
+        if (newOptions.showBrowseButton) {
             // Append the browse button and give it a click behaviour
-            options.field.after(
+            newOptions.field.after(
                 $('<input type="button" value="Browse&hellip;" class="btn btn-inline fileBrowser">').on('click', function () {
-                    const initialDir = options.field.val() || (options.key && path) || '';
-                    const optionsWithInitialDir = $.extend({}, options, {initialDir});
-                    $(this).nFileBrowser(callback, optionsWithInitialDir);
+                    const optionsWithInitialDirectory = $.extend({}, newOptions, {initialDirectory: newOptions.field.val() || (newOptions.key && path) || ''});
+                    $(this).nFileBrowser(callback, optionsWithInitialDirectory);
+
                     return false;
                 }),
             );
         }
 
-        return options.field;
+        return newOptions.field;
     };
 })(jQuery);
